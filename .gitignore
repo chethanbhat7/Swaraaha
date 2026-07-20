@@ -1,0 +1,32 @@
+docs/todo.md
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+venv/
+
+# Model weights (large files)
+model/weights/*.pt
+model/weights/*.pth
+model/weights/*.bin
+model/weights/*.onnx
+model/weights/checkpoints/
+
+# Debug output
+model/data/debug/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
