@@ -99,9 +99,23 @@ asked to.
 
 ## 6. Conventions
 
-- **Commit messages:** `[TYPE] message`, types: `[FIX]`, `[ADD]`, `[DOCS]`,
-  `[MNT]` (refactor/maintenance), `[TEST]`.
-- Keep `models/` framework-agnostic where possible so both `backend/`
+- **Commit messages:** Follow [Conventional Commits](https://www.conventionalcommits.org/):
+  ```
+  <type>[optional scope]: <description>
+
+  [optional body]
+
+  [optional footer(s)]
+  ```
+  - **Types:** `fix`, `feat`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`, `ci`, `build`
+  - **Scopes:** `(model)`, `(data)`, `(app)`, `(localization)`, `(classification)`, `(training)`, `(eval)`
+  - **Examples:**
+    - `feat(model): add CNN spectrogram localization model`
+    - `fix(data): correct frame label alignment for hop_length=512`
+    - `docs(project): update conventions to Conventional Commits`
+    - `refactor(model): extract base classifier class from 5 binary classifiers`
+    - `feat(app)!: redesign main window layout` (breaking change)
+- Keep `model/` framework-agnostic where possible so both `backend/`
   (FastAPI) and `app/` (PyQt5) can import from it without pulling in
   web-only or desktop-only dependencies.
 
