@@ -10,11 +10,16 @@ Expected flow:
     spec = generate_mel_spectrogram(audio)
     spec_norm = normalize_spectrogram(spec)
     # spec_norm shape: [1, n_mels, time_frames] — ready for CNN input
+
+Localization-specific flow:
+    spec, sr = file_to_spectrogram("speech.wav")
+    labels = create_frame_labels(dysfluency_intervals, spec.shape[2], sr, hop_length=512)
+    # labels shape: (time_frames,) — binary mask aligned to spectrogram
 """
 
 import os
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 
@@ -415,6 +420,139 @@ def debug_generate_test_audio(duration: float = 3.0, sr: int = 16000) -> np.ndar
     return audio.astype(np.float32)
 
 
+# ---------------------------------------------------------------------------
+# Localization — Frame-Level Labels
+# ---------------------------------------------------------------------------
+
+def create_frame_labels(
+    dysfluency_intervals: List[Tuple[float, float]],
+    num_frames: int,
+    sr: int = 16000,
+    hop_length: int = 512,
+) -> np.ndarray:
+    """
+    Create a binary frame-level label mask aligned to a spectrogram.
+
+    Each spectrogram frame at index `i` corresponds to audio sample
+    `i * hop_length`. This function converts (start_sec, end_sec) intervals
+    into a binary mask over those frames.
+
+    Args:
+        dysfluency_intervals: List of (start_sec, end_sec) tuples marking
+            dysfluent regions in the audio. Empty list = fully fluent.
+        num_frames: Total number of spectrogram time frames (the mask length).
+        sr: Sample rate used during spectrogram generation.
+        hop_length: Hop length used during spectrogram generation.
+
+    Returns:
+        1-D numpy uint8 array of shape (num_frames,).
+        1 = dysfluent frame, 0 = fluent frame.
+
+    Example:
+        >>> # Audio is 5 seconds, frames 50-100 are dysfluent
+        >>> labels = create_frame_labels([(1.0, 2.0)], num_frames=156, sr=16000, hop_length=512)
+        >>> print(labels.shape, labels.sum())  # (156,) — some 1s in the middle
+    """
+    labels = np.zeros(num_frames, dtype=np.uint8)
+
+    samples_per_frame = hop_length
+
+    for start_sec, end_sec in dysfluency_intervals:
+        start_sample = int(start_sec * sr)
+        end_sample = int(end_sec * sr)
+        start_frame = start_sample // samples_per_frame
+        end_frame = end_sample // samples_per_frame
+        start_frame = max(0, start_frame)
+        end_frame = min(num_frames, end_frame)
+        labels[start_frame:end_frame] = 1
+
+    return labels
+
+
+def create_frame_labels_from_samples(
+    dysfluency_sample_ranges: List[Tuple[int, int]],
+    num_frames: int,
+    hop_length: int = 512,
+) -> np.ndarray:
+    """
+    Create frame labels when dysfluency boundaries are given as sample indices
+    instead of seconds.
+
+    Args:
+        dysfluency_sample_ranges: List of (start_sample, end_sample) tuples.
+        num_frames: Total spectrogram time frames.
+        hop_length: Hop length used during spectrogram generation.
+
+    Returns:
+        1-D numpy uint8 array of shape (num_frames,).
+    """
+    labels = np.zeros(num_frames, dtype=np.uint8)
+
+    for start_sample, end_sample in dysfluency_sample_ranges:
+        start_frame = start_sample // hop_length
+        end_frame = end_sample // hop_length
+        start_frame = max(0, start_frame)
+        end_frame = min(num_frames, end_frame)
+        labels[start_frame:end_frame] = 1
+
+    return labels
+
+
+def pad_to_length(array: np.ndarray, target_length: int, axis: int = -1, pad_value: float = 0.0) -> np.ndarray:
+    """
+    Pad a numpy array along a given axis to reach target_length.
+
+    If the array is already longer than target_length, it is truncated.
+
+    Args:
+        array: Input array.
+        target_length: Desired length along the given axis.
+        axis: Axis to pad/truncate.
+        pad_value: Value used for padding.
+
+    Returns:
+        Padded or truncated array.
+    """
+    current_length = array.shape[axis]
+    if current_length >= target_length:
+        slices = [slice(None)] * array.ndim
+        slices[axis] = slice(0, target_length)
+        return array[tuple(slices)]
+    else:
+        pad_width = target_length - current_length
+        pads = [(0, 0)] * array.ndim
+        pads[axis] = (0, pad_width)
+        return np.pad(array, pads, mode="constant", constant_values=pad_value)
+
+
+def pad_audio_and_labels(
+    audio: np.ndarray,
+    labels: np.ndarray,
+    max_length_samples: int,
+    sr: int = 16000,
+    hop_length: int = 512,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Pad audio and its corresponding frame labels to a fixed length.
+
+    Used for batching variable-length samples in a DataLoader.
+
+    Args:
+        audio: 1-D audio array.
+        labels: 1-D frame label array (must align with audio after padding).
+        max_length_samples: Target audio length in samples.
+        sr: Sample rate.
+        hop_length: Hop length for label alignment.
+
+    Returns:
+        Tuple of (padded_audio, padded_labels).
+    """
+    audio = pad_to_length(audio, max_length_samples, axis=0, pad_value=0.0)
+    max_frames = max_length_samples // hop_length
+    labels = pad_to_length(labels, max_frames, axis=0, pad_value=0)
+    return audio, labels
+
+
 if __name__ == "__main__":
     # Quick self-test: generate synthetic audio and run the full pipeline
     print("=== Swaraaha Preprocessing Pipeline — Self Test ===")
@@ -425,6 +563,24 @@ if __name__ == "__main__":
     spec = audio_to_spectrogram(test_audio, sr=16000)
     print(f"Spectrogram shape: {spec.shape}, dtype: {spec.dtype}")
     print(f"Spectrogram range: [{spec.min():.2f}, {spec.max():.2f}]")
+
+    # Localization test: frame labels
+    print("\n--- Localization Frame Label Test ---")
+    # Mark 1.0s–2.0s as dysfluent in a 3-second audio
+    intervals = [(1.0, 2.0)]
+    num_frames = spec.shape[2]  # time dimension of spectrogram
+    labels = create_frame_labels(intervals, num_frames=num_frames, sr=16000, hop_length=512)
+    print(f"Labels shape: {labels.shape}, sum (dysfluent frames): {labels.sum()}")
+    print(f"Labels: {labels}")
+
+    # Verify alignment: label shape matches spectrogram time dimension
+    assert labels.shape[0] == spec.shape[2], \
+        f"Mismatch: labels {labels.shape[0]} frames != spec {spec.shape[2]} frames"
+    print("Alignment check passed: labels match spectrogram time frames")
+
+    # Pad test
+    padded_audio, padded_labels = pad_audio_and_labels(test_audio, labels, max_length_samples=32000)
+    print(f"Padded audio: {padded_audio.shape}, padded labels: {padded_labels.shape}")
 
     results = debug_save_spectrogram(test_audio, sr=16000, prefix="test")
     for key, path in results.items():
