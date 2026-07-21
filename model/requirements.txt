@@ -1,0 +1,23 @@
+# Swaraaha - Model Dependencies
+# Install: pip install -r requirements.txt
+
+# Core ML
+torch>=2.0.0                # PyTorch deep learning framework (use --index-url .../cpu for CPU-only)
+numpy>=1.24.0               # Numerical computing, array operations
+
+# Audio Processing
+librosa>=0.10.0             # Audio analysis, mel-spectrogram generation
+soundfile>=0.12.0           # Reading/writing audio files (.wav, .flac, etc.)
+audioread>=3.0.0            # Backend for librosa audio I/O (installed with librosa)
+
+# Scientific Computing
+scipy>=1.10.0               # Signal processing, scientific algorithms
+
+# Visualization
+matplotlib>=3.7.0           # Plotting spectrograms, training curves, debug output
+
+# Numba (installed with librosa, used for JIT compilation)
+numba>=0.57.0               # JIT compiler for numerical functions (librosa dependency)
+
+# Hugging Face (for Task 2.1+ classifiers)
+# transformers>=4.30.0      # Wav2Vec 2.0 models (uncomment when Shreekrishna starts classifiers)
