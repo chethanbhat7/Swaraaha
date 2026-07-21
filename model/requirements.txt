@@ -19,5 +19,5 @@ matplotlib>=3.7.0           # Plotting spectrograms, training curves, debug outp
 # Numba (installed with librosa, used for JIT compilation)
 numba>=0.57.0               # JIT compiler for numerical functions (librosa dependency)
 
-# Hugging Face (for Task 2.1+ classifiers)
-# transformers>=4.30.0      # Wav2Vec 2.0 models (uncomment when Shreekrishna starts classifiers)
+# Hugging Face
+transformers>=4.30.0       # Wav2Vec 2.0 models
