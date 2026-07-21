@@ -1,12 +1,30 @@
-"""Swaraaha Desktop App — PyQt5 interface for speech dysfluency detection."""
+"""Swaraaha Desktop Application — Entry Point."""
 
 import sys
+from PySide6.QtWidgets import QApplication
+
+from app.ui.main_window import MainWindow
+from app.ui.theme import load_fonts
+from app.ui.styles import build_stylesheet
 
 
 def main():
-    """Entry point for the desktop application."""
-    print("Swaraaha Desktop App — not yet implemented")
-    print("Use the web app (backend + frontend) for now.")
+    app = QApplication(sys.argv)
+    app.setApplicationName("Swaraaha")
+    app.setOrganizationName("Swaraaha")
+
+    loaded_fonts = load_fonts()
+    if loaded_fonts:
+        print(f"Loaded fonts: {', '.join(loaded_fonts)}")
+    else:
+        print("Warning: No custom fonts loaded. Using system defaults.")
+
+    app.setStyleSheet(build_stylesheet())
+
+    window = MainWindow()
+    window.show()
+
+    sys.exit(app.exec())
 
 
 if __name__ == "__main__":
