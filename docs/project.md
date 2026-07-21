@@ -140,8 +140,10 @@ was last worked on, and any known bugs or TODOs here.)_
 - [x] Wav2Vec 2.0 per-class binary classifiers — implemented in `model/classification/`
 - [x] Hybrid combiner model — MLP approach in `model/classification/hybrid.py`
 - [x] Repo scaffolding for `frontend/`, `backend/`, `app/` — completed
-- [ ] CNN spectrogram-image localization model — in progress
-- [ ] Web app (frontend/backend) — in progress
-- [ ] Docker setup for scaling — pending
-- [ ] Render deployment — not yet configured
+- [x] CNN spectrogram-image localization model — implemented in `model/localization/`
+- [x] Web app (frontend/backend) — React + FastAPI MVP, `frontend/` and `backend/`
+- [x] Docker setup — `backend.Dockerfile` and `docker-compose.yml`
+- [x] Render deployment — `render.yaml` Blueprint
 - [ ] Explore non-image (transcript/sequence-based) localization — deferred
+- [ ] Train models on actual dataset — pending (requires labeled data)
+- [ ] PyQt5 desktop app full implementation — pending

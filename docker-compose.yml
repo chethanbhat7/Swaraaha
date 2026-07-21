@@ -1,0 +1,11 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend.Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./model/weights:/app/model/weights
+    environment:
+      - PYTHONUNBUFFERED=1
