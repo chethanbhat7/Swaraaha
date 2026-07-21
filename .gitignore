@@ -1,4 +1,6 @@
 docs/todo.md
+docs/project-understanding.md
+
 
 # OS-specific
 .DS_Store
@@ -21,6 +23,10 @@ model/weights/*.pth
 model/weights/*.bin
 model/weights/*.onnx
 model/weights/checkpoints/
+
+# Raw data and combined datasets (large, not committed)
+RawData/
+Dataset/
 
 # Debug output
 model/data/debug/
