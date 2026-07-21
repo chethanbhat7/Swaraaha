@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: swaraaha-backend
+    runtime: docker
+    dockerfilePath: backend.Dockerfile
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: "1"
+    healthCheckPath: /health
+    disk:
+      name: model-weights
+      mountPath: /app/model/weights
+      sizeGB: 1
