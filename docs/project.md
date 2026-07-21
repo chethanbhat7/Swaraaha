@@ -137,13 +137,11 @@ asked to.
 _(Keep this section updated across sessions — note what's in progress, what
 was last worked on, and any known bugs or TODOs here.)_
 
-- [ ] Repo scaffolding for `frontend/`, `backend/`, `models/`, `app/` —
-      not yet started.
-- [ ] Wav2Vec 2.0 per-class binary classifiers — not yet built.
-- [ ] Hybrid combiner model — design + implementation open.
-- [ ] CNN spectrogram-image localization model — not yet built.
-- [ ] Explore non-image (transcript/sequence-based) localization as an
-      alternative to the CNN approach.
-- [ ] Web app (frontend/backend) — not yet scaffolded.
-- [ ] Docker setup for scaling — not yet defined.
-- [ ] Render deployment — not yet configured.
+- [x] Wav2Vec 2.0 per-class binary classifiers — implemented in `model/classification/`
+- [x] Hybrid combiner model — MLP approach in `model/classification/hybrid.py`
+- [x] Repo scaffolding for `frontend/`, `backend/`, `app/` — completed
+- [ ] CNN spectrogram-image localization model — in progress
+- [ ] Web app (frontend/backend) — in progress
+- [ ] Docker setup for scaling — pending
+- [ ] Render deployment — not yet configured
+- [ ] Explore non-image (transcript/sequence-based) localization — deferred
