@@ -1,0 +1,32 @@
+# Swaraaha - Default Hyperparameters and Constants
+
+# Audio
+SAMPLE_RATE = 16000
+AUDIO_DURATION_SECONDS = 10
+MAX_AUDIO_LENGTH = SAMPLE_RATE * AUDIO_DURATION_SECONDS  # 160000 samples
+
+# Model
+WAV2VEC2_BASE = "facebook/wav2vec2-base"
+NUM_DYSFLUENCY_CLASSES = 5
+DYSFLUENCY_CLASSES = ["prolongation", "block", "soundrep", "wordrep", "interjection"]
+
+# Training
+LEARNING_RATE = 3e-5
+BATCH_SIZE = 8
+NUM_EPOCHS = 20
+WARMUP_STEPS = 500
+WEIGHT_DECAY = 0.01
+EARLY_STOPPING_PATIENCE = 5
+GRADIENT_CLIP_MAX_NORM = 1.0
+
+# Data
+TRAIN_VAL_SPLIT = 0.8
+AUGMENTATION_ENABLED = True
+
+# Paths
+WEIGHTS_DIR = "model/weights"
+DEFAULT_DATA_DIR = "data"
+
+# Hybrid Combiner
+COMBINER_HIDDEN_DIM = 32
+COMBINER_DROPOUT = 0.3
