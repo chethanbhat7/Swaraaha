@@ -855,7 +855,7 @@ Test the complete desktop application end-to-end and fix any issues.
 ## Summary Table
 
 | Task | Assignee | Phase | Depends On | Effort | Status |
-|---|---|---|---|---|
+|---|---|---|---|---|---|
 | 1.1 Scaffold `models/` | Shreekrishna | 1 | — | Small | ✅ |
 | 1.2 Spectrogram Pipeline | Chethan | 1 | — | Medium | ✅ |
 | 1.3 Scaffold `app/` | Srinivas | 1 | — | Medium | ✅ |
@@ -875,12 +875,16 @@ Test the complete desktop application end-to-end and fix any issues.
 | 3.1 Hybrid Combiner | Shreekrishna | 3 | 2.1–2.5 | Large | ✅ |
 | 3.2 Audio-UI Wiring | Srinivas | 3 | 2.8, 2.9 | Small | ✅ |
 | 3.3 Model Runner | Srinivas | 3 | 3.2 | Medium | ❌ Stub only |
-| 3.4 Train Classifiers | Skanda | 3 | 2.10, 1.4 | Small |
-| 3.5 Train Localization | Skanda | 3 | 2.11, 2.7 | Small |
-| 3.6 Full Evaluation | Skanda | 3 | 3.1, 3.4, 3.5, 2.12 | Medium |
-| 3.7 Model Integration | Srinivas | 3 | 3.3, 3.6 | Medium |
-| 3.8 Results Visualization | Srinivas | 3 | 3.7 | Medium |
-| 3.9 End-to-End Testing | All (Srinivas lead) | 3 | 3.8 | Medium |
+| 3.4 Train Classifiers | Shreekrishna | 3 | 2.10, 1.4 | Small | ❌ |
+| 3.5 Train Localization | Shreekrishna | 3 | 2.11, 2.7 | Small | ❌ |
+| 3.6 Full Evaluation | Skanda | 3 | 3.1, 3.4, 3.5, 2.12 | Medium | ❌ |
+| 3.7 Model Integration | Srinivas | 3 | 3.3, 3.6 | Medium | ❌ |
+| 3.8 Results Visualization | Srinivas | 3 | 3.7 | Medium | ❌ |
+| 3.9 E2E Testing | All (Srinivas lead) | 3 | 3.8 | Medium | ❌ |
+
+**Legend:** ✅ Done | ⚠️ Partial | ❌ Pending
+
+> **Detailed Phase 3 tasks, assignments, and optimization tasks:** see `docs/todo-phase3.md`
 
 ---
 
@@ -888,9 +892,9 @@ Test the complete desktop application end-to-end and fix any issues.
 
 **Maximum parallelism at each phase:**
 - **Phase 1**: 4 tasks in parallel (1 per person)
-- **Phase 2**: 8 tasks in parallel (Shreekrishna: 5 classifiers, Chethan: 2 tasks, Srinivas: 2 tasks, Skanda: 3 tasks — some within-person sequential)
-- **Phase 3**: Mixed — Shreekrishna (1 task), Srinivas (4 sequential tasks), Skanda (3 tasks, some sequential)
+- **Phase 2**: 8 tasks in parallel (Shreekrishna: 5 classifiers, Chethan: 2 tasks, Srinivas: 2 tasks, Skanda: 3 tasks)
+- **Phase 3**: Shreekrishna (training + optimization, GPU), Chethan (data augmentation + cleanup), Srinivas (UI integration), Skanda (evaluation + analysis)
 
-**Critical path:** `1.1 → 2.1–2.5 → 3.1 → 3.6 → 3.7 → 3.8 → 3.9`
+**Critical path:** `3.4/3.5 → 3.6 → 3.7 → 3.8 → 3.9`
 
-**Fastest possible completion**: ~3–4 weeks if all team members work in parallel and models train overnight.
+**GPU Owner:** Shreekrishna — all training execution runs on his machine.
