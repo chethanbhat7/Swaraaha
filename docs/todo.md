@@ -712,7 +712,7 @@ Execute training for all 5 Wav2Vec 2.0 binary classifiers using the training pip
 
 **Guidance:**
 - Use the script from Task 2.10.
-- Run each classifier training, potentially on a GPU machine.
+- Run each classifier training on a machine with sufficient resources.
 - Monitor training — watch for overfitting (train loss decreasing but val loss increasing).
 - Save all trained weights to `models/weights/`.
 - Document training results: epochs trained, final F1 scores, any issues encountered.
@@ -893,8 +893,6 @@ Test the complete desktop application end-to-end and fix any issues.
 **Maximum parallelism at each phase:**
 - **Phase 1**: 4 tasks in parallel (1 per person)
 - **Phase 2**: 8 tasks in parallel (Shreekrishna: 5 classifiers, Chethan: 2 tasks, Srinivas: 2 tasks, Skanda: 3 tasks)
-- **Phase 3**: Shreekrishna (training + optimization, GPU), Chethan (data augmentation + cleanup), Srinivas (UI integration), Skanda (evaluation + analysis)
+- **Phase 3**: Shreekrishna (training + optimization), Chethan (data augmentation + cleanup), Srinivas (UI integration), Skanda (evaluation + analysis)
 
 **Critical path:** `3.4/3.5 → 3.6 → 3.7 → 3.8 → 3.9`
-
-**GPU Owner:** Shreekrishna — all training execution runs on his machine.
