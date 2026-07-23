@@ -19,7 +19,7 @@ Localization-specific flow:
 
 import os
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -553,12 +553,485 @@ def pad_audio_and_labels(
     return audio, labels
 
 
+# ---------------------------------------------------------------------------
+# Augmentation Integration
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Audio Cleaning / Normalization
+# ---------------------------------------------------------------------------
+
+def remove_dc_offset(audio: np.ndarray) -> np.ndarray:
+    """
+    Remove DC offset from audio signal.
+
+    Subtracts the mean amplitude so the signal is centered around zero.
+    This prevents bias in downstream feature extraction.
+
+    Args:
+        audio: 1-D float32 audio array.
+
+    Returns:
+        DC-corrected audio array.
+    """
+    return (audio - np.mean(audio)).astype(np.float32)
+
+
+def normalize_peak(audio: np.ndarray, target_peak: float = 0.95) -> np.ndarray:
+    """
+    Normalize audio to a target peak amplitude.
+
+    Scales the signal so its absolute maximum equals target_peak.
+    Prevents clipping while maximizing dynamic range.
+
+    Args:
+        audio: 1-D float32 audio array.
+        target_peak: Target peak amplitude (0-1). Default 0.95.
+
+    Returns:
+        Peak-normalized audio array.
+    """
+    peak = np.abs(audio).max()
+    if peak == 0:
+        return audio
+    return (audio * (target_peak / peak)).astype(np.float32)
+
+
+def normalize_rms(audio: np.ndarray, target_rms: float = 0.1) -> np.ndarray:
+    """
+    Normalize audio to a target RMS level.
+
+    Scales the signal so its RMS equals target_rms.
+    More perceptually uniform than peak normalization.
+
+    Args:
+        audio: 1-D float32 audio array.
+        target_rms: Target RMS amplitude. Default 0.1.
+
+    Returns:
+        RMS-normalized audio array.
+    """
+    rms = np.sqrt(np.mean(audio ** 2))
+    if rms == 0:
+        return audio
+    return (audio * (target_rms / rms)).astype(np.float32)
+
+
+def trim_silence(
+    audio: np.ndarray,
+    sr: int = 16000,
+    top_db: int = 25,
+) -> np.ndarray:
+    """
+    Trim leading and trailing silence from audio.
+
+    Uses librosa's trim which detects non-silent intervals based on
+    a dB threshold relative to the peak.
+
+    Args:
+        audio: 1-D float32 audio array.
+        sr: Sample rate (used for frame length).
+        top_db: Threshold in dB below peak to consider as silence. Default 25.
+
+    Returns:
+        Trimmed audio array.
+    """
+    import librosa
+    trimmed, _ = librosa.effects.trim(audio, top_db=top_db)
+    return trimmed.astype(np.float32)
+
+
+def trim_silence_center(
+    audio: np.ndarray,
+    sr: int = 16000,
+    top_db: int = 25,
+    pad_ms: float = 50.0,
+) -> np.ndarray:
+    """
+    Trim silence and add a small padding around the speech.
+
+    Args:
+        audio: 1-D float32 audio array.
+        sr: Sample rate.
+        top_db: Silence threshold in dB.
+        pad_ms: Padding in milliseconds to add around speech.
+
+    Returns:
+        Trimmed and padded audio array.
+    """
+    import librosa
+    trimmed, _ = librosa.effects.trim(audio, top_db=top_db)
+    pad_samples = int(pad_ms * sr / 1000)
+    padded = np.pad(trimmed, (pad_samples, pad_samples), mode="constant")
+    return padded.astype(np.float32)
+
+
+def clean_audio(
+    audio: np.ndarray,
+    sr: int = 16000,
+    remove_dc: bool = True,
+    normalize: bool = True,
+    trim: bool = True,
+    target_peak: float = 0.95,
+) -> np.ndarray:
+    """
+    Full audio cleaning pipeline: DC removal → normalization → silence trimming.
+
+    This is the recommended preprocessing step before feeding audio to models.
+    Apply this consistently across training and inference.
+
+    Args:
+        audio: 1-D float32 audio array.
+        sr: Sample rate.
+        remove_dc: Remove DC offset.
+        normalize: Apply peak normalization.
+        trim: Trim leading/trailing silence.
+        target_peak: Target peak amplitude for normalization.
+
+    Returns:
+        Cleaned audio array.
+
+    Example:
+        >>> audio, sr = load_audio("raw_recording.wav")
+        >>> audio = clean_audio(audio, sr=sr)
+        >>> # audio is now DC-free, peak-normalized, silence-trimmed
+    """
+    if remove_dc:
+        audio = remove_dc_offset(audio)
+    if normalize:
+        audio = normalize_peak(audio, target_peak=target_peak)
+    if trim:
+        audio = trim_silence(audio, sr=sr)
+    return audio
+
+
+def augment_audio(
+    audio: np.ndarray,
+    sr: int = 16000,
+    p: float = 0.5,
+) -> np.ndarray:
+    """
+    Apply random augmentation pipeline to audio with probability p.
+
+    Convenience wrapper around AudioAugmentor for use in dataset __getitem__.
+
+    Args:
+        audio: 1-D float32 audio array, values in [-1.0, 1.0].
+        sr: Sample rate in Hz.
+        p: Probability of applying augmentation (0.0 = no augmentation).
+
+    Returns:
+        Augmented (or original) audio array, same length as input.
+
+    Example:
+        >>> # In dataset __getitem__:
+        >>> if self.augment:
+        >>>     audio = augment_audio(audio, sr=self.sr, p=0.5)
+    """
+    from model.data.augmentation import AudioAugmentor
+
+    augmentor = AudioAugmentor()
+    return augmentor(audio, sr=sr)
+
+
+def compute_snr(signal: np.ndarray, noise: np.ndarray) -> float:
+    """
+    Compute Signal-to-Noise Ratio (SNR) in decibels.
+
+    Args:
+        signal: Clean signal array.
+        noise: Noise array (same length as signal).
+
+    Returns:
+        SNR value in dB. Higher values indicate less noise.
+
+    Example:
+        >>> snr = compute_snr(clean_audio, noisy_audio - clean_audio)
+        >>> print(f"SNR: {snr:.1f} dB")
+    """
+    signal = np.asarray(signal, dtype=np.float64)
+    noise = np.asarray(noise, dtype=np.float64)
+
+    signal_power = np.mean(signal ** 2)
+    noise_power = np.mean(noise ** 2)
+
+    if noise_power == 0:
+        return float("inf")
+
+    snr_linear = signal_power / noise_power
+    snr_db = 10 * np.log10(snr_linear)
+    return float(snr_db)
+
+
+# ---------------------------------------------------------------------------
+# Audio Quality Checks
+# ---------------------------------------------------------------------------
+
+def check_audio_quality(
+    audio: np.ndarray,
+    sr: int = 16000,
+    min_duration: float = 0.5,
+    max_amplitude: float = 0.99,
+    silence_threshold: float = 0.01,
+    min_rms: float = 0.005,
+) -> Dict[str, object]:
+    """
+    Check audio quality and return diagnostics.
+
+    Detects common issues that can hurt model training:
+    - Clipping (samples near ±1.0)
+    - Near-silence (very low amplitude)
+    - Very short clips
+    - DC offset
+
+    Args:
+        audio: 1-D float32 audio array.
+        sr: Sample rate.
+        min_duration: Minimum acceptable duration in seconds.
+        max_amplitude: Threshold for clipping detection (0-1).
+        silence_threshold: RMS threshold for silence detection.
+        min_rms: Minimum RMS for non-silent audio.
+
+    Returns:
+        Dict with quality metrics:
+            - "duration_sec": float
+            - "rms": float
+            - "peak_amplitude": float
+            - "is_clipped": bool
+            - "is_silent": bool
+            - "is_too_short": bool
+            - "dc_offset": float
+            - "is_valid": bool (True if all checks pass)
+            - "issues": list of str (descriptions of any problems found)
+
+    Example:
+        >>> quality = check_audio_quality(audio, sr=16000)
+        >>> if not quality["is_valid"]:
+        >>>     print(f"Audio issues: {quality['issues']}")
+    """
+    issues = []
+
+    # Duration
+    duration_sec = len(audio) / sr
+    is_too_short = duration_sec < min_duration
+    if is_too_short:
+        issues.append(f"Too short: {duration_sec:.2f}s < {min_duration}s")
+
+    # Amplitude statistics
+    peak_amplitude = float(np.abs(audio).max())
+    rms = float(np.sqrt(np.mean(audio ** 2)))
+    dc_offset = float(np.mean(audio))
+
+    # Clipping
+    is_clipped = peak_amplitude >= max_amplitude
+    if is_clipped:
+        issues.append(f"Clipping detected: peak={peak_amplitude:.3f}")
+
+    # Silence
+    is_silent = rms < silence_threshold
+    if is_silent:
+        issues.append(f"Near-silent: RMS={rms:.4f}")
+
+    # DC offset
+    if abs(dc_offset) > 0.1:
+        issues.append(f"DC offset: {dc_offset:.4f}")
+
+    is_valid = len(issues) == 0
+
+    return {
+        "duration_sec": round(duration_sec, 4),
+        "rms": round(rms, 6),
+        "peak_amplitude": round(peak_amplitude, 6),
+        "is_clipped": is_clipped,
+        "is_silent": is_silent,
+        "is_too_short": is_too_short,
+        "dc_offset": round(dc_offset, 6),
+        "is_valid": is_valid,
+        "issues": issues,
+    }
+
+
+def filter_audio_samples(
+    audio_paths: List[str],
+    sr: int = 16000,
+    min_duration: float = 0.5,
+) -> Tuple[List[str], List[Dict]]:
+    """
+    Filter a list of audio files, returning only valid ones.
+
+    Args:
+        audio_paths: List of paths to audio files.
+        sr: Sample rate for loading.
+        min_duration: Minimum duration in seconds.
+
+    Returns:
+        Tuple of (valid_paths, quality_reports) where quality_reports
+        contains the check results for each file.
+    """
+    valid_paths = []
+    reports = []
+
+    for path in audio_paths:
+        try:
+            audio, _ = load_audio(path, sr=sr)
+            quality = check_audio_quality(audio, sr=sr, min_duration=min_duration)
+            reports.append({"path": path, **quality})
+
+            if quality["is_valid"]:
+                valid_paths.append(path)
+        except Exception as e:
+            reports.append({"path": path, "is_valid": False, "issues": [str(e)]})
+
+    return valid_paths, reports
+
+
+# ---------------------------------------------------------------------------
+# Class Balancing
+# ---------------------------------------------------------------------------
+
+def compute_class_weights(labels: np.ndarray) -> Dict[int, float]:
+    """
+    Compute inverse-frequency class weights for imbalanced datasets.
+
+    Useful for setting pos_weight in BCEWithLogitsLoss or class_weight in
+    other loss functions. Higher weight for minority classes.
+
+    Args:
+        labels: 1-D array of binary labels (0 or 1) for a single class,
+                or 2-D array (N, C) for multi-label.
+
+    Returns:
+        Dict mapping class index to weight. {0: weight_neg, 1: weight_pos}.
+    """
+    labels = np.asarray(labels).flatten()
+    n_total = len(labels)
+    n_pos = int(labels.sum())
+    n_neg = n_total - n_pos
+
+    if n_pos == 0 or n_neg == 0:
+        return {0: 1.0, 1: 1.0}
+
+    weight_neg = n_total / (2.0 * n_neg)
+    weight_pos = n_total / (2.0 * n_pos)
+
+    return {0: round(weight_neg, 4), 1: round(weight_pos, 4)}
+
+
+def compute_pos_weight(labels: np.ndarray) -> float:
+    """
+    Compute pos_weight for BCEWithLogitsLoss from binary labels.
+
+    pos_weight = n_neg / n_pos. This tells the loss to penalize
+    false negatives more heavily when positives are rare.
+
+    Args:
+        labels: 1-D array of binary labels (0 or 1).
+
+    Returns:
+        pos_weight as float. Returns 1.0 if balanced.
+    """
+    labels = np.asarray(labels).flatten()
+    n_pos = int(labels.sum())
+    n_neg = len(labels) - n_pos
+
+    if n_pos == 0:
+        return 1.0
+
+    return round(n_neg / n_pos, 4)
+
+
+def oversample_minority(
+    indices: np.ndarray,
+    labels: np.ndarray,
+    target_ratio: float = 1.0,
+    seed: int = 42,
+) -> np.ndarray:
+    """
+    Oversample minority class indices to reach target_pos/neg ratio.
+
+    Args:
+        indices: Array of dataset indices to resample.
+        labels: Binary labels aligned with indices (0 or 1).
+        target_ratio: Desired ratio of positives to negatives. Default 1.0 (balanced).
+        seed: Random seed for reproducibility.
+
+    Returns:
+        Resampled indices array with oversampled minority class.
+    """
+    rng = np.random.RandomState(seed)
+    labels = np.asarray(labels)
+    pos_idx = indices[labels == 1]
+    neg_idx = indices[labels == 0]
+
+    n_neg = len(neg_idx)
+    target_pos = int(n_neg * target_ratio)
+
+    if len(pos_idx) >= target_pos:
+        return indices
+
+    # Oversample positives with replacement
+    oversampled = rng.choice(pos_idx, size=target_pos, replace=True)
+    return np.concatenate([neg_idx, oversampled])
+
+
+def create_balanced_sampler(labels: np.ndarray) -> "torch.utils.data.WeightedRandomSampler":
+    """
+    Create a PyTorch WeightedRandomSampler for balanced mini-batches.
+
+    Each sample gets weight = 1/class_frequency. Minority class samples
+    are sampled more frequently to balance each batch.
+
+    Args:
+        labels: 1-D array of binary labels for the dataset.
+
+    Returns:
+        WeightedRandomSampler instance.
+
+    Example:
+        >>> sampler = create_balanced_sampler(train_labels)
+        >>> loader = DataLoader(dataset, batch_size=8, sampler=sampler)
+    """
+    import torch
+    from torch.utils.data import WeightedRandomSampler
+
+    labels = np.asarray(labels).flatten()
+    n_pos = int(labels.sum())
+    n_neg = len(labels) - n_pos
+
+    weights = np.where(labels == 1, 1.0 / max(n_pos, 1), 1.0 / max(n_neg, 1))
+    weights = weights / weights.sum()
+
+    return WeightedRandomSampler(
+        weights=torch.DoubleTensor(weights),
+        num_samples=len(labels),
+        replacement=True,
+    )
+
+
 if __name__ == "__main__":
     # Quick self-test: generate synthetic audio and run the full pipeline
     print("=== Swaraaha Preprocessing Pipeline — Self Test ===")
 
     test_audio = debug_generate_test_audio(duration=3.0, sr=16000)
     print(f"Test audio shape: {test_audio.shape}, dtype: {test_audio.dtype}")
+
+    # Test cleaning pipeline
+    cleaned = clean_audio(test_audio, sr=16000)
+    print(f"Cleaned audio: peak={np.abs(cleaned).max():.3f}, rms={np.sqrt(np.mean(cleaned**2)):.4f}")
+
+    # Test individual cleaning functions
+    dc_removed = remove_dc_offset(test_audio)
+    normalized = normalize_peak(test_audio, target_peak=0.9)
+    trimmed = trim_silence(test_audio, sr=16000)
+    print(f"DC removed: mean={np.mean(dc_removed):.6f}")
+    print(f"Normalized: peak={np.abs(normalized).max():.3f}")
+    print(f"Trimmed: {len(test_audio)} -> {len(trimmed)} samples")
+
+    # Test class balancing
+    fake_labels = np.array([0, 0, 0, 0, 0, 0, 0, 1, 1, 1])
+    weights = compute_class_weights(fake_labels)
+    pw = compute_pos_weight(fake_labels)
+    print(f"Class weights: {weights}, pos_weight: {pw}")
 
     spec = audio_to_spectrogram(test_audio, sr=16000)
     print(f"Spectrogram shape: {spec.shape}, dtype: {spec.dtype}")
