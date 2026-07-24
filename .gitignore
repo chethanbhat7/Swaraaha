@@ -40,3 +40,6 @@ model/data/debug/
 .idea/
 *.swp
 *.swo
+
+#dataset 
+data/
