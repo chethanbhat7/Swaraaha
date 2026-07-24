@@ -21,3 +21,6 @@ numba>=0.57.0               # JIT compiler for numerical functions (librosa depe
 
 # Hugging Face
 transformers>=4.30.0       # Wav2Vec 2.0 models
+
+# Dataset Download
+kaggle>=1.5.16             # Kaggle dataset API (for SEP-28K, UCLASS)
