@@ -119,7 +119,253 @@ def _multi_hot_to_indices(multi_hot: np.ndarray) -> np.ndarray:
 
 
 # ---------------------------------------------------------------------------
-# Localization Metrics
+# Binary Classifier Metrics (AUROC, AUPRC, Specificity)
+# ---------------------------------------------------------------------------
+
+def compute_binary_metrics(
+    y_true: np.ndarray,
+    y_scores: np.ndarray,
+    threshold: float = 0.5,
+) -> Dict[str, float]:
+    """
+    Compute comprehensive binary classification metrics including
+    AUROC, AUPRC, specificity, and threshold-dependent metrics.
+
+    This is the recommended metric function for evaluating individual
+    dysfluency classifiers (prolongation, block, soundrep, etc.).
+
+    Args:
+        y_true: Ground truth binary labels (0 or 1), shape (N,).
+        y_scores: Predicted probabilities (0-1), shape (N,).
+        threshold: Decision threshold for P/R/F1 computation.
+
+    Returns:
+        Dict with:
+            - "auroc": Area under ROC curve (threshold-independent)
+            - "auprc": Area under PR curve (threshold-independent, better for imbalanced)
+            - "threshold": the threshold used
+            - "precision": at given threshold
+            - "recall": at given threshold
+            - "f1": at given threshold
+            - "specificity": true negative rate (critical for screening)
+            - "accuracy": at given threshold
+            - "support": number of positive samples
+    """
+    y_true = np.asarray(y_true).astype(int)
+    y_scores = np.asarray(y_scores).astype(float)
+
+    auroc = _compute_auroc(y_true, y_scores)
+    auprc = _compute_auprc(y_true, y_scores)
+
+    y_pred = (y_scores >= threshold).astype(int)
+    tp = int(np.sum((y_true == 1) & (y_pred == 1)))
+    fp = int(np.sum((y_true == 0) & (y_pred == 1)))
+    fn = int(np.sum((y_true == 1) & (y_pred == 0)))
+    tn = int(np.sum((y_true == 0) & (y_pred == 0)))
+
+    precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+    recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+    f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
+    specificity = tn / (tn + fp) if (tn + fp) > 0 else 0.0
+    accuracy = (tp + tn) / (tp + fp + fn + tn) if (tp + fp + fn + tn) > 0 else 0.0
+
+    return {
+        "auroc": round(auroc, 4),
+        "auprc": round(auprc, 4),
+        "threshold": threshold,
+        "precision": round(precision, 4),
+        "recall": round(recall, 4),
+        "f1": round(f1, 4),
+        "specificity": round(specificity, 4),
+        "accuracy": round(accuracy, 4),
+        "support": int(y_true.sum()),
+        "tn": tn,
+        "fp": fp,
+        "fn": fn,
+        "tp": tp,
+    }
+
+
+def _compute_auroc(y_true: np.ndarray, y_scores: np.ndarray) -> float:
+    """Compute Area Under ROC curve using the trapezoidal rule (no sklearn needed)."""
+    y_true = np.asarray(y_true).astype(int)
+    y_scores = np.asarray(y_scores).astype(float)
+
+    sorted_indices = np.argsort(-y_scores)
+    sorted_true = y_true[sorted_indices]
+
+    n_pos = int(y_true.sum())
+    n_neg = len(y_true) - n_pos
+
+    if n_pos == 0 or n_neg == 0:
+        return 0.5
+
+    tpr_list = [0.0]
+    fpr_list = [0.0]
+    tp = 0
+    fp = 0
+
+    for label in sorted_true:
+        if label == 1:
+            tp += 1
+        else:
+            fp += 1
+        tpr_list.append(tp / n_pos)
+        fpr_list.append(fp / n_neg)
+
+    return abs(float(np.trapz(tpr_list, fpr_list)))
+
+
+def _compute_auprc(y_true: np.ndarray, y_scores: np.ndarray) -> float:
+    """Compute Area Under PR Curve (more informative than AUROC for imbalanced data)."""
+    y_true = np.asarray(y_true).astype(int)
+    y_scores = np.asarray(y_scores).astype(float)
+
+    n_pos = int(y_true.sum())
+    if n_pos == 0:
+        return 0.0
+
+    sorted_indices = np.argsort(-y_scores)
+    sorted_true = y_true[sorted_indices]
+
+    tp = 0
+    fp = 0
+    prec_list = [1.0]
+    rec_list = [0.0]
+
+    for label in sorted_true:
+        if label == 1:
+            tp += 1
+        else:
+            fp += 1
+        prec_list.append(tp / (tp + fp))
+        rec_list.append(tp / n_pos)
+
+    return abs(float(np.trapz(prec_list, rec_list)))
+
+
+def find_optimal_threshold(
+    y_true: np.ndarray,
+    y_scores: np.ndarray,
+    metric: str = "f1",
+) -> Tuple[float, float]:
+    """
+    Find the threshold that maximizes a given metric.
+
+    Useful for selecting operating point after training.
+
+    Args:
+        y_true: Ground truth binary labels.
+        y_scores: Predicted probabilities.
+        metric: One of "f1", "specificity", "recall", "youden".
+
+    Returns:
+        Tuple of (best_threshold, best_metric_value).
+    """
+    y_true = np.asarray(y_true).astype(int)
+    y_scores = np.asarray(y_scores).astype(float)
+
+    thresholds = np.arange(0.05, 0.96, 0.05)
+    best_thresh = 0.5
+    best_val = 0.0
+
+    for thresh in thresholds:
+        y_pred = (y_scores >= thresh).astype(int)
+        tp = int(np.sum((y_true == 1) & (y_pred == 1)))
+        fp = int(np.sum((y_true == 0) & (y_pred == 1)))
+        fn = int(np.sum((y_true == 1) & (y_pred == 0)))
+        tn = int(np.sum((y_true == 0) & (y_pred == 0)))
+
+        recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+        specificity = tn / (tn + fp) if (tn + fp) > 0 else 0.0
+        precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+        f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
+        youden = recall + specificity - 1.0
+
+        val_map = {"f1": f1, "specificity": specificity, "recall": recall, "youden": youden}
+        val = val_map.get(metric, f1)
+
+        if val > best_val:
+            best_val = val
+            best_thresh = thresh
+
+    return float(best_thresh), float(best_val)
+
+
+# ---------------------------------------------------------------------------
+# Multi-Label Classification Metrics
+# ---------------------------------------------------------------------------
+
+def compute_multilabel_metrics(
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
+    class_names: Optional[List[str]] = None,
+) -> Dict[str, object]:
+    """
+    Compute multi-label metrics for clips with multiple simultaneous dysfluencies.
+
+    Args:
+        y_true: Ground truth binary matrix, shape (N, C).
+        y_pred: Predicted binary matrix, shape (N, C).
+        class_names: Optional list of class names.
+
+    Returns:
+        Dict with subset_accuracy, hamming_loss, samples_accuracy, per_class, macro.
+    """
+    y_true = np.asarray(y_true).astype(int)
+    y_pred = np.asarray(y_pred).astype(int)
+    n_samples, n_classes = y_true.shape
+
+    if class_names is None:
+        class_names = [f"class_{i}" for i in range(n_classes)]
+
+    subset_acc = float(np.mean(np.all(y_true == y_pred, axis=1)))
+    hamming = float(np.mean(y_true != y_pred))
+
+    intersection = np.sum(y_true & y_pred, axis=1).astype(float)
+    union = np.sum(y_true | y_pred, axis=1).astype(float)
+    union[union == 0] = 1.0
+    samples_acc = float(np.mean(intersection / union))
+
+    per_class = {}
+    precisions, recalls, f1s = [], [], []
+
+    for c in range(n_classes):
+        tp = int(np.sum((y_true[:, c] == 1) & (y_pred[:, c] == 1)))
+        fp = int(np.sum((y_true[:, c] == 0) & (y_pred[:, c] == 1)))
+        fn = int(np.sum((y_true[:, c] == 1) & (y_pred[:, c] == 0)))
+        support = int(np.sum(y_true[:, c] == 1))
+
+        p = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+        r = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+        f = 2 * p * r / (p + r) if (p + r) > 0 else 0.0
+
+        name = class_names[c] if c < len(class_names) else f"class_{c}"
+        per_class[name] = {
+            "precision": round(p, 4), "recall": round(r, 4),
+            "f1": round(f, 4), "support": support,
+        }
+        precisions.append(p)
+        recalls.append(r)
+        f1s.append(f)
+
+    macro = {
+        "precision": round(float(np.mean(precisions)), 4),
+        "recall": round(float(np.mean(recalls)), 4),
+        "f1": round(float(np.mean(f1s)), 4),
+    }
+
+    return {
+        "subset_accuracy": round(subset_acc, 4),
+        "hamming_loss": round(hamming, 4),
+        "samples_accuracy": round(samples_acc, 4),
+        "per_class": per_class,
+        "macro": macro,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Localization Metrics (Enhanced)
 # ---------------------------------------------------------------------------
 
 def compute_localization_metrics(
@@ -175,6 +421,7 @@ def compute_localization_metrics(
         "precision": round(precision, 4),
         "recall": round(recall, 4),
         "f1": round(f1, 4),
+        "specificity": round(tn / (tn + fp) if (tn + fp) > 0 else 0.0, 4),
     }
 
     # Event-level metrics
@@ -185,11 +432,24 @@ def compute_localization_metrics(
         true_regions, pred_regions, iou_threshold
     )
 
+    # False alarm rate (false positive events per minute of audio)
+    total_duration_sec = min_len * hop_length / sr
+    total_duration_min = total_duration_sec / 60.0
+    n_false_alarms = len([r for r in pred_regions
+                          if not any(_compute_iou(r[0], r[1], t[0], t[1]) >= iou_threshold
+                                     for t in true_regions)])
+    false_alarm_rate = n_false_alarms / total_duration_min if total_duration_min > 0 else 0.0
+
+    # False alarm rate per minute (events that don't overlap any true event)
+    false_alarm_events_per_min = round(false_alarm_rate, 4)
+
     event_level = {
         "detection_accuracy": round(detection_accuracy, 4),
         "mean_iou": round(mean_iou, 4),
         "num_true_events": len(true_regions),
         "num_pred_events": len(pred_regions),
+        "num_false_alarms": n_false_alarms,
+        "false_alarm_rate_per_min": false_alarm_events_per_min,
     }
 
     return {
@@ -382,15 +642,34 @@ def print_classification_report(metrics: Dict) -> None:
     print(f"  Accuracy: {metrics['accuracy']:.3f}")
 
 
+def print_binary_report(metrics: Dict, class_name: str = "") -> None:
+    """Print a human-readable binary classifier report with AUROC/AUPRC/specificity."""
+    header = f"  Binary Report — {class_name}" if class_name else "  Binary Report"
+    print(f"\n{header}")
+    print("  " + "=" * 60)
+    print(f"  AUROC:       {metrics['auroc']:.3f}")
+    print(f"  AUPRC:       {metrics['auprc']:.3f}")
+    print(f"  Threshold:   {metrics['threshold']:.2f}")
+    print("  " + "-" * 60)
+    print(f"  Precision:   {metrics['precision']:.3f}")
+    print(f"  Recall:      {metrics['recall']:.3f}")
+    print(f"  F1:          {metrics['f1']:.3f}")
+    print(f"  Specificity: {metrics['specificity']:.3f}")
+    print(f"  Accuracy:    {metrics['accuracy']:.3f}")
+    print(f"  Support:     {metrics['support']}")
+    print(f"  TP={metrics['tp']}  FP={metrics['fp']}  FN={metrics['fn']}  TN={metrics['tn']}")
+
+
 def print_localization_report(metrics: Dict) -> None:
     """Print a human-readable localization report to stdout."""
     print("\n  Localization Report")
     print("  " + "=" * 60)
     fl = metrics["frame_level"]
-    print(f"  Frame-level:  P={fl['precision']:.3f}  R={fl['recall']:.3f}  F1={fl['f1']:.3f}")
+    print(f"  Frame-level:  P={fl['precision']:.3f}  R={fl['recall']:.3f}  F1={fl['f1']:.3f}  Spec={fl.get('specificity', 0):.3f}")
     el = metrics["event_level"]
     print(
         f"  Event-level:  acc={el['detection_accuracy']:.3f}  "
         f"mean_IoU={el['mean_iou']:.3f}  "
         f"(true={el['num_true_events']}, pred={el['num_pred_events']})"
     )
+    print(f"  False alarms: {el['num_false_alarms']} events, rate={el['false_alarm_rate_per_min']:.2f}/min")

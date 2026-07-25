@@ -48,6 +48,8 @@ def parse_args():
     parser.add_argument("--max_length_seconds", type=float, default=10.0, help="Max audio length.")
     parser.add_argument("--threshold", type=float, default=0.5, help="Classification/detection threshold.")
     parser.add_argument("--save_misclassified", action="store_true", help="Save misclassified sample paths.")
+    parser.add_argument("--sweep_thresholds", action="store_true",
+                        help="Run threshold sweep and report optimal thresholds.")
     parser.add_argument("--n_mels", type=int, default=128, help="Mel bins (for localizer).")
     parser.add_argument("--hop_length", type=int, default=512, help="Hop length (for localizer).")
     parser.add_argument("--cnn_type", type=str, default="wrapper", choices=["wrapper", "module"],
@@ -63,8 +65,10 @@ def evaluate_classifier(args) -> Dict:
     from model.classification import DYSFLUENCY_CLASSES
     from model.data.dataset import ClassificationDataset
     from model.evaluation.metrics import (
+        compute_binary_metrics,
         compute_classification_metrics,
         confusion_matrix,
+        print_binary_report,
         print_classification_report,
         save_confusion_matrix_plot,
         save_report,
@@ -119,7 +123,7 @@ def evaluate_classifier(args) -> Dict:
     model.model.eval()
 
     # Run inference
-    all_preds, all_labels = [], []
+    all_preds, all_labels, all_scores = [], [], []
     misclassified = []
 
     with torch.no_grad():
@@ -128,8 +132,10 @@ def evaluate_classifier(args) -> Dict:
             binary_labels = labels[:, class_idx]
 
             logits = model.forward(audio)
-            preds = (torch.sigmoid(logits[:, 1]) >= args.threshold).cpu().numpy()
+            probs = torch.sigmoid(logits[:, 1]).cpu().numpy()
+            preds = (probs >= args.threshold).astype(int)
 
+            all_scores.extend(probs.tolist())
             all_preds.extend(preds.tolist())
             all_labels.extend(binary_labels.numpy().tolist())
 
@@ -146,15 +152,50 @@ def evaluate_classifier(args) -> Dict:
 
     y_true = np.array(all_labels)
     y_pred = np.array(all_preds)
+    y_scores = np.array(all_scores)
 
-    # Compute metrics
+    # Compute enhanced binary metrics (AUROC, AUPRC, specificity)
+    binary_metrics = compute_binary_metrics(y_true, y_scores, threshold=args.threshold)
+    print_binary_report(binary_metrics, args.class_name)
+
+    # Also compute basic classification metrics
     metrics = compute_classification_metrics(y_true, y_pred, class_names=["not_present", "present"])
+
+    # Merge binary metrics into report
+    metrics["binary"] = binary_metrics
 
     # Add class info
     metrics["class_name"] = args.class_name
     metrics["model_path"] = args.model_path
     metrics["num_samples"] = len(eval_dataset)
     metrics["threshold"] = args.threshold
+
+    # Threshold sweep
+    if args.sweep_thresholds:
+        print("\n  --- Threshold Sweep ---")
+        sweep_results = []
+        for t in np.arange(0.1, 0.91, 0.05):
+            m = compute_binary_metrics(y_true, y_scores, threshold=t)
+            sweep_results.append(m)
+            print(f"  t={t:.2f}  F1={m['f1']:.3f}  P={m['precision']:.3f}  "
+                  f"R={m['recall']:.3f}  Spec={m['specificity']:.3f}")
+
+        # Find optimal thresholds
+        from model.evaluation.metrics import find_optimal_threshold
+        best_f1_t, best_f1_val = find_optimal_threshold(y_true, y_scores, metric="f1")
+        best_spec_t, best_spec_val = find_optimal_threshold(y_true, y_scores, metric="specificity")
+        best_youden_t, best_youden_val = find_optimal_threshold(y_true, y_scores, metric="youden")
+
+        print(f"\n  Optimal thresholds:")
+        print(f"    Best F1:         t={best_f1_t:.2f}  (F1={best_f1_val:.3f})")
+        print(f"    Best Specificity: t={best_spec_t:.2f}  (Spec={best_spec_val:.3f})")
+        print(f"    Best Youden's J:  t={best_youden_t:.2f}  (J={best_youden_val:.3f})")
+
+        metrics["threshold_sweep"] = {
+            "best_f1": {"threshold": best_f1_t, "f1": best_f1_val},
+            "best_specificity": {"threshold": best_spec_t, "specificity": best_spec_val},
+            "best_youden": {"threshold": best_youden_t, "youden": best_youden_val},
+        }
 
     # Confusion matrix
     cm = confusion_matrix(y_true, y_pred, num_classes=2)
