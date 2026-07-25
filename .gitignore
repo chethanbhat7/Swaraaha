@@ -43,3 +43,6 @@ model/data/debug/
 
 #dataset 
 data/
+
+# Credentials
+.env

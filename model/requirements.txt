@@ -24,3 +24,6 @@ transformers>=4.30.0       # Wav2Vec 2.0 models
 
 # Dataset Download
 kaggle>=1.5.16             # Kaggle dataset API (for SEP-28K, UCLASS)
+
+# Environment
+python-dotenv>=1.0.0       # Load .env credentials for Kaggle downloads
