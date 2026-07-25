@@ -11,6 +11,7 @@ soundfile>=0.12.0           # Reading/writing audio files (.wav, .flac, etc.)
 audioread>=3.0.0            # Backend for librosa audio I/O (installed with librosa)
 
 # Scientific Computing
+pandas>=2.0.0               # Data manipulation, CSV handling (merge pipeline)
 scipy>=1.10.0               # Signal processing, scientific algorithms
 
 # Visualization
