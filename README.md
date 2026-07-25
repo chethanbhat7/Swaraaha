@@ -41,6 +41,24 @@ Both `frontend/` + `backend/` (web) and `app/` (desktop) load from the shared `m
 | Container | Docker, docker-compose |
 | Deploy | Render (backend only) |
 
+## Dataset Setup
+
+The ML pipelines need audio datasets. Get your Kaggle API key from [kaggle.com/settings](https://www.kaggle.com/settings), then create a `.env` file in the project root:
+
+```
+KAGGLE_USERNAME=your_username
+KAGGLE_KEY=your_api_key
+```
+
+Then run the full setup:
+
+```bash
+pip install -r model/requirements.txt
+python -m model.data.setup
+```
+
+See [`model/data/README.md`](model/data/README.md) for detailed instructions and manual setup options.
+
 ## Running the Web App
 
 ### Backend

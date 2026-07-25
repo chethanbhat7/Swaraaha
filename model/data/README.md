@@ -12,14 +12,21 @@ This installs everything you need, including `kaggle` for dataset downloads.
 
 You also need **Git** (for the Project Boli dataset).
 
-Set your Kaggle credentials:
+Set your Kaggle credentials. Create a `.env` file in the project root:
+
+```
+KAGGLE_USERNAME=your_username
+KAGGLE_KEY=your_api_key
+```
+
+Or export them manually:
 
 ```bash
 export KAGGLE_USERNAME="your_username"
 export KAGGLE_KEY="your_api_key"
 ```
 
-Get your API key from [kaggle.com/settings](https://www.kaggle.com/settings).
+Get your API key from [kaggle.com/settings](https://www.kaggle.com/settings). The `.env` file is gitignored.
 
 ---
 
@@ -142,7 +149,7 @@ To add a dataset: add an entry to `DATASET_LIST` in `config.py` and write a norm
 | Problem | Fix |
 |---------|-----|
 | `kaggle: command not found` | `pip install -r model/requirements.txt` |
-| `KAGGLE_KEY not set` | Export `KAGGLE_USERNAME` and `KAGGLE_KEY` env vars |
+| `KAGGLE_KEY not set` | Create a `.env` file in the project root with `KAGGLE_USERNAME` and `KAGGLE_KEY`, or export them as env vars |
 | `Git clone timeout` | Increase `GIT_CLONE_TIMEOUT_SECONDS` in `config.py` |
 | `Dataset not found, skipping` | Check the download succeeded — look in `RawData/` |
 | `No valid examples found` | Verify directory structure matches expected layout |
