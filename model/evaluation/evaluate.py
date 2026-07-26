@@ -52,8 +52,6 @@ def parse_args():
                         help="Run threshold sweep and report optimal thresholds.")
     parser.add_argument("--n_mels", type=int, default=128, help="Mel bins (for localizer).")
     parser.add_argument("--hop_length", type=int, default=512, help="Hop length (for localizer).")
-    parser.add_argument("--cnn_type", type=str, default="wrapper", choices=["wrapper", "module"],
-                        help="CNN type for localizer.")
     return parser.parse_args()
 
 
@@ -266,16 +264,8 @@ def evaluate_localizer(args) -> Dict:
     eval_loader = DataLoader(eval_dataset, batch_size=args.batch_size, shuffle=False)
 
     # Load model
-    if args.cnn_type == "wrapper":
-        from model.localization.cnn_spectrogram import CNNSpectrogramLocalizer
-        model = CNNSpectrogramLocalizer(n_mels=args.n_mels)
-    else:
-        from model.localization.cnn import SpectrogramCNN
-        model_wrapper = type("ModelWrapper", (), {
-            "model": SpectrogramCNN(),
-            "forward": lambda self, x: self.model(x),
-        })()
-        model = model_wrapper
+    from model.localization.cnn_spectrogram import CNNSpectrogramLocalizer
+    model = CNNSpectrogramLocalizer(n_mels=args.n_mels)
 
     load_checkpoint(args.model_path, model=model)
     model.model.to(device)

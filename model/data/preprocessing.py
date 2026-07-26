@@ -729,6 +729,10 @@ def augment_audio(
         >>>     audio = augment_audio(audio, sr=self.sr, p=0.5)
     """
     from model.data.augmentation import AudioAugmentor
+    import random
+
+    if random.random() > p:
+        return audio
 
     augmentor = AudioAugmentor()
     return augmentor(audio, sr=sr)
