@@ -1,7 +1,7 @@
 """Audio control buttons: Record, Stop, Load, Play, Analyze."""
 
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QPushButton, QLabel,
+    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
 )
 from PySide6.QtCore import Signal, Qt
 
@@ -27,20 +27,26 @@ class AudioControls(QWidget):
         self._status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self._status_label)
 
+        btn_row = QHBoxLayout()
+        btn_row.setSpacing(12)
+        btn_row.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
         self._record_btn = QPushButton("Record Audio")
         self._record_btn.setProperty("cssClass", "record")
         self._record_btn.clicked.connect(self.record_clicked.emit)
-        layout.addWidget(self._record_btn, alignment=Qt.AlignmentFlag.AlignCenter)
+        btn_row.addWidget(self._record_btn)
+
+        self._load_btn = QPushButton("Load Audio")
+        self._load_btn.clicked.connect(self.load_clicked.emit)
+        btn_row.addWidget(self._load_btn)
+
+        layout.addLayout(btn_row)
 
         self._stop_btn = QPushButton("Stop")
         self._stop_btn.setProperty("cssClass", "secondary")
         self._stop_btn.setVisible(False)
         self._stop_btn.clicked.connect(self.stop_clicked.emit)
         layout.addWidget(self._stop_btn, alignment=Qt.AlignmentFlag.AlignCenter)
-
-        self._load_btn = QPushButton("Load Audio")
-        self._load_btn.clicked.connect(self.load_clicked.emit)
-        layout.addWidget(self._load_btn, alignment=Qt.AlignmentFlag.AlignCenter)
 
         self._play_btn = QPushButton("Play")
         self._play_btn.setProperty("cssClass", "secondary")
@@ -54,7 +60,6 @@ class AudioControls(QWidget):
         layout.addWidget(self._analyze_btn, alignment=Qt.AlignmentFlag.AlignCenter)
 
     def set_recording(self, recording: bool):
-        """Update UI state for recording."""
         self._record_btn.setVisible(not recording)
         self._stop_btn.setVisible(recording)
         self._load_btn.setVisible(not recording)
@@ -63,7 +68,6 @@ class AudioControls(QWidget):
         self._status_label.setText("Recording..." if recording else "Ready")
 
     def set_audio_loaded(self):
-        """Update UI state when audio is loaded/recorded."""
         self._record_btn.setVisible(True)
         self._stop_btn.setVisible(False)
         self._load_btn.setVisible(True)
@@ -72,6 +76,5 @@ class AudioControls(QWidget):
         self._status_label.setText("Audio loaded — ready to analyze")
 
     def set_playing(self, playing: bool):
-        """Update UI state for playback."""
         self._play_btn.setText("Stop" if playing else "Play")
         self._status_label.setText("Playing..." if playing else "Ready")

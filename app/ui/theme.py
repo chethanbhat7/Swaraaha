@@ -3,7 +3,7 @@
 import os
 from PySide6.QtGui import QFontDatabase, QFont
 
-COLORS = {
+LIGHT_COLORS = {
     "primary": "#6750A4",
     "on_primary": "#FFFFFF",
     "primary_container": "#EADDFF",
@@ -20,11 +20,43 @@ COLORS = {
     },
 }
 
+DARK_COLORS = {
+    "primary": "#D0BCFF",
+    "on_primary": "#381E72",
+    "primary_container": "#4F378B",
+    "surface": "#1C1B1F",
+    "surface_variant": "#2B2930",
+    "on_surface": "#E6E1E5",
+    "outline": "#938F99",
+    "dysfluency": {
+        "prolongation": "#F2B8B5",
+        "block": "#EFB8C8",
+        "soundrep": "#80E8A8",
+        "wordrep": "#80CAFF",
+        "interjection": "#FFB1C8",
+    },
+}
+
+COLORS = dict(LIGHT_COLORS)
+
+_dark_mode = False
+
+
+def is_dark_mode() -> bool:
+    return _dark_mode
+
+
+def set_theme(dark: bool):
+    global _dark_mode, COLORS
+    _dark_mode = dark
+    COLORS.clear()
+    COLORS.update(DARK_COLORS if dark else LIGHT_COLORS)
+
 SPACING = {"xs": 4, "sm": 8, "md": 16, "lg": 24, "xl": 32}
 
 RADIUS = {"sm": 8, "md": 16, "lg": 24, "full": 9999}
 
-FONT_FAMILY = "Google Sans Font"
+FONT_FAMILY = "Google Sans Flex 9pt"
 
 
 def load_fonts():

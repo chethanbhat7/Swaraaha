@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Cadence — Analysis Results</title>
+<style>
+  :root{
+    --bg: #120A1E;
+    --surface: #1E1230;
+    --surface-2: #2A1940;
+    --surface-3: #3A2354;
+    --surface-4: #4B2C6E;
+    --primary: #A876F0;
+    --primary-bright: #C6A2FF;
+    --primary-dim: #6B4396;
+    --lime: #DFF56B;
+    --coral: #FF8C74;
+    --teal: #6BDCC4;
+    --pink: #FF6FA8;
+    --text-hi: #F6F0FF;
+    --text-lo: #B7A3D1;
+    --text-faint: #8871A6;
+    --border: rgba(255,255,255,0.08);
+    --border-bright: rgba(198,162,255,0.35);
+    --radius-xl: 32px;
+    --radius-lg: 24px;
+    --radius-md: 16px;
+    --radius-pill: 999px;
+    --display: 'Arial Black', 'Helvetica Neue', Arial, sans-serif;
+    --body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --mono: 'SF Mono', 'Roboto Mono', Consolas, monospace;
+
+    /* class accent colors */
+    --c-prolongation: var(--coral);
+    --c-block: var(--primary-bright);
+    --c-soundrep: var(--lime);
+    --c-wordrep: var(--teal);
+    --c-interj: var(--pink);
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    background:
+      radial-gradient(circle at 15% 10%, #2A1748 0%, transparent 45%),
+      radial-gradient(circle at 85% 90%, #24143B 0%, transparent 50%),
+      var(--bg);
+    font-family: var(--body);
+    color: var(--text-hi);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding: 28px;
+    min-height:100vh;
+  }
+
+  .app-shell{
+    width: min(1180px, 100%);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    box-shadow: 0 40px 100px -30px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.02) inset;
+    overflow: hidden;
+  }
+
+  .titlebar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+  }
+  .titlebar-left{ display:flex; align-items:center; gap:16px; }
+  .dots{ display:flex; gap:7px; }
+  .dots span{ width:11px; height:11px; border-radius:50%; display:inline-block; }
+  .dots span:nth-child(1){ background:#FF8C74; }
+  .dots span:nth-child(2){ background:#DFF56B; }
+  .dots span:nth-child(3){ background:#7ED9A8; }
+
+  .wordmark{
+    font-family: var(--display);
+    font-weight: 900;
+    font-size: 20px;
+    letter-spacing: -0.03em;
+    text-transform: uppercase;
+    color: var(--text-hi);
+  }
+  .wordmark span{ color: var(--primary-bright); }
+  .titlebar-sub{
+    font-size: 11.5px;
+    color: var(--text-faint);
+    letter-spacing: 0.03em;
+    margin-top: 1px;
+  }
+  .titlebar-right{ display:flex; align-items:center; gap:10px; }
+
+  .session-pill{
+    display:flex; align-items:center; gap:8px;
+    background: var(--surface-3);
+    border: 1px solid var(--border-bright);
+    padding: 8px 16px 8px 12px;
+    border-radius: var(--radius-pill);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--primary-bright);
+  }
+  .session-pill .dot{
+    width:7px; height:7px; border-radius:50%;
+    background: var(--lime);
+    box-shadow: 0 0 8px 1px rgba(223,245,107,0.6);
+  }
+
+  .btn-pill{
+    border:none; cursor:pointer;
+    font-family: var(--body); font-weight:700; font-size:13.5px;
+    padding: 11px 20px;
+    border-radius: var(--radius-pill);
+    display:inline-flex; align-items:center; gap:8px;
+    transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+  }
+  .btn-pill:active{ transform: scale(0.97); }
+  .btn-ghost{
+    background: var(--surface-3);
+    color: var(--text-hi);
+    border: 1px solid var(--border-bright);
+  }
+  .btn-ghost:hover{ background: var(--surface-4); }
+
+  /* ---------- Content ---------- */
+  .content{ padding: 26px 30px 8px; }
+
+  .page-head{
+    display:flex; align-items:flex-end; justify-content:space-between;
+    margin: 22px 0 20px;
+  }
+  .page-eyebrow{
+    font-size: 11px; letter-spacing:0.14em; text-transform:uppercase;
+    color: var(--text-faint); font-weight:700; margin:0 0 6px;
+  }
+  .page-title{
+    font-family: var(--display);
+    font-size: 30px; font-weight:900; letter-spacing:-0.01em;
+    margin:0; color: var(--text-hi);
+  }
+  .page-meta{
+    text-align:right; font-family: var(--mono); font-size:12px; color:var(--text-lo);
+    line-height:1.6;
+  }
+
+  .card{
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px 22px 22px;
+    margin-bottom: 22px;
+  }
+  .card-head{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom: 14px;
+  }
+  .card-title{
+    font-family: var(--display);
+    font-size: 15px; font-weight:900; letter-spacing:-0.01em;
+    margin:0; color: var(--text-hi);
+    display:flex; align-items:center; gap:9px;
+  }
+  .card-title .swatch{ width:9px; height:9px; border-radius:50%; background:var(--primary-bright); }
+  .card-meta{ font-family:var(--mono); font-size:11.5px; color:var(--text-faint); }
+
+  .wave-box{
+    height: 190px;
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    overflow:hidden;
+    position:relative;
+  }
+  .wave-box.small{ height:120px; }
+  .wave-box svg{ display:block; width:100%; height:100%; }
+
+  /* ---------- Classification table ---------- */
+  table{ width:100%; border-collapse:collapse; }
+  thead th{
+    text-align:left;
+    font-size: 11px; letter-spacing:0.1em; text-transform:uppercase;
+    color: var(--text-faint); font-weight:700;
+    padding: 0 14px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  tbody td{
+    padding: 14px 14px;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+    vertical-align: middle;
+  }
+  tbody tr:last-child td{ border-bottom:none; }
+  tbody tr{ position:relative; }
+  tbody tr.detected td:first-child{
+    box-shadow: inset 4px 0 0 0 var(--row-color);
+  }
+  tbody tr.detected{ background: linear-gradient(to right, rgba(255,255,255,0.05), transparent 55%); }
+
+  .cls-name{ font-weight:700; color: var(--text-hi); }
+
+  .pill-badge{
+    display:inline-flex; align-items:center; gap:6px;
+    font-size:12.5px; font-weight:700;
+    padding: 5px 12px;
+    border-radius: var(--radius-pill);
+  }
+  .pill-badge.yes{
+    background: color-mix(in srgb, var(--row-color) 22%, transparent);
+    color: var(--row-color);
+    border: 1px solid color-mix(in srgb, var(--row-color) 55%, transparent);
+  }
+  .pill-badge.no{
+    background: var(--surface-3);
+    color: var(--text-faint);
+    border: 1px solid var(--border);
+  }
+
+  .conf-cell{ display:flex; align-items:center; gap:12px; }
+  .conf-track{
+    flex:1; height:6px; border-radius:4px;
+    background: var(--surface-3);
+    overflow:hidden;
+    max-width: 160px;
+  }
+  .conf-fill{ height:100%; border-radius:4px; }
+  .conf-val{
+    font-family: var(--mono); font-size:13px; font-weight:600;
+    width: 42px; text-align:right;
+  }
+
+  /* ---------- Legend ---------- */
+  .legend{
+    display:flex; flex-wrap:wrap; gap: 22px;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+  }
+  .legend-item{ display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--text-lo); }
+  .legend-item .dot{ width:9px; height:9px; border-radius:50%; }
+
+  /* ---------- Footer ---------- */
+  .statusbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 12px 28px;
+    border-top: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-faint);
+  }
+  .statusbar .grp{ display:flex; gap:18px; align-items:center; }
+  .status-dot{ width:7px; height:7px; border-radius:50%; background: var(--lime); box-shadow:0 0 6px 1px rgba(223,245,107,0.55); }
+
+  @media (max-width: 760px){
+    .page-head{ flex-direction:column; align-items:flex-start; gap:10px; }
+    .page-meta{ text-align:left; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="app-shell">
+    <div class="titlebar">
+      <div class="titlebar-left">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div>
+          <div class="wordmark">Cad<span>e</span>nce</div>
+          <div class="titlebar-sub">Speech cadence &amp; stutter analysis</div>
+        </div>
+      </div>
+      <div class="titlebar-right">
+        <button class="btn-pill btn-ghost">⬇ Export Report</button>
+        <div class="session-pill"><span class="dot"></span>Session 03 · Complete</div>
+      </div>
+    </div>
+
+    <div class="content">
+      <button class="btn-pill btn-ghost" style="margin-top:18px;">← Back to Home</button>
+
+      <div class="page-head">
+        <div>
+          <p class="page-eyebrow">Session 03 · session_04_reading.wav</p>
+          <h1 class="page-title">Analysis Results</h1>
+        </div>
+        <div class="page-meta">
+          Duration 00:42 · 16kHz mono<br>
+          Analyzed 26 Jul 2026, 01:44
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3 class="card-title"><span class="swatch"></span>Full Recording</h3>
+          <span class="card-meta">amplitude envelope</span>
+        </div>
+        <div class="wave-box" id="fullWave"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3 class="card-title"><span class="swatch" style="background:var(--c-block)"></span>Classification Results</h3>
+          <span class="card-meta">5 dysfluency classes</span>
+        </div>
+        <table>
+          <thead>
+            <tr><th>Class</th><th>Detected</th><th>Confidence</th></tr>
+          </thead>
+          <tbody id="classTable"></tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3 class="card-title"><span class="swatch" style="background:var(--c-interj)"></span>Localization Timeline</h3>
+          <span class="card-meta">event markers over time</span>
+        </div>
+        <div class="wave-box small" id="timelineWave"></div>
+        <div class="legend">
+          <div class="legend-item"><span class="dot" style="background:var(--c-prolongation)"></span>Prolongation</div>
+          <div class="legend-item"><span class="dot" style="background:var(--c-block)"></span>Block</div>
+          <div class="legend-item"><span class="dot" style="background:var(--c-soundrep)"></span>Sound Repetition</div>
+          <div class="legend-item"><span class="dot" style="background:var(--c-wordrep)"></span>Word Repetition</div>
+          <div class="legend-item"><span class="dot" style="background:var(--c-interj)"></span>Interjection</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="statusbar">
+      <div class="grp"><span class="status-dot"></span>Analysis complete</div>
+      <div class="grp">
+        <span>Model: stutter-classify · v0.3</span>
+        <span>Inference: 2.3s</span>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // ---------- deterministic pseudo-random ----------
+  function mulberry32(seed){
+    return function(){
+      seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function genWaveSVG(width, height, seed, spikeSeeds){
+    const rand = mulberry32(seed);
+    const mid = height/2;
+    const points = 260;
+    let d = `M 0 ${mid}`;
+    const amps = [];
+    for(let i=0;i<=points;i++){
+      const x = (i/points) * width;
+      let base = (rand()-0.5) * height * 0.18;
+      // occasional spikes for realism
+      if(rand() < 0.045){
+        base += (rand()>0.5?1:-1) * height * (0.28 + rand()*0.34);
+      }
+      const y = mid + base;
+      amps.push({x, y});
+      d += ` L ${x.toFixed(1)} ${y.toFixed(1)}`;
+    }
+
+    let markers = '';
+    if(spikeSeeds){
+      spikeSeeds.forEach(m => {
+        const px = m.pos * width;
+        const py = mid;
+        markers += `
+          <line x1="${px}" y1="6" x2="${px}" y2="${height-6}"
+                stroke="${m.color}" stroke-width="2" opacity="${m.opacity}" stroke-dasharray="2 3"/>
+          <circle cx="${px}" cy="${py}" r="5" fill="${m.color}" opacity="${Math.min(m.opacity+0.15,1)}"/>
+        `;
+      });
+    }
+
+    return `
+      <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+        <line x1="0" y1="${mid}" x2="${width}" y2="${mid}" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+        <path d="${d}" fill="none" stroke="var(--primary-bright)" stroke-width="1.4" opacity="0.85"/>
+        ${markers}
+      </svg>
+    `;
+  }
+
+  document.getElementById('fullWave').innerHTML = genWaveSVG(1100, 190, 42);
+
+  const timelineMarkers = [
+    { pos: 0.09, color: 'var(--c-block)',       opacity: 0.9 },
+    { pos: 0.21, color: 'var(--c-prolongation)',opacity: 0.35 },
+    { pos: 0.34, color: 'var(--c-block)',       opacity: 0.9 },
+    { pos: 0.47, color: 'var(--c-soundrep)',    opacity: 0.3 },
+    { pos: 0.58, color: 'var(--c-interj)',      opacity: 0.85 },
+    { pos: 0.69, color: 'var(--c-wordrep)',     opacity: 0.3 },
+    { pos: 0.81, color: 'var(--c-interj)',      opacity: 0.85 },
+    { pos: 0.92, color: 'var(--c-block)',       opacity: 0.9 },
+  ];
+  document.getElementById('timelineWave').innerHTML = genWaveSVG(1100, 120, 42, timelineMarkers);
+
+  // ---------- classification table ----------
+  const classes = [
+    { name: 'Prolongation',    color: 'var(--c-prolongation)', detected: false, confidence: 12 },
+    { name: 'Block',           color: 'var(--c-block)',        detected: true,  confidence: 87 },
+    { name: 'Sound Repetition',color: 'var(--c-soundrep)',     detected: false, confidence: 8  },
+    { name: 'Word Repetition', color: 'var(--c-wordrep)',      detected: false, confidence: 15 },
+    { name: 'Interjection',    color: 'var(--c-interj)',       detected: true,  confidence: 72 },
+  ];
+
+  const tbody = document.getElementById('classTable');
+  classes.forEach(c => {
+    const tr = document.createElement('tr');
+    if(c.detected) tr.classList.add('detected');
+    tr.style.setProperty('--row-color', c.color);
+    tr.innerHTML = `
+      <td class="cls-name">${c.name}</td>
+      <td>
+        <span class="pill-badge ${c.detected ? 'yes' : 'no'}">
+          ${c.detected ? '● Yes' : 'No'}
+        </span>
+      </td>
+      <td>
+        <div class="conf-cell">
+          <div class="conf-track">
+            <div class="conf-fill" style="width:${c.confidence}%; background:${c.color};"></div>
+          </div>
+          <span class="conf-val">${c.confidence}%</span>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+</script>
+
+</body>
+</html>
