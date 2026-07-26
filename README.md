@@ -1,130 +1,102 @@
 # Swaraaha
 
-A speech dysfluency (stuttering) detection tool that analyzes audio recordings to classify and localize different types of speech dysfluencies.
+Speech dysfluency (stuttering) detection tool. Analyzes speech recordings to **classify** dysfluency types and **localize** where they occur in the audio.
 
-## Features
+Dysfluency types detected: `prolongation`, `block`, `soundrep`, `wordrep`, `interjection`.
 
-- **Classification** — Identifies the type(s) of dysfluency present in speech:
-  - Prolongation
-  - Block
-  - Sound Repetition
-  - Word Repetition
-  - Interjection
-- **Localization** — Pinpoints exactly where in the audio a dysfluency occurs
-- **Dual Interface** — Available as both a web application and a desktop application
+Ships as both a **web app** and a **desktop app**.
 
-## Tech Stack
-
-| Component    | Technology                          |
-|--------------|-------------------------------------|
-| Frontend     | React, TypeScript, Vite, TailwindCSS |
-| Backend      | FastAPI (Python)                    |
-| Desktop App  | PySide6 (Python)                    |
-| ML Models    | PyTorch, Wav2Vec 2.0, Librosa      |
-| Containerization | Docker                        |
-| Deployment   | Render                              |
-
-## Project Structure
+## Architecture
 
 ```
 Swaraaha/
-├── frontend/       # React web app UI
-├── backend/        # FastAPI server and API routes
-├── app/            # PySide6 desktop application
-├── model/          # ML models, training code, and weights (shared)
-└── docs/           # Project documentation
+├── frontend/          # React + Vite + TypeScript web UI
+├── backend/           # FastAPI API server
+├── model/             # ML models, training, evaluation (shared)
+│   ├── classification/  # Wav2Vec 2.0 binary classifiers + hybrid combiner
+│   ├── localization/    # CNN spectrogram-image localization
+│   ├── training/        # Training pipelines
+│   └── evaluation/      # Metrics and evaluation scripts
+├── app/               # PySide6 desktop application
+├── docker-compose.yml
+├── backend.Dockerfile
+└── render.yaml        # Render deployment blueprint
 ```
 
----
+**Two pipelines, independent of each other:**
 
-## Web App Setup
+1. **Classification** — five Wav2Vec 2.0 binary classifiers (one per dysfluency type) combined via a hybrid MLP model. Answers *what kind* of stutter.
+2. **Localization** — CNN over spectrogram images to pinpoint *where* in the audio a dysfluency occurs.
 
-The web app consists of a React frontend and a FastAPI backend.
+Both `frontend/` + `backend/` (web) and `app/` (desktop) load from the shared `model/` directory.
 
-### Prerequisites
+### Tech Stack
 
-- Node.js (v18+)
-- Python 3.11+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React 19, Vite, TypeScript, Tailwind CSS |
+| Backend | FastAPI, Python 3.11, Uvicorn |
+| Desktop | PySide6, sounddevice, NumPy |
+| ML | PyTorch, Hugging Face Transformers (Wav2Vec 2.0), librosa |
+| Container | Docker, docker-compose |
+| Deploy | Render (backend only) |
+
+## Dataset Setup
+
+The ML pipelines need audio datasets. Get your Kaggle API key from [kaggle.com/settings](https://www.kaggle.com/settings), then create a `.env` file in the project root:
+
+```
+KAGGLE_USERNAME=your_username
+KAGGLE_KEY=your_api_key
+```
+
+Then run the full setup:
+
+```bash
+pip install -r model/requirements.txt
+python -m model.data.setup
+```
+
+See [`model/data/README.md`](model/data/README.md) for detailed instructions and manual setup options.
+
+## Running the Web App
 
 ### Backend
 
 ```bash
-# Create and activate a virtual environment
+cd backend
 python -m venv .venv
 source .venv/bin/activate
-
-# Install dependencies
-pip install -r model/requirements.txt
-pip install -r backend/requirements.txt
-
-# Run the backend server
+pip install -r requirements.txt ../model/requirements.txt
 uvicorn backend.main:app --reload --port 8000
 ```
 
-The backend will be available at `http://localhost:8000`. A health check endpoint is available at `GET /health`.
+API runs at `http://localhost:8000`. Health check: `GET /health`.
 
 ### Frontend
 
 ```bash
 cd frontend
-
-# Install dependencies
 npm install
-
-# Start the development server
 npm run dev
 ```
 
-The frontend will be available at `http://localhost:5173`. API requests are automatically proxied to the backend.
+Dev server runs at `http://localhost:5173`.
 
-### Using Docker
-
-You can also run the backend using Docker:
+### With Docker
 
 ```bash
-docker compose up --build
+docker-compose up --build
 ```
 
-This builds and starts the backend container on port `8000`. Model weights should be placed in `model/weights/` before building.
+Backend available at `http://localhost:8000`.
 
-### API Endpoints
-
-| Method | Endpoint         | Description                                      |
-|--------|------------------|--------------------------------------------------|
-| GET    | `/health`        | Health check                                     |
-| POST   | `/api/classify`  | Classify dysfluency types in an audio file       |
-| POST   | `/api/localize`  | Localize where dysfluencies occur in audio       |
-| POST   | `/api/analyze`   | Run both classification and localization at once |
-
-All audio endpoints accept a file upload (`multipart/form-data`).
-
----
-
-## Desktop App Setup
-
-The desktop app is a standalone PySide6 application.
-
-### Prerequisites
-
-- Python 3.11+
-
-### Running the Desktop App
+## Running the Desktop App
 
 ```bash
-# Create and activate a virtual environment
+cd app
 python -m venv .venv
 source .venv/bin/activate
-
-# Install dependencies
-pip install -r model/requirements.txt
-pip install -r app/requirements.txt
-
-# Launch the application
+pip install -r requirements.txt ../model/requirements.txt
 python -m app.main
 ```
-
----
-
-## License
-
-This project is private and not currently open for public use.
