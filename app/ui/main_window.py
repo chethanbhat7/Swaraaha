@@ -10,6 +10,8 @@ from app.ui.home_page import HomePage
 from app.ui.analysis_page import AnalysisPage
 from app.core.audio_handler import AudioHandler
 from app.core.model_runner import ModelRunner
+from app.ui.theme import set_theme, is_dark_mode
+from app.ui.styles import build_stylesheet
 
 
 class AnalysisWorker(QThread):
@@ -63,6 +65,9 @@ class MainWindow(QMainWindow):
         self._home_page.analyze_clicked.connect(self._on_analyze)
 
         self._analysis_page.back_clicked.connect(self._go_home)
+
+        theme_action = self.menuBar().addAction("Toggle Dark Mode")
+        theme_action.triggered.connect(self._toggle_theme)
 
     def _on_record(self):
         self._audio_handler.start_recording()
@@ -123,3 +128,7 @@ class MainWindow(QMainWindow):
     def _go_home(self):
         self._stack.setCurrentIndex(0)
         self.statusBar().showMessage("Ready")
+
+    def _toggle_theme(self):
+        set_theme(not is_dark_mode())
+        self.setStyleSheet(build_stylesheet())

@@ -30,9 +30,9 @@ class HomePage(QWidget):
         self._audio_controls = AudioControls()
         splitter.addWidget(self._audio_controls)
 
-        splitter.setSizes([400, 600])
+        splitter.setSizes([500, 500])
         splitter.setStretchFactor(0, 1)
-        splitter.setStretchFactor(1, 2)
+        splitter.setStretchFactor(1, 1)
 
         layout.addWidget(splitter)
 
