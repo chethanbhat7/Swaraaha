@@ -293,6 +293,12 @@ def train(args) -> Dict:
     train_dataset = SubsetDataset(dataset, train_idx)
     val_dataset = SubsetDataset(dataset, val_idx)
 
+    from model.data.augmentation import AugmentedDataset, AudioAugmentor
+    from model.config.defaults import AUGMENTATION_ENABLED
+    if AUGMENTATION_ENABLED:
+        train_dataset = AugmentedDataset(train_dataset, augmentor=AudioAugmentor())
+        print(f"  Augmentation: ON")
+
     train_loader = DataLoader(
         train_dataset, batch_size=args.batch_size, shuffle=True,
         num_workers=args.num_workers, pin_memory=(device.type == "cuda"),
