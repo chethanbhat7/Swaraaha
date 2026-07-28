@@ -37,13 +37,13 @@ class AudioAugmentor:
         """Add Gaussian noise to audio."""
         if self.noise_level <= 0:
             return audio
-        noise = np.random.normal(0, self.noise_level, audio.shape)
+        noise = np.random.normal(0, self.noise_level, audio.shape).astype(np.float32)
         return audio + noise
 
     def time_stretch(self, audio: np.ndarray) -> np.ndarray:
         """Time-stretch audio by resampling."""
         factor = random.uniform(*self.time_stretch_range)
-        indices = np.round(np.arange(0, len(audio), factor)).astype(int)
+        indices = np.round(np.arange(0, len(audio), factor)).astype(np.int64)
         indices = indices[indices < len(audio)]
         stretched = audio[indices]
         if len(stretched) < len(audio):
@@ -56,7 +56,7 @@ class AudioAugmentor:
         """Pitch-shift audio using resampling."""
         semitones = random.uniform(*self.pitch_shift_range)
         factor = 2 ** (semitones / 12.0)
-        indices = np.round(np.arange(0, len(audio), factor)).astype(int)
+        indices = np.round(np.arange(0, len(audio), factor)).astype(np.int64)
         indices = indices[indices < len(audio)]
         shifted = audio[indices]
         if len(shifted) < len(audio):
@@ -85,7 +85,7 @@ class AudioAugmentor:
         audio = self.pitch_shift(audio, sample_rate)
         audio = self.time_shift(audio)
         audio = self.scale(audio)
-        return audio
+        return audio.astype(np.float32)
 
 
 class AugmentedDataset:
@@ -129,6 +129,10 @@ class AugmentedDataset:
         # Apply waveform augmentation to numpy arrays
         if isinstance(audio, np.ndarray):
             audio = self.augmentor(audio, self.sample_rate)
+        elif isinstance(audio, torch.Tensor):
+            audio = audio.cpu().numpy()
+            audio = self.augmentor(audio, self.sample_rate)
+            audio = torch.from_numpy(audio)
 
         if len(rest) == 0:
             return (audio,)
