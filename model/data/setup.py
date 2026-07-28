@@ -52,6 +52,7 @@ def main():
     steps = [
         ("model.data.download", "STEP 1: DOWNLOADING ALL DATASETS"),
         ("model.data.merge", "STEP 2: COMBINING DATASETS"),
+        ("model.data.prepare", "STEP 3: PREPARING TRAINING DATA"),
     ]
 
     print()
@@ -85,8 +86,8 @@ def main():
         print(f"  Dataset ready at: {COMBINED_DATASET_PATH}")
         print()
         print("  Next steps:")
-        print("    1. Use Dataset class in model.data.dataset to load data")
-        print("    2. Run training: python -m model.training.train")
+        print("    1. Run training: python -m model.training.train")
+        print("    2. Or train individually: python -m model.training.train_classifier --class_name prolongation")
     else:
         print()
         print("  Setup incomplete. Check errors above.")
