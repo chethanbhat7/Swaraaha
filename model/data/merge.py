@@ -224,7 +224,7 @@ def merge_datasets(output_path: str | None = None) -> pd.DataFrame | None:
         print("  No datasets available to merge!")
         return None
 
-    combined = pd.concat(dfs, ignore_index=True, ignore_statistics=False)
+    combined = pd.concat(dfs, ignore_index=True)
 
     # Ensure all label columns exist
     for label in DYSFLUENCY_LABELS:

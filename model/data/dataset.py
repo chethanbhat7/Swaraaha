@@ -165,6 +165,7 @@ class LocalizationDataset:
             frame_label: uint8 ndarray, shape (max_frames,).
         """
         from model.data.preprocessing import (
+            clean_audio,
             generate_mel_spectrogram,
             load_audio,
             normalize_spectrogram,
@@ -176,6 +177,9 @@ class LocalizationDataset:
 
         # Load audio
         audio, _ = load_audio(sample["audio_path"], sr=self.sr)
+
+        # Clean audio: DC removal, peak normalization, silence trimming
+        audio = clean_audio(audio, sr=self.sr)
 
         # Load labels
         intervals = load_label_csv(sample["label_path"])
@@ -270,10 +274,14 @@ class ClassificationDataset:
             audio: float32 ndarray, shape (max_samples,).
             label_vector: uint8 ndarray, shape (5,) — multi-hot.
         """
-        from model.data.preprocessing import load_audio, pad_to_length
+        from model.data.preprocessing import clean_audio, load_audio, pad_to_length
 
         sample = self.samples[idx]
         audio, _ = load_audio(sample["audio_path"], sr=self.sr)
+
+        # Clean audio: DC removal, peak normalization, silence trimming
+        audio = clean_audio(audio, sr=self.sr)
+
         intervals = load_label_csv(sample["label_path"])
 
         # Multi-hot encoding: 1 if any interval of that class exists

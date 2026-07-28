@@ -11,12 +11,6 @@ Usage:
         --batch_size 8 \
         --lr 1e-3 \
         --output_dir model/weights
-
-    # Or with the alternative nn.Module CNN:
-    python -m model.training.train_localizer \
-        --cnn_type module \
-        --data_dir data \
-        --epochs 30
 """
 
 import argparse
@@ -44,8 +38,7 @@ def parse_args():
     parser.add_argument("--patience", type=int, default=7, help="Early stopping patience.")
     parser.add_argument("--weight_decay", type=float, default=1e-4, help="Weight decay.")
     parser.add_argument("--num_workers", type=int, default=0, help="DataLoader workers.")
-    parser.add_argument("--cnn_type", type=str, default="wrapper", choices=["wrapper", "module"],
-                        help="CNN type: 'wrapper' (CNNSpectrogramLocalizer) or 'module' (SpectrogramCNN).")
+
     parser.add_argument("--seed", type=int, default=42, help="Random seed.")
     parser.add_argument("--val_ratio", type=float, default=0.2, help="Validation split ratio.")
     return parser.parse_args()
@@ -223,7 +216,7 @@ def train(args) -> Dict:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     print(f"\n{'='*60}")
-    print(f"  Training Localization Model ({args.cnn_type})")
+    print(f"  Training Localization Model")
     print(f"{'='*60}")
     print(f"  Device: {device}")
     print(f"  Data: {args.data_dir}")
@@ -251,6 +244,14 @@ def train(args) -> Dict:
     train_dataset = SubsetDataset(dataset, train_idx)
     val_dataset = SubsetDataset(dataset, val_idx)
 
+    from model.data.augmentation import AugmentedDataset, AudioAugmentor
+    from model.config.defaults import AUGMENTATION_ENABLED
+    if AUGMENTATION_ENABLED:
+        train_dataset = AugmentedDataset(
+            train_dataset, augmentor=AudioAugmentor(), augment_spectrogram=True
+        )
+        print(f"  Augmentation: ON (spectrogram)")
+
     train_loader = DataLoader(
         train_dataset, batch_size=args.batch_size, shuffle=True,
         num_workers=args.num_workers, pin_memory=(device.type == "cuda"),
@@ -261,18 +262,9 @@ def train(args) -> Dict:
     )
 
     # ---- Model ----
-    if args.cnn_type == "wrapper":
-        from model.localization.cnn_spectrogram import CNNSpectrogramLocalizer
-        model = CNNSpectrogramLocalizer(n_mels=args.n_mels, dropout=args.dropout)
-        print(f"  Model: CNNSpectrogramLocalizer (n_mels={args.n_mels})")
-    else:
-        from model.localization.cnn import SpectrogramCNN
-        model_wrapper = type("ModelWrapper", (), {
-            "model": SpectrogramCNN(dropout=args.dropout),
-            "forward": lambda self, x: self.model(x),
-        })()
-        model = model_wrapper
-        print(f"  Model: SpectrogramCNN (nn.Module)")
+    from model.localization.cnn_spectrogram import CNNSpectrogramLocalizer
+    model = CNNSpectrogramLocalizer(n_mels=args.n_mels, dropout=args.dropout)
+    print(f"  Model: CNNSpectrogramLocalizer (n_mels={args.n_mels})")
 
     model.model.to(device)
     print(f"  Parameters: {sum(p.numel() for p in model.model.parameters()):,}")

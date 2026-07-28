@@ -8,7 +8,7 @@ def build_stylesheet():
     return f"""
     /* === Global === */
     QWidget {{
-        font-family: "Google Sans Font";
+        font-family: "Google Sans Flex 9pt";
         font-size: 14px;
         color: {COLORS['on_surface']};
         background-color: {COLORS['surface']};
@@ -69,19 +69,20 @@ def build_stylesheet():
         background-color: {COLORS['primary_container']};
     }}
 
-    /* === Record Button (special) === */
+    /* === Record Button === */
     QPushButton[cssClass="record"] {{
-        background-color: #B3261E;
-        border-radius: {RADIUS['full']}px;
-        min-width: 120px;
-        min-height: 120px;
-        font-size: 18px;
+        background-color: #2E7D32;
+        border-radius: {RADIUS['lg']}px;
+        padding: {SPACING['md']}px {SPACING['xl']}px;
+        font-size: 16px;
+        font-weight: 500;
+        min-height: 48px;
     }}
     QPushButton[cssClass="record"]:hover {{
-        background-color: #B3261EDD;
+        background-color: #2E7D32DD;
     }}
     QPushButton[cssClass="record"]:pressed {{
-        background-color: #B3261EBB;
+        background-color: #2E7D32BB;
     }}
 
     /* === Panels === */

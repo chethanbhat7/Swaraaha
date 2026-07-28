@@ -1,7 +1,9 @@
 docs/todo.md
 docs/todos/
+docs/todo-phase3.md
 docs/superpowers/
 docs/project-understanding.md
+docs/accuracy-estimates.md
 
 
 # OS-specific
@@ -38,3 +40,9 @@ model/data/debug/
 .idea/
 *.swp
 *.swo
+
+#dataset 
+data/
+
+# Credentials
+.env

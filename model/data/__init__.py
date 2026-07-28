@@ -10,3 +10,4 @@ from model.data.config import (
 )
 from model.data.download import Dataset, download_datasets
 from model.data.merge import merge_datasets
+from model.data.augmentation import AugmentedDataset, AudioAugmentor

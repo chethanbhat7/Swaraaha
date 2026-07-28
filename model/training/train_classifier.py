@@ -29,6 +29,16 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 
 
+def compute_pos_weight(labels: np.ndarray) -> float:
+    """Compute pos_weight for BCEWithLogitsLoss from binary labels."""
+    labels = np.asarray(labels).flatten()
+    n_pos = int(labels.sum())
+    n_neg = len(labels) - n_pos
+    if n_pos == 0:
+        return 1.0
+    return round(n_neg / n_pos, 4)
+
+
 def parse_args():
     parser = argparse.ArgumentParser(
         description="Train a Wav2Vec 2.0 binary classifier for stuttering dysfluency detection."
@@ -283,6 +293,12 @@ def train(args) -> Dict:
     train_dataset = SubsetDataset(dataset, train_idx)
     val_dataset = SubsetDataset(dataset, val_idx)
 
+    from model.data.augmentation import AugmentedDataset, AudioAugmentor
+    from model.config.defaults import AUGMENTATION_ENABLED
+    if AUGMENTATION_ENABLED:
+        train_dataset = AugmentedDataset(train_dataset, augmentor=AudioAugmentor())
+        print(f"  Augmentation: ON")
+
     train_loader = DataLoader(
         train_dataset, batch_size=args.batch_size, shuffle=True,
         num_workers=args.num_workers, pin_memory=(device.type == "cuda"),
@@ -293,11 +309,16 @@ def train(args) -> Dict:
     )
 
     # ---- Class weights ----
+    # Extract all labels to compute pos_weight
+    all_labels = np.array([dataset[i][1][class_idx] for i in range(len(dataset))])
+    pos_weight_val = compute_pos_weight(all_labels)
+
     class_weights = compute_class_weights(train_dataset, class_idx)
     if class_weights is not None:
         weight_tensor = torch.tensor(class_weights, dtype=torch.float32).to(device)
         criterion = torch.nn.BCEWithLogitsLoss(pos_weight=weight_tensor[1:2])
         print(f"  Class weights: neg={class_weights[0]:.3f}, pos={class_weights[1]:.3f}")
+        print(f"  pos_weight (preprocessing): {pos_weight_val:.3f}")
     else:
         criterion = torch.nn.BCEWithLogitsLoss()
         print("  Class weights: none (balanced or single class)")
