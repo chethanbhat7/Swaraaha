@@ -7,7 +7,7 @@ dysfluency probability prediction from raw audio waveforms.
 
 Usage:
     python -m model.training.train_wav2vec2_localizer \
-        --data_dir data \
+        --data_dir data/train \
         --epochs 20 \
         --batch_size 4 \
         --lr 3e-5 \
@@ -15,7 +15,7 @@ Usage:
 
     # With backbone freezing for first 5 epochs:
     python -m model.training.train_wav2vec2_localizer \
-        --data_dir data \
+        --data_dir data/train \
         --freeze_backbone_epochs 5 \
         --epochs 20
 """
@@ -33,8 +33,8 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description="Train Wav2Vec2 localization model for dysfluency detection."
     )
-    parser.add_argument("--data_dir", type=str, default="data",
-                        help="Root data directory containing audio/ and labels/.")
+    parser.add_argument("--data_dir", type=str, default="data/train",
+                        help="Data directory containing audio/ and labels/.")
     parser.add_argument("--epochs", type=int, default=20,
                         help="Number of training epochs.")
     parser.add_argument("--batch_size", type=int, default=4,

@@ -28,9 +28,9 @@ model/weights/*.bin
 model/weights/*.onnx
 model/weights/checkpoints/
 
-# Raw data and combined datasets (large, not committed)
+# Raw data and processed data (large, not committed)
 RawData/
-Dataset/
+/data/
 
 # Debug output
 model/data/debug/
@@ -40,9 +40,6 @@ model/data/debug/
 .idea/
 *.swp
 *.swo
-
-#dataset 
-data/
 
 # Credentials
 .env

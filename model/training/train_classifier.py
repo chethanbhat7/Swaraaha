@@ -8,7 +8,7 @@ using the StutterDataset from model.data.dataset.
 Usage:
     python -m model.training.train_classifier \
         --class_name prolongation \
-        --data_dir data \
+        --data_dir data/train \
         --epochs 20 \
         --batch_size 8 \
         --lr 3e-5 \
@@ -16,7 +16,7 @@ Usage:
 
     # Train all 5 classifiers:
     for cls in prolongation block soundrep wordrep interjection; do
-        python -m model.training.train_classifier --class_name $cls --data_dir data --epochs 20
+        python -m model.training.train_classifier --class_name $cls --data_dir data/train --epochs 20
     done
 """
 
@@ -50,7 +50,7 @@ def parse_args():
         choices=["prolongation", "block", "soundrep", "wordrep", "interjection"],
         help="Dysfluency class to train for.",
     )
-    parser.add_argument("--data_dir", type=str, default="data", help="Root data directory containing audio/ and labels/.")
+    parser.add_argument("--data_dir", type=str, default="data/train", help="Data directory containing audio/ and labels/.")
     parser.add_argument("--epochs", type=int, default=20, help="Number of training epochs.")
     parser.add_argument("--batch_size", type=int, default=8, help="Batch size.")
     parser.add_argument("--lr", type=float, default=3e-5, help="Learning rate.")
@@ -157,15 +157,18 @@ def compute_class_weights(dataset, class_idx: int, num_classes: int = 2) -> Opti
 
 def train_one_epoch(model, dataloader, optimizer, scheduler, criterion, device, scaler=None):
     """Train for one epoch. Returns average loss."""
+    import warnings
     import torch
+    from tqdm import tqdm
+
+    warnings.filterwarnings("ignore", "Detected call of.*lr_scheduler.step.*before.*optimizer.step")
 
     model.model.train()
     total_loss = 0.0
     num_batches = 0
 
-    for audio, labels in dataloader:
+    for audio, labels in tqdm(dataloader, desc="  Train", leave=False):
         audio = audio.to(device)
-        # Extract the specific class label for this binary classifier
         class_idx = model.class_idx
         binary_labels = labels[:, class_idx].float().to(device)
 
@@ -173,7 +176,7 @@ def train_one_epoch(model, dataloader, optimizer, scheduler, criterion, device, 
 
         use_amp = scaler is not None and device.type == "cuda"
         with torch.amp.autocast("cuda", enabled=use_amp):
-            logits = model.forward(audio)  # [batch, 2]
+            logits = model.forward(audio)
             loss = criterion(logits[:, 1], binary_labels)
 
         if use_amp:
@@ -204,6 +207,7 @@ def evaluate_classifier(model, dataloader, device) -> Tuple[float, float, float,
         accuracy, macro_f1, loss, all_true_labels, all_pred_labels
     """
     import torch
+    from tqdm import tqdm
 
     model.model.eval()
     all_preds, all_labels = [], []
@@ -213,7 +217,7 @@ def evaluate_classifier(model, dataloader, device) -> Tuple[float, float, float,
     criterion = torch.nn.BCEWithLogitsLoss()
 
     with torch.no_grad():
-        for audio, labels in dataloader:
+        for audio, labels in tqdm(dataloader, desc="  Val", leave=False):
             audio = audio.to(device)
             class_idx = model.class_idx
             binary_labels = labels[:, class_idx].float().to(device)

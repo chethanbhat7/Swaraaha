@@ -16,14 +16,14 @@ PROJECT_ROOT = os.path.dirname(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 )
 RAW_DATA_DIR = os.path.join(PROJECT_ROOT, "RawData")
-DATASET_DIR = os.path.join(PROJECT_ROOT, "Dataset")
+DATA_DIR = os.path.join(PROJECT_ROOT, "data")
 
 # ============================================================================
 # DATASET CONFIGURATION
 # ============================================================================
 
 COMBINED_DATASET_FILENAME = "combined_labels.csv"
-COMBINED_DATASET_PATH = os.path.join(DATASET_DIR, COMBINED_DATASET_FILENAME)
+COMBINED_DATASET_PATH = os.path.join(DATA_DIR, COMBINED_DATASET_FILENAME)
 
 # ============================================================================
 # DOWNLOAD CONFIGURATION
