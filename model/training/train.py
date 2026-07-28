@@ -113,9 +113,7 @@ def run_pipeline(
     if pipeline == "cls":
         failed = []
         for cls_name in CLASS_NAMES:
-            print(f"\n{'='*60}")
-            print(f"Training classifier: {cls_name}")
-            print(f"{'='*60}")
+            print(f"\n--- classifier: {cls_name} ---")
 
             cmd = [
                 sys.executable, "-m", script,
@@ -199,9 +197,7 @@ def main():
     results = {}
 
     for pipeline in args.pipelines:
-        print(f"\n{'#'*60}")
-        print(f"# Running: {pipeline}")
-        print(f"{'#'*60}")
+        print(f"\n>>> Pipeline: {pipeline}")
 
         code = run_pipeline(
             pipeline=pipeline,
