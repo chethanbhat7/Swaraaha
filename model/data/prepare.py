@@ -66,6 +66,14 @@ def create_training_data(
         df = df[exists].reset_index(drop=True)
     print(f"  {len(df)} clips with valid audio")
 
+    # Filter out header-only WAV files (just 44-byte header, no audio data)
+    has_data = df["clip_file"].apply(lambda p: Path(p).stat().st_size > 44)
+    empty_hdr = (~has_data).sum()
+    if empty_hdr > 0:
+        print(f"  Skipping {empty_hdr} clips with empty audio (header-only)")
+        df = df[has_data].reset_index(drop=True)
+    print(f"  {len(df)} clips with usable audio")
+
     # Count interval CSVs available
     labels_dir = merged_path.parent / "labels"
     total_intervals = sum(1 for _ in labels_dir.glob("*.csv")) if labels_dir.exists() else 0
