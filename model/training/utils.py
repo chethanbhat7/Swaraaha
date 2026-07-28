@@ -177,17 +177,13 @@ def get_warmup_linear_schedule(optimizer, warmup_steps: int, total_steps: int):
     Returns:
         LambdaLR scheduler.
     """
-    import torch.optim.lr_scheduler as lr_scheduler
+    from transformers import get_linear_schedule_with_warmup
 
-    def lr_lambda(current_step):
-        if current_step < warmup_steps:
-            return float(current_step) / float(max(1, warmup_steps))
-        return max(
-            0.0,
-            float(total_steps - current_step) / float(max(1, total_steps - warmup_steps)),
-        )
-
-    return lr_scheduler.LambdaLR(optimizer, lr_lambda)
+    return get_linear_schedule_with_warmup(
+        optimizer,
+        num_warmup_steps=warmup_steps,
+        num_training_steps=total_steps,
+    )
 
 
 def count_parameters(model) -> int:

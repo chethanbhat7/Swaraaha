@@ -6,7 +6,7 @@ Trains a CNN that outputs per-frame dysfluency probabilities from mel-spectrogra
 
 Usage:
     python -m model.training.train_localizer \
-        --data_dir data \
+        --data_dir data/train \
         --epochs 30 \
         --batch_size 8 \
         --lr 1e-3 \
@@ -26,7 +26,7 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description="Train CNN spectrogram localization model for dysfluency detection."
     )
-    parser.add_argument("--data_dir", type=str, default="data", help="Root data directory containing audio/ and labels/.")
+    parser.add_argument("--data_dir", type=str, default="data/train", help="Data directory containing audio/ and labels/.")
     parser.add_argument("--epochs", type=int, default=30, help="Number of training epochs.")
     parser.add_argument("--batch_size", type=int, default=8, help="Batch size.")
     parser.add_argument("--lr", type=float, default=1e-3, help="Learning rate.")

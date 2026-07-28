@@ -145,6 +145,10 @@ class LocalizationDataset:
             if not os.path.isfile(label_path):
                 continue  # skip clips without labels
 
+            # Skip header-only WAV files (no audio data)
+            if os.path.getsize(audio_path) <= 44:
+                continue
+
             samples.append({
                 "clip_id": clip_id,
                 "audio_path": audio_path,
@@ -253,6 +257,10 @@ class ClassificationDataset:
             label_path = os.path.join(self.labels_dir, f"{clip_id}.csv")
 
             if not os.path.isfile(label_path):
+                continue
+
+            # Skip header-only WAV files (no audio data)
+            if os.path.getsize(audio_path) <= 44:
                 continue
 
             samples.append({
