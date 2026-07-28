@@ -81,6 +81,13 @@ Flags:
 | `--output_dir` | `model/weights` | Where to save weights |
 | `--dry_run` | false | Show what would run without executing |
 
+Any arguments after `--` are forwarded to each sub-script (train_classifier, train_localizer, etc.):
+
+```bash
+python -m model.training.train -- --epochs 30 --lr 2e-5
+python -m model.training.train --pipelines cls -- --batch_size 8
+```
+
 ---
 
 ## Classification Pipeline
