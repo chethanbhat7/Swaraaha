@@ -158,12 +158,13 @@ def compute_class_weights(dataset, class_idx: int, num_classes: int = 2) -> Opti
 def train_one_epoch(model, dataloader, optimizer, scheduler, criterion, device, scaler=None):
     """Train for one epoch. Returns average loss."""
     import torch
+    from tqdm import tqdm
 
     model.model.train()
     total_loss = 0.0
     num_batches = 0
 
-    for audio, labels in dataloader:
+    for audio, labels in tqdm(dataloader, desc="  Train", leave=False):
         audio = audio.to(device)
         # Extract the specific class label for this binary classifier
         class_idx = model.class_idx
@@ -204,6 +205,7 @@ def evaluate_classifier(model, dataloader, device) -> Tuple[float, float, float,
         accuracy, macro_f1, loss, all_true_labels, all_pred_labels
     """
     import torch
+    from tqdm import tqdm
 
     model.model.eval()
     all_preds, all_labels = [], []
@@ -213,7 +215,7 @@ def evaluate_classifier(model, dataloader, device) -> Tuple[float, float, float,
     criterion = torch.nn.BCEWithLogitsLoss()
 
     with torch.no_grad():
-        for audio, labels in dataloader:
+        for audio, labels in tqdm(dataloader, desc="  Val", leave=False):
             audio = audio.to(device)
             class_idx = model.class_idx
             binary_labels = labels[:, class_idx].float().to(device)
