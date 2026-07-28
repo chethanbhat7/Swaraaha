@@ -8,7 +8,7 @@ using the StutterDataset from model.data.dataset.
 Usage:
     python -m model.training.train_classifier \
         --class_name prolongation \
-        --data_dir data \
+        --data_dir data/train \
         --epochs 20 \
         --batch_size 8 \
         --lr 3e-5 \
@@ -16,7 +16,7 @@ Usage:
 
     # Train all 5 classifiers:
     for cls in prolongation block soundrep wordrep interjection; do
-        python -m model.training.train_classifier --class_name $cls --data_dir data --epochs 20
+        python -m model.training.train_classifier --class_name $cls --data_dir data/train --epochs 20
     done
 """
 
@@ -50,7 +50,7 @@ def parse_args():
         choices=["prolongation", "block", "soundrep", "wordrep", "interjection"],
         help="Dysfluency class to train for.",
     )
-    parser.add_argument("--data_dir", type=str, default="data", help="Root data directory containing audio/ and labels/.")
+    parser.add_argument("--data_dir", type=str, default="data/train", help="Data directory containing audio/ and labels/.")
     parser.add_argument("--epochs", type=int, default=20, help="Number of training epochs.")
     parser.add_argument("--batch_size", type=int, default=8, help="Batch size.")
     parser.add_argument("--lr", type=float, default=3e-5, help="Learning rate.")
