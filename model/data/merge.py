@@ -2,16 +2,17 @@
 # Normalizes SEP-28K, UCLASS, and Project Boli into a single combined CSV.
 # Adapted from Major-Project/Scripts/merge_datasets.py.
 #
-# Output format: CSV with columns
-#   - clip_file: path to .wav file
-#   - Prolongation, Block, SoundRep, WordRep, Interjection: binary labels (0/1)
+# Output format:
+#   1. combined_labels.csv: clip_file + binary label columns (0/1)
+#   2. labels/<clip_stem>.csv: per-clip interval CSVs (start_sec, end_sec, dysfluency_type)
 #
 # Project Boli is fully implemented: parses .txt transcript files and maps
-# annotation codes (B, PR, SR, WR, IN) to dysfluency labels.
+# annotation codes (B, PR, SR, WR, IN) to dysfluency labels with intervals.
 
 import os
 import re
 from pathlib import Path
+from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
 
@@ -33,9 +34,15 @@ def _find_matching_audio(audios_dir: Path, transcript_stem: str) -> Path | None:
     return None
 
 
-def _parse_project_boli_transcript(transcript_path: Path) -> set:
-    """Parse a Project Boli .txt transcript and return set of label names."""
+def _parse_project_boli_transcript(transcript_path: Path) -> Tuple[set, List[Tuple[float, float, str]]]:
+    """Parse a Project Boli .txt transcript and return labels + intervals.
+
+    Returns:
+        Tuple of (label_set, intervals_list) where intervals_list contains
+        (start_sec, end_sec, label_name) tuples.
+    """
     labels = set()
+    intervals = []
 
     with transcript_path.open("r", encoding="utf-8") as f:
         for raw_line in f:
@@ -47,28 +54,24 @@ def _parse_project_boli_transcript(transcript_path: Path) -> set:
             if len(parts) < 3:
                 continue
 
+            start_ms = float(parts[0])
+            end_ms = float(parts[1])
             code = parts[2].strip().upper()
             mapped = PROJECT_BOLI_LABEL_MAP.get(code)
             if mapped:
                 labels.add(mapped)
+                intervals.append((start_ms / 1000.0, end_ms / 1000.0, mapped))
 
-    return labels
+    return labels, intervals
 
 
-def normalize_project_boli() -> pd.DataFrame | None:
+def normalize_project_boli() -> Tuple[Optional[pd.DataFrame], Dict[str, List[Tuple[float, float, str]]]]:
     """
     Normalize the Project Boli Dataset.
 
-    Reads .txt transcript files, extracts dysfluency annotation codes,
-    maps them to label names, and pairs with matching .wav audio files.
-
-    Transcript format (per line):
-        <start_ms> <end_ms> <annotation_code>
-        e.g.: 1200 1800 PR    (prolongation)
-
     Returns:
-        DataFrame with columns: clip_file, Prolongation, Block, SoundRep,
-        WordRep, Interjection. Or None if dataset not found.
+        Tuple of (DataFrame with binary labels, dict mapping clip_file to intervals).
+        Or (None, {}) if dataset not found.
     """
     base_dir = Path(RAW_DATA_DIR) / "Project Boli Dataset"
     transcripts_dir = base_dir / "Transcripts"
@@ -76,15 +79,16 @@ def normalize_project_boli() -> pd.DataFrame | None:
 
     if not transcripts_dir.exists() or not audios_dir.exists():
         print("  Project Boli: Transcripts/ or Audios/ directory not found, skipping.")
-        return None
+        return None, {}
 
     rows = []
+    all_intervals = {}
     for transcript_path in sorted(transcripts_dir.glob("*.txt")):
         audio_path = _find_matching_audio(audios_dir, transcript_path.stem)
         if audio_path is None:
             continue
 
-        labels_found = _parse_project_boli_transcript(transcript_path)
+        labels_found, intervals = _parse_project_boli_transcript(transcript_path)
         if not labels_found:
             continue
 
@@ -92,25 +96,24 @@ def normalize_project_boli() -> pd.DataFrame | None:
         for label in DYSFLUENCY_LABELS:
             row[label] = 1 if label in labels_found else 0
         rows.append(row)
+        all_intervals[str(audio_path)] = intervals
 
     if not rows:
         print("  Project Boli: No valid examples found.")
-        return None
+        return None, {}
 
     df = pd.DataFrame(rows)
     print(f"  Project Boli: {len(df)} examples")
-    return df
+    return df, all_intervals
 
 
-def normalize_sep28k() -> pd.DataFrame | None:
+def normalize_sep28k() -> Tuple[Optional[pd.DataFrame], Dict[str, List[Tuple[float, float, str]]]]:
     """
     Normalize the SEP-28K Dataset.
 
-    Reads two label CSVs (fluencybank_labels.csv + SEP-28k_labels.csv),
-    concatenates them, and constructs clip_file paths from Show/EpId/ClipId.
-
     Returns:
-        DataFrame with clip_file + label columns. Or None if dataset not found.
+        Tuple of (DataFrame with binary labels, dict mapping clip_file to intervals).
+        Or (None, {}) if dataset not found.
     """
     base_dir = Path(RAW_DATA_DIR) / "SEP-28K Dataset"
     clips_dir = base_dir / "clips" / "stuttering-clips" / "clips"
@@ -119,7 +122,7 @@ def normalize_sep28k() -> pd.DataFrame | None:
 
     if not metadata_file1.exists() and not metadata_file2.exists():
         print("  SEP-28K: Label CSVs not found, skipping.")
-        return None
+        return None, {}
 
     dfs = []
     if metadata_file1.exists():
@@ -128,7 +131,7 @@ def normalize_sep28k() -> pd.DataFrame | None:
         dfs.append(pd.read_csv(metadata_file2))
 
     if not dfs:
-        return None
+        return None, {}
 
     df = pd.concat(dfs, ignore_index=True)
 
@@ -140,6 +143,27 @@ def normalize_sep28k() -> pd.DataFrame | None:
         axis=1,
     )
 
+    # Extract intervals from Start/End columns if available
+    all_intervals = {}
+    has_start = "Start" in df.columns
+    has_end = "End" in df.columns
+
+    if has_start and has_end:
+        for clip_file, group in df.groupby("clip_file"):
+            clip_intervals = []
+            for _, row in group.iterrows():
+                start = pd.to_numeric(row["Start"], errors="coerce")
+                end = pd.to_numeric(row["End"], errors="coerce")
+                if pd.isna(start) or pd.isna(end):
+                    continue
+                for label in DYSFLUENCY_LABELS:
+                    if label in group.columns:
+                        val = pd.to_numeric(row[label], errors="coerce")
+                        if not pd.isna(val) and val > 0:
+                            clip_intervals.append((float(start), float(end), label))
+            if clip_intervals:
+                all_intervals[clip_file] = clip_intervals
+
     # Keep only the columns we need
     label_cols = [c for c in DYSFLUENCY_LABELS if c in df.columns]
     keep_cols = ["clip_file"] + label_cols
@@ -150,18 +174,16 @@ def normalize_sep28k() -> pd.DataFrame | None:
         df[col] = (pd.to_numeric(df[col], errors="coerce").fillna(0) > 0).astype(int)
 
     print(f"  SEP-28K: {len(df)} examples")
-    return df
+    return df, all_intervals
 
 
-def normalize_uclass() -> pd.DataFrame | None:
+def normalize_uclass() -> Tuple[Optional[pd.DataFrame], Dict[str, List[Tuple[float, float, str]]]]:
     """
     Normalize the UCLASS SEP-28K Format dataset.
 
-    Reads metadata.json, expands nested label dicts, and constructs
-    clip_file paths from clip_id.
-
     Returns:
-        DataFrame with clip_file + label columns. Or None if dataset not found.
+        Tuple of (DataFrame with binary labels, dict mapping clip_file to intervals).
+        Or (None, {}) if dataset not found.
     """
     base_dir = Path(RAW_DATA_DIR) / "UCLASS SEP-28K Format"
     clips_dir = base_dir / "clips" / "clips"
@@ -169,7 +191,7 @@ def normalize_uclass() -> pd.DataFrame | None:
 
     if not metadata_file.exists():
         print("  UCLASS: metadata.json not found, skipping.")
-        return None
+        return None, {}
 
     df = pd.read_json(metadata_file)
 
@@ -182,6 +204,24 @@ def normalize_uclass() -> pd.DataFrame | None:
         expand_labels = pd.json_normalize(df["labels"])
         df = pd.concat([df, expand_labels], axis=1)
 
+    # Extract intervals if available in metadata
+    all_intervals = {}
+    if "intervals" in df.columns:
+        for _, row in df.iterrows():
+            clip_file = row["clip_file"]
+            try:
+                clip_intervals = []
+                for interval in row["intervals"]:
+                    start = float(interval.get("start", 0))
+                    end = float(interval.get("end", 0))
+                    label = interval.get("label", "").strip()
+                    if label and start < end:
+                        clip_intervals.append((start, end, label))
+                if clip_intervals:
+                    all_intervals[clip_file] = clip_intervals
+            except (TypeError, ValueError):
+                pass
+
     # Keep only the columns we need
     label_cols = [c for c in DYSFLUENCY_LABELS if c in df.columns]
     keep_cols = ["clip_file"] + label_cols
@@ -192,14 +232,16 @@ def normalize_uclass() -> pd.DataFrame | None:
         df[col] = (pd.to_numeric(df[col], errors="coerce").fillna(0) > 0).astype(int)
 
     print(f"  UCLASS: {len(df)} examples")
-    return df
+    return df, all_intervals
 
 
 def merge_datasets(output_path: str | None = None) -> pd.DataFrame | None:
     """
-    Merge all datasets into a single combined CSV.
+    Merge all datasets into a single combined CSV and per-clip interval CSVs.
 
-    Runs each normalizer, concatenates valid results, and writes output.
+    Runs each normalizer, concatenates valid results, writes:
+    - combined_labels.csv (binary multi-label)
+    - labels/<clip_stem>.csv (per-clip interval CSVs)
 
     Args:
         output_path: Override output path. Defaults to config.COMBINED_DATASET_PATH.
@@ -210,13 +252,13 @@ def merge_datasets(output_path: str | None = None) -> pd.DataFrame | None:
     print("Merging datasets...")
 
     print("  Normalizing Project Boli...")
-    df_boli = normalize_project_boli()
+    df_boli, intervals_boli = normalize_project_boli()
 
     print("  Normalizing SEP-28K...")
-    df_sep28k = normalize_sep28k()
+    df_sep28k, intervals_sep28k = normalize_sep28k()
 
     print("  Normalizing UCLASS...")
-    df_uclass = normalize_uclass()
+    df_uclass, intervals_uclass = normalize_uclass()
 
     dfs = [df for df in [df_boli, df_sep28k, df_uclass] if df is not None]
 
@@ -240,11 +282,36 @@ def merge_datasets(output_path: str | None = None) -> pd.DataFrame | None:
     out.parent.mkdir(parents=True, exist_ok=True)
     combined.to_csv(out, index=False)
 
+    # Write per-clip interval CSVs
+    all_intervals = {}
+    all_intervals.update(intervals_boli)
+    all_intervals.update(intervals_sep28k)
+    all_intervals.update(intervals_uclass)
+
+    labels_dir = out.parent / "labels"
+    labels_dir.mkdir(parents=True, exist_ok=True)
+
+    written = 0
+    for clip_file in combined["clip_file"]:
+        clip_stem = Path(clip_file).stem
+        label_path = labels_dir / f"{clip_stem}.csv"
+
+        if label_path.exists():
+            continue
+
+        intervals = all_intervals.get(clip_file, [])
+        with open(label_path, "w") as f:
+            f.write("start_sec,end_sec,dysfluency_type\n")
+            for start, end, dtype in intervals:
+                f.write(f"{start:.3f},{end:.3f},{dtype}\n")
+        written += 1
+
     print(f"\n  Combined dataset: {len(combined)} examples")
     print(f"  Label distribution:")
     for label in DYSFLUENCY_LABELS:
         count = combined[label].sum()
         print(f"    {label}: {count} ({100 * count / len(combined):.1f}%)")
+    print(f"  Interval CSVs: {written} written to {labels_dir}")
     print(f"  Saved to: {out}")
 
     return combined

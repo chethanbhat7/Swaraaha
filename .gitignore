@@ -41,8 +41,5 @@ model/data/debug/
 *.swp
 *.swo
 
-#dataset 
-data/
-
 # Credentials
 .env
