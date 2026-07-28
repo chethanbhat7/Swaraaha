@@ -8,59 +8,78 @@
 pip install -r model/requirements.txt
 ```
 
-You also need a prepared dataset. See [`model/data/README.md`](../data/README.md) for setup.
+Prepare the dataset first (see [`model/data/README.md`](../data/README.md)):
 
----
-
-## Overview
-
-Three training pipelines, one per model type:
-
-| Pipeline | Script | Model | Input | Output |
-|----------|--------|-------|-------|--------|
-| Classifier | `train_classifier.py` | Wav2Vec 2.0 binary classifiers | Raw audio | `{class}_best.pt` |
-| CNN Localizer | `train_localizer.py` | CNN over spectrograms | Mel-spectrograms | `localizer_best.pt` |
-| Wav2Vec2 Localizer | `train_wav2vec2_localizer.py` | Wav2Vec2 + temporal attention | Raw audio | `w2v2_localizer_best.pt` |
-
-All weights save to `model/weights/` by default.
+```bash
+python -m model.data.setup
+```
 
 ---
 
 ## Quick Start
 
-### Train all 5 classifiers
+Train everything with auto-detected system resources:
 
 ```bash
-bash model/training/train_all_classifiers.sh [DATA_DIR] [EPOCHS] [BATCH_SIZE]
+python -m model.training.train
 ```
 
-Defaults: `data/`, 20 epochs, batch size 8.
+This detects your GPU (RTX 4070 → batch size 16, etc.) and trains all five classifiers plus both localizers.
+
+Select specific pipelines:
+
+```bash
+python -m model.training.train --pipelines cls          # classifiers only
+python -m model.training.train --pipelines loc          # CNN localizer only
+python -m model.training.train --pipelines wav2vec      # Wav2Vec2 localizer only
+python -m model.training.train --pipelines cls loc      # multiple
+```
+
+Dry run to see what would be run:
+
+```bash
+python -m model.training.train --dry_run
+```
 
 ### Train one classifier
 
 ```bash
 python -m model.training.train_classifier \
     --class_name prolongation \
-    --data_dir data \
+    --data_dir data/train \
     --epochs 20
 ```
 
-### Train the CNN localizer
+### Train all 5 classifiers via shell script
 
 ```bash
-python -m model.training.train_localizer \
-    --data_dir data \
-    --epochs 30
+bash model/training/train_all_classifiers.sh
 ```
 
-### Train the Wav2Vec2 localizer
+---
 
-```bash
-python -m model.training.train_wav2vec2_localizer \
-    --data_dir data \
-    --epochs 20 \
-    --batch_size 4
-```
+## Training Orchestrator
+
+`model/training/train.py` is the master orchestrator that:
+
+1. **Auto-detects system resources** — CPU cores, GPU model, GPU memory
+2. **Selects optimal batch sizes** — based on GPU memory:
+   | Pipeline | 8+ GB GPU | <8 GB GPU | CPU |
+   |----------|-----------|-----------|-----|
+   | Classifier | 16 | 8 | 4 |
+   | CNN Localizer | 8 | 4 | 2 |
+   | Wav2Vec2 Localizer | 4 | 2 | 1 |
+3. **Sets DataLoader workers** to CPU core count
+4. **Runs each pipeline** sequentially with proper CLI args
+
+Flags:
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--pipelines` | `cls loc wav2vec` | Which pipelines to run |
+| `--data_dir` | `data/train` | Training data directory |
+| `--output_dir` | `model/weights` | Where to save weights |
+| `--dry_run` | false | Show what would run without executing |
 
 ---
 
@@ -75,20 +94,22 @@ Trains five independent binary classifiers (one per dysfluency type) on top of `
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--class_name` | (required) | `prolongation`, `block`, `soundrep`, `wordrep`, or `interjection` |
-| `--data_dir` | `data` | Root directory with `audio/` and `labels/` |
+| `--data_dir` | `data/train` | Root directory with `audio/` and `labels/` |
 | `--epochs` | 20 | Training epochs |
 | `--batch_size` | 8 | Batch size |
 | `--lr` | 3e-5 | Learning rate |
 | `--model_name` | `facebook/wav2vec2-base` | HuggingFace model |
 | `--patience` | 5 | Early stopping patience |
 | `--output_dir` | `model/weights` | Where to save weights |
+| `--num_workers` | 0 | DataLoader workers |
 
 ### Training details
 
-- **Split:** Stratified 80/20 train/val split
+- **Split:** Stratified 80/20 train/val split per class
 - **Loss:** BCEWithLogitsLoss with automatic class-weight balancing
 - **Optimizer:** AdamW with linear warmup (500 steps) + linear decay
-- **Mixed precision:** Automatic on CUDA
+- **Mixed precision:** Automatic on CUDA via `torch.amp.GradScaler`
+- **Augmentation:** On-the-fly `AudioAugmentor` (noise, pitch shift, time stretch, roll, scale)
 - **Checkpointing:** Saves best model (by val F1) and final model
 - **Outputs:** `{class}_best.pt`, `{class}_final.pt`, `{class}_training_log.csv`, training curves PNG
 
@@ -102,7 +123,7 @@ Trains a CNN that predicts per-frame dysfluency probabilities from mel-spectrogr
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--data_dir` | `data` | Root directory with `audio/` and `labels/` |
+| `--data_dir` | `data/train` | Root directory with `audio/` and `labels/` |
 | `--epochs` | 30 | Training epochs |
 | `--batch_size` | 8 | Batch size |
 | `--lr` | 1e-3 | Learning rate |
@@ -127,7 +148,7 @@ Trains Wav2Vec 2.0 backbone + temporal attention head for per-frame dysfluency p
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--data_dir` | `data` | Root directory with `audio/` and `labels/` |
+| `--data_dir` | `data/train` | Root directory with `audio/` and `labels/` |
 | `--epochs` | 20 | Training epochs |
 | `--batch_size` | 4 | Batch size (smaller due to W2V2 memory) |
 | `--lr` | 3e-5 | Learning rate |
@@ -188,7 +209,7 @@ Defined in `model/config/defaults.py`:
 ```python
 SAMPLE_RATE = 16000
 AUDIO_DURATION_SECONDS = 10
-MAX_AUDIO_LENGTH = 160000        # samples
+MAX_AUDIO_LENGTH = 160000
 WAV2VEC2_BASE = "facebook/wav2vec2-base"
 LEARNING_RATE = 3e-5
 BATCH_SIZE = 8
@@ -196,6 +217,7 @@ NUM_EPOCHS = 20
 WARMUP_STEPS = 500
 WEIGHT_DECAY = 0.01
 EARLY_STOPPING_PATIENCE = 5
+AUGMENTATION_ENABLED = True
 GRADIENT_CLIP_MAX_NORM = 1.0
 ```
 
@@ -210,7 +232,7 @@ GRADIENT_CLIP_MAX_NORM = 1.0
 | `save_checkpoint()` / `load_checkpoint()` | Save/load model, optimizer, scheduler state |
 | `CSVLogger` | Append-only CSV logging for training metrics |
 | `EarlyStopping` | Patience-based early stopping monitor |
-| `get_warmup_linear_schedule()` | Linear warmup + linear decay LR schedule |
+| `get_warmup_linear_schedule()` | Linear warmup + linear decay LR schedule using `transformers` scheduler |
 | `format_duration()` | HH:MM:SS formatting for training time |
 
 ---
@@ -220,7 +242,8 @@ GRADIENT_CLIP_MAX_NORM = 1.0
 | Problem | Fix |
 |---------|-----|
 | `No samples found` | Run `python -m model.data.setup` first |
-| `CUDA out of memory` | Reduce `--batch_size` (try 4 or 2) |
+| `CUDA out of memory` | Reduce `--batch_size` (try 4 or 2), or use the orchestrator which auto-tunes |
 | `ModuleNotFoundError: model.xxx` | Run from project root, not from `model/` |
 | Training too slow | Use GPU, reduce `--num_workers`, or reduce `--max_length_seconds` |
-| val F1 stays at 0.0 | Check labels exist in `data/labels/` — see data README |
+| `val F1 stays at 0.0` | Check that labels use lowercase types (`prolongation` not `Prolongation`) in `data/train/labels/*.csv` |
+| Train loss drops to ~0 instantly, val_acc=1.0 | Labels likely all zeros — check the interval CSV format |
