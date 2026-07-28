@@ -157,8 +157,11 @@ def compute_class_weights(dataset, class_idx: int, num_classes: int = 2) -> Opti
 
 def train_one_epoch(model, dataloader, optimizer, scheduler, criterion, device, scaler=None):
     """Train for one epoch. Returns average loss."""
+    import warnings
     import torch
     from tqdm import tqdm
+
+    warnings.filterwarnings("ignore", "Detected call of.*lr_scheduler.step.*before.*optimizer.step")
 
     model.model.train()
     total_loss = 0.0
@@ -166,7 +169,6 @@ def train_one_epoch(model, dataloader, optimizer, scheduler, criterion, device, 
 
     for audio, labels in tqdm(dataloader, desc="  Train", leave=False):
         audio = audio.to(device)
-        # Extract the specific class label for this binary classifier
         class_idx = model.class_idx
         binary_labels = labels[:, class_idx].float().to(device)
 
@@ -174,7 +176,7 @@ def train_one_epoch(model, dataloader, optimizer, scheduler, criterion, device, 
 
         use_amp = scaler is not None and device.type == "cuda"
         with torch.amp.autocast("cuda", enabled=use_amp):
-            logits = model.forward(audio)  # [batch, 2]
+            logits = model.forward(audio)
             loss = criterion(logits[:, 1], binary_labels)
 
         if use_amp:
