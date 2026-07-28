@@ -58,6 +58,19 @@ def create_training_data(
     df = pd.read_csv(merged_path)
     print(f"Loaded {len(df)} clips from {merged_path}")
 
+    # Filter out clips with missing audio files
+    exists = df["clip_file"].apply(lambda p: Path(p).exists())
+    missing = (~exists).sum()
+    if missing > 0:
+        print(f"  Skipping {missing} clips with missing audio files")
+        df = df[exists].reset_index(drop=True)
+    print(f"  {len(df)} clips with valid audio")
+
+    # Count interval CSVs available
+    labels_dir = merged_path.parent / "labels"
+    total_intervals = sum(1 for _ in labels_dir.glob("*.csv")) if labels_dir.exists() else 0
+    print(f"  Interval CSVs available: {total_intervals}")
+
     # Create splits
     rng = np.random.default_rng(seed)
     indices = rng.permutation(len(df))
@@ -72,6 +85,8 @@ def create_training_data(
 
     # Build splits.json and create directories
     splits = {}
+    all_label_found = 0
+    all_label_missing = 0
     for split_name, idx_list in split_indices.items():
         split_dir = out / split_name
         audio_dir = split_dir / "audio"
@@ -82,6 +97,9 @@ def create_training_data(
         clip_files = df.iloc[idx_list]["clip_file"].tolist()
         splits[split_name] = clip_files
 
+        symlinked = 0
+        label_found = 0
+        label_missing = 0
         for clip_file in clip_files:
             clip_path = Path(clip_file)
             clip_stem = clip_path.stem
@@ -93,22 +111,31 @@ def create_training_data(
                     os.symlink(clip_path, target_audio)
                 except OSError:
                     shutil.copy2(clip_path, target_audio)
+            symlinked += 1
 
             # Copy label CSV
             src_label = labels_dir / f"{clip_stem}.csv"
             dst_label = split_labels_dir / f"{clip_stem}.csv"
             if src_label.exists() and not dst_label.exists():
                 shutil.copy2(src_label, dst_label)
+                label_found += 1
+            elif not src_label.exists():
+                label_missing += 1
 
-        print(f"  {split_name}: {len(clip_files)} clips")
+        all_label_found += label_found
+        all_label_missing += label_missing
+        print(f"  {split_name}: {len(clip_files)} clips, labels: {label_found} found, {label_missing} missing")
 
     # Save splits.json
     splits_path = out / "splits.json"
     with open(splits_path, "w") as f:
         json.dump(splits, f, indent=2)
 
-    print(f"\nTraining data created at: {out}")
-    print(f"Splits saved to: {splits_path}")
+    print(f"\n  === Prepare Report ===")
+    print(f"  Audio symlinks: {sum(len(v) for v in splits.values())}")
+    print(f"  Labels copied: {all_label_found}, missing: {all_label_missing}")
+    print(f"  Training data created at: {out}")
+    print(f"  Splits saved to: {splits_path}")
     return out
 
 

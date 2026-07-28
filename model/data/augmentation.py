@@ -89,49 +89,47 @@ class AudioAugmentor:
 
 
 class AugmentedDataset:
-    """Dataset wrapper that applies augmentation on-the-fly.
+    """Wrapper around a torch Dataset that applies augmentation on-the-fly.
 
     Args:
-        audio_files: List of audio file paths.
-        labels: List of label arrays (for classification) or None (for localization).
-        augmentor: AudioAugmentor instance. None for no augmentation.
-        sample_rate: Target sample rate for loading audio.
-        max_length: Maximum audio length in samples. Truncates or pads.
+        dataset: A torch-compatible Dataset (must have __getitem__ and __len__).
+        augmentor: AudioAugmentor instance for waveform augmentation.
+        augment_spectrogram: If True, also augment spectrograms (for localizer).
+        sample_rate: Sample rate for audio augmentations.
     """
 
     def __init__(
         self,
-        audio_files: list[str],
-        labels: Optional[list] = None,
+        dataset,
         augmentor: Optional[AudioAugmentor] = None,
+        augment_spectrogram: bool = False,
         sample_rate: int = 16000,
-        max_length: int = 48000,
     ):
-        self.audio_files = audio_files
-        self.labels = labels
+        self.dataset = dataset
         self.augmentor = augmentor
+        self.augment_spectrogram = augment_spectrogram
         self.sample_rate = sample_rate
-        self.max_length = max_length
 
     def __len__(self) -> int:
-        return len(self.audio_files)
+        return len(self.dataset)
 
     def __getitem__(self, idx: int) -> tuple:
-        import librosa
+        item = self.dataset[idx]
 
-        audio_path = self.audio_files[idx]
-        audio, _ = librosa.load(audio_path, sr=self.sample_rate)
+        if self.augmentor is None:
+            return item
 
-        # Pad or truncate
-        if len(audio) < self.max_length:
-            audio = np.pad(audio, (0, self.max_length - len(audio)))
+        # Unpack based on what the dataset returns
+        if isinstance(item, tuple):
+            audio = item[0]
+            rest = item[1:]
         else:
-            audio = audio[: self.max_length]
+            return item
 
-        # Apply augmentation
-        if self.augmentor is not None:
+        # Apply waveform augmentation to numpy arrays
+        if isinstance(audio, np.ndarray):
             audio = self.augmentor(audio, self.sample_rate)
 
-        if self.labels is not None:
-            return audio, self.labels[idx]
-        return audio,
+        if len(rest) == 0:
+            return (audio,)
+        return (audio,) + rest

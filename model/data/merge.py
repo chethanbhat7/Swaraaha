@@ -135,32 +135,53 @@ def normalize_sep28k() -> Tuple[Optional[pd.DataFrame], Dict[str, List[Tuple[flo
 
     df = pd.concat(dfs, ignore_index=True)
 
-    df["clip_file"] = df.apply(
-        lambda x: os.path.join(
-            clips_dir,
-            f"{x['Show']}_{int(x['EpId']):03d}_{int(x['ClipId']):01d}.wav",
-        ),
-        axis=1,
-    )
+    # Build a lookup of actual filenames on disk (show -> {(ep, clip) -> filename})
+    existing_files = {}
+    for f in clips_dir.glob("*.wav"):
+        parts = f.stem.split("_")
+        if len(parts) >= 3:
+            show = "_".join(parts[:-2])
+            try:
+                ep = int(parts[-2])
+                clip = int(parts[-1])
+                existing_files.setdefault(show, {})[(ep, clip)] = f.name
+            except ValueError:
+                continue
 
-    # Extract intervals from Start/End columns if available
+    def _find_clip_file(row):
+        show = row["Show"]
+        ep = int(row["EpId"])
+        clip = int(row["ClipId"])
+        show_files = existing_files.get(show, {})
+        filename = show_files.get((ep, clip))
+        if filename:
+            return os.path.join(clips_dir, filename)
+        # Fallback: try constructed name
+        return os.path.join(
+            clips_dir,
+            f"{show}_{ep}_{clip}.wav",
+        )
+
+    df["clip_file"] = df.apply(_find_clip_file, axis=1)
+
+    # Extract intervals from Start/Stop columns if available
     all_intervals = {}
     has_start = "Start" in df.columns
-    has_end = "End" in df.columns
+    has_stop = "Stop" in df.columns
 
-    if has_start and has_end:
+    if has_start and has_stop:
         for clip_file, group in df.groupby("clip_file"):
             clip_intervals = []
             for _, row in group.iterrows():
                 start = pd.to_numeric(row["Start"], errors="coerce")
-                end = pd.to_numeric(row["End"], errors="coerce")
-                if pd.isna(start) or pd.isna(end):
+                stop = pd.to_numeric(row["Stop"], errors="coerce")
+                if pd.isna(start) or pd.isna(stop):
                     continue
                 for label in DYSFLUENCY_LABELS:
                     if label in group.columns:
                         val = pd.to_numeric(row[label], errors="coerce")
                         if not pd.isna(val) and val > 0:
-                            clip_intervals.append((float(start), float(end), label))
+                            clip_intervals.append((float(start), float(stop), label))
             if clip_intervals:
                 all_intervals[clip_file] = clip_intervals
 
@@ -195,9 +216,20 @@ def normalize_uclass() -> Tuple[Optional[pd.DataFrame], Dict[str, List[Tuple[flo
 
     df = pd.read_json(metadata_file)
 
-    df["clip_file"] = df.apply(
-        lambda x: os.path.join(clips_dir, x["clip_id"]), axis=1
-    )
+    # Build a lookup of actual filenames on disk
+    existing_clips = {}
+    for f in clips_dir.glob("*.wav"):
+        existing_clips[f.stem] = f.name
+
+    def _find_uclass_clip(row):
+        clip_id = row["clip_id"]
+        stem = Path(clip_id).stem
+        filename = existing_clips.get(stem)
+        if filename:
+            return os.path.join(clips_dir, filename)
+        return os.path.join(clips_dir, clip_id)
+
+    df["clip_file"] = df.apply(_find_uclass_clip, axis=1)
 
     # Expand nested labels dict into columns
     if "labels" in df.columns:
@@ -275,12 +307,19 @@ def merge_datasets(output_path: str | None = None) -> pd.DataFrame | None:
     combined = combined[["clip_file"] + DYSFLUENCY_LABELS].copy()
 
     # Drop rows with missing clip_file
+    before_drop = len(combined)
     combined = combined.dropna(subset=["clip_file"])
     combined = combined[combined["clip_file"] != ""]
+    dropped = before_drop - len(combined)
 
     out = Path(output_path or COMBINED_DATASET_PATH)
     out.parent.mkdir(parents=True, exist_ok=True)
     combined.to_csv(out, index=False)
+
+    # Validate audio files exist
+    import os as _os
+    valid_mask = combined["clip_file"].apply(lambda p: _os.path.exists(p))
+    missing_count = (~valid_mask).sum()
 
     # Write per-clip interval CSVs
     all_intervals = {}
@@ -292,6 +331,7 @@ def merge_datasets(output_path: str | None = None) -> pd.DataFrame | None:
     labels_dir.mkdir(parents=True, exist_ok=True)
 
     written = 0
+    no_intervals = 0
     for clip_file in combined["clip_file"]:
         clip_stem = Path(clip_file).stem
         label_path = labels_dir / f"{clip_stem}.csv"
@@ -300,18 +340,28 @@ def merge_datasets(output_path: str | None = None) -> pd.DataFrame | None:
             continue
 
         intervals = all_intervals.get(clip_file, [])
+        if not intervals:
+            no_intervals += 1
         with open(label_path, "w") as f:
             f.write("start_sec,end_sec,dysfluency_type\n")
             for start, end, dtype in intervals:
                 f.write(f"{start:.3f},{end:.3f},{dtype}\n")
         written += 1
 
-    print(f"\n  Combined dataset: {len(combined)} examples")
-    print(f"  Label distribution:")
+    # Summary report
+    print(f"\n  === Merge Report ===")
+    print(f"  Total entries: {len(combined)}")
+    if dropped > 0:
+        print(f"  Dropped (missing clip_file): {dropped}")
+    if missing_count > 0:
+        print(f"  Missing audio files: {missing_count} ({100 * missing_count / len(combined):.1f}%)")
+    print(f"  Interval CSVs written: {written}")
+    if no_intervals > 0:
+        print(f"  Clips without interval data: {no_intervals}")
+    print(f"\n  Label distribution:")
     for label in DYSFLUENCY_LABELS:
         count = combined[label].sum()
         print(f"    {label}: {count} ({100 * count / len(combined):.1f}%)")
-    print(f"  Interval CSVs: {written} written to {labels_dir}")
     print(f"  Saved to: {out}")
 
     return combined

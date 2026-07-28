@@ -591,6 +591,8 @@ def normalize_peak(audio: np.ndarray, target_peak: float = 0.95) -> np.ndarray:
     Returns:
         Peak-normalized audio array.
     """
+    if audio.size == 0:
+        return audio
     peak = np.abs(audio).max()
     if peak == 0:
         return audio
