@@ -52,7 +52,7 @@ def load_label_csv(csv_path: str) -> List[Tuple[float, float, str]]:
             parts = line.split(",")
             start_sec = float(parts[0])
             end_sec = float(parts[1])
-            dtype = parts[2].strip() if len(parts) > 2 else "unknown"
+            dtype = parts[2].strip().lower() if len(parts) > 2 else "unknown"
             intervals.append((start_sec, end_sec, dtype))
     return intervals
 

@@ -185,6 +185,27 @@ def normalize_sep28k() -> Tuple[Optional[pd.DataFrame], Dict[str, List[Tuple[flo
             if clip_intervals:
                 all_intervals[clip_file] = clip_intervals
 
+    # Extract intervals from Start/End columns if available
+    all_intervals = {}
+    has_start = "Start" in df.columns
+    has_end = "End" in df.columns
+
+    if has_start and has_end:
+        for clip_file, group in df.groupby("clip_file"):
+            clip_intervals = []
+            for _, row in group.iterrows():
+                start = pd.to_numeric(row["Start"], errors="coerce")
+                end = pd.to_numeric(row["End"], errors="coerce")
+                if pd.isna(start) or pd.isna(end):
+                    continue
+                for label in DYSFLUENCY_LABELS:
+                    if label in group.columns:
+                        val = pd.to_numeric(row[label], errors="coerce")
+                        if not pd.isna(val) and val > 0:
+                            clip_intervals.append((float(start), float(end), label))
+            if clip_intervals:
+                all_intervals[clip_file] = clip_intervals
+
     # Keep only the columns we need
     label_cols = [c for c in DYSFLUENCY_LABELS if c in df.columns]
     keep_cols = ["clip_file"] + label_cols
@@ -331,7 +352,8 @@ def merge_datasets(output_path: str | None = None) -> pd.DataFrame | None:
     labels_dir.mkdir(parents=True, exist_ok=True)
 
     written = 0
-    no_intervals = 0
+    written = 0
+    no_intervals = 0)
     for clip_file in combined["clip_file"]:
         clip_stem = Path(clip_file).stem
         label_path = labels_dir / f"{clip_stem}.csv"
@@ -341,11 +363,11 @@ def merge_datasets(output_path: str | None = None) -> pd.DataFrame | None:
 
         intervals = all_intervals.get(clip_file, [])
         if not intervals:
-            no_intervals += 1
+            no_intervals += 1)
         with open(label_path, "w") as f:
             f.write("start_sec,end_sec,dysfluency_type\n")
             for start, end, dtype in intervals:
-                f.write(f"{start:.3f},{end:.3f},{dtype}\n")
+                f.write(f"{start:.3f},{end:.3f},{dtype.lower()}\n")
         written += 1
 
     # Summary report
@@ -358,10 +380,11 @@ def merge_datasets(output_path: str | None = None) -> pd.DataFrame | None:
     print(f"  Interval CSVs written: {written}")
     if no_intervals > 0:
         print(f"  Clips without interval data: {no_intervals}")
-    print(f"\n  Label distribution:")
+    print(f"\n  Label distribution:"))
     for label in DYSFLUENCY_LABELS:
         count = combined[label].sum()
         print(f"    {label}: {count} ({100 * count / len(combined):.1f}%)")
+    print(f"  Interval CSVs: {written} written to {labels_dir}")
     print(f"  Saved to: {out}")
 
     return combined
