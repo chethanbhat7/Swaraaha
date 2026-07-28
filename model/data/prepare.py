@@ -20,7 +20,7 @@ import pandas as pd
 from model.data.config import (
     COMBINED_DATASET_PATH,
     DYSFLUENCY_LABELS,
-    PROJECT_DIR,
+    PROJECT_ROOT,
 )
 
 
@@ -45,7 +45,7 @@ def create_training_data(
     Returns:
         Path to output directory.
     """
-    out = Path(output_dir) if output_dir else PROJECT_DIR / "data"
+    out = Path(output_dir) if output_dir else Path(PROJECT_ROOT) / "data"
     merged_path = Path(COMBINED_DATASET_PATH)
 
     if not merged_path.exists():

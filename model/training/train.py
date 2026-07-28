@@ -34,7 +34,7 @@ class SystemInfo:
             self.has_gpu = torch.cuda.is_available()
             if self.has_gpu:
                 self.gpu_name = torch.cuda.get_device_name(0)
-                mem = torch.cuda.get_device_properties(0).total_mem
+                mem = torch.cuda.get_device_properties(0).total_memory
                 self.gpu_memory_gb = mem / (1024 ** 3)
         except ImportError:
             pass
