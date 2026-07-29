@@ -24,7 +24,7 @@ import argparse
 import os
 import sys
 import time
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 
@@ -131,28 +131,6 @@ class SubsetDataset:
 
     def __getitem__(self, idx):
         return self.dataset[self.indices[idx]]
-
-
-def compute_class_weights(dataset, class_idx: int, num_classes: int = 2) -> Optional[np.ndarray]:
-    """
-    Compute class weights for BCEWithLogitsLoss to handle imbalance.
-
-    Returns weight tensor of shape (num_classes,) where the minority class
-    gets a higher weight.
-    """
-    counts = np.zeros(num_classes)
-    for i in range(len(dataset)):
-        _, label_vec = dataset[i]
-        label_vec = np.asarray(label_vec)
-        counts[1] += label_vec[class_idx]  # positive
-        counts[0] += 1 - label_vec[class_idx]  # negative
-
-    total = counts.sum()
-    if total == 0 or counts.min() == 0:
-        return None
-
-    weights = total / (num_classes * counts)
-    return weights.astype(np.float32)
 
 
 def train_one_epoch(model, dataloader, optimizer, scheduler, criterion, device):
@@ -298,19 +276,16 @@ def train(args) -> Dict:
         train_dataset = AugmentedDataset(train_dataset, augmentor=AudioAugmentor())
         print(f"  Augmentation: ON")
 
-    # ---- Balanced sampling & class weights ----
+    # ---- Class distribution & pos_weight ----
     all_labels = np.array([dataset[i][1][class_idx] for i in range(len(dataset))])
     train_labels = all_labels[train_idx]
     n_pos = int(train_labels.sum())
     n_neg = len(train_labels) - n_pos
     print(f"  Positive ratio (train): {n_pos/len(train_labels):.3f} ({n_pos}/{len(train_labels)})")
 
-    from torch.utils.data import WeightedRandomSampler
-    pos_weight = n_neg / n_pos if n_pos > 0 else 1.0
-    sample_weights = np.where(train_labels == 1, pos_weight, 1.0)
-    sampler = WeightedRandomSampler(sample_weights, num_samples=len(train_labels), replacement=True)
+    pos_weight = torch.tensor([n_neg / n_pos], device=device) if n_pos > 0 else torch.tensor([1.0], device=device)
     train_loader = DataLoader(
-        train_dataset, batch_size=args.batch_size, sampler=sampler,
+        train_dataset, batch_size=args.batch_size, shuffle=True,
         num_workers=args.num_workers, pin_memory=(device.type == "cuda"),
     )
     val_loader = DataLoader(
@@ -318,7 +293,7 @@ def train(args) -> Dict:
         num_workers=args.num_workers, pin_memory=(device.type == "cuda"),
     )
 
-    criterion = torch.nn.BCEWithLogitsLoss()
+    criterion = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
 
     # ---- Model ----
     from model.classification import DYSFLUENCY_CLASSES as _CLASSES
@@ -346,11 +321,6 @@ def train(args) -> Dict:
 
     total_steps = len(train_loader) * args.epochs
     scheduler = get_warmup_linear_schedule(optimizer, args.warmup_steps, total_steps)
-
-    # ---- Freeze classifier bias at 0 — forces model to use features via W ----
-    with torch.no_grad():
-        model.model.classifier.bias.zero_()
-    model.model.classifier.bias.requires_grad_(False)
 
     # ---- Logging ----
     os.makedirs(args.output_dir, exist_ok=True)

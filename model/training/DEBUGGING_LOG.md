@@ -1,0 +1,232 @@
+# Debugging Log — Wav2Vec2 Training Pipeline
+
+A chronological record of every issue encountered and fix applied while
+bringing the training pipeline from silent-failure / F1=0 to a working state.
+
+---
+
+## 1. Label case-mismatch
+
+**Symptom:** `val_acc=1.000, val_F1=0.000` — labels all zeros despite audio
+having dysfluencies.
+
+**Root cause:** SEP-28K / UCLASS label CSVs had capitalized dysfluency types
+(`Prolongation`, `Block`, `SoundRep`, …) but `CLASS_TO_IDX` in
+`model/data/dataset.py` was keyed with lowercase names. `load_label_csv()`
+read the raw type string, looked it up in `CLASS_TO_IDX`, found no match,
+and produced a zero vector for every sample.
+
+**Files affected:**
+- `model/data/dataset.py` — `load_label_csv()`
+- `model/data/merge.py` — label merging code
+
+**Fix:** Added `.strip().lower()` to the dysfluency-type field in
+`load_label_csv()` and `merge.py`.
+
+**When:** Before the F1=0 training bug investigation.
+
+---
+
+## 2. README Overhauls
+
+**Symptom:** Outdated documentation referencing deleted modules (`Dataset/`)
+and missing documentation for new pipelines (orchestrator, augmentation,
+preprocessing).
+
+**Files affected:**
+- `model/data/README.md`
+- `model/training/README.md`
+
+**Changes:**
+- Dataset README: replaced stale `Dataset/` references, documented
+  `status.py`, `augmentation.py`, `preprocessing.py`, added current
+  `data/` directory layout, documented empty-WAV filtering.
+- Training README: documented the orchestrator (auto-detection, batch-size
+  table, `--dry_run`), `--` forwarding, augmentation mention,
+  troubleshooting section for all-zero labels.
+
+---
+
+## 3. F1=0 During Training
+
+This was the main investigation. The model would converge to predicting the
+same logit for every sample, yielding F1=0 (all predictions negative).
+
+### 3a. AMP NaN Gradients
+
+**Symptom:** Training ran but classifier never updated (`val_loss` flat,
+parameters unchanged).
+
+**Root cause:** `torch.amp.autocast` + `GradScaler` caused the classifier
+head's gradients to overflow to `Inf`/`NaN` in float16 precision.
+`scaler.step()` detected the NaN gradients and silently skipped the
+optimizer update. The backbone received no effective updates.
+
+**Fix:** Removed AMP entirely. Training uses full float32 throughout.
+
+### 3b. num_labels=2 for Binary Classification
+
+**Symptom:** Only half of the classifier head was trained.
+
+**Root cause:** `Wav2Vec2ForSequenceClassification` with `num_labels=2`
+creates a 2-output `nn.Linear(hidden_size, 2)`. The training code used
+`logits[:, 1]` (the second output) and never touched the first. Half the
+head's parameters were randomly initialized and never updated, and the
+backprop signal to the backbone was unnecessarily diluted.
+
+**Fix:** Changed `num_labels=2` → `num_labels=1`. Now the classifier is
+`nn.Linear(hidden_size, 1)` — a single logit per sample. Removed all
+`[:, 1]` indexing; using `logits.squeeze(-1)` instead. Updated `predict()`
+to use `torch.sigmoid` (not `softmax`).
+
+**Files affected:**
+- `model/classification/__init__.py`
+- `model/training/train_classifier.py`
+- `model/evaluation/evaluate.py`
+- `model/classification/hybrid.py`
+
+### 3c. Classifier Bias Initialisation
+
+**Symptom:** The classifier bias starts at a random value (PyTorch default),
+which for imbalanced data can be far from the optimal base-rate logit. The
+early gradient signal is weak because the model has to first shift the bias
+to the correct range.
+
+**Fix:** Initialise `classifier.bias` to `log(pos/neg)` — the logit
+corresponding to the empirical positive rate. For `prolongation`
+(~25.5% positive), this is `log(0.255/0.745) ≈ -1.07`.
+
+**Later reverted in favour of freezing bias at 0** (see 3e).
+
+### 3d. Balanced Sampling (WeightedRandomSampler)
+
+**Symptom:** With imbalanced minibatches (~25% positive, ~75% negative), the
+model can achieve 74.5% validation accuracy by simply predicting all
+negatives. The average gradient at this equilibrium is zero, so the
+classifier weight W never learns to use backbone features.
+
+**Root cause:** BCEWithLogitsLoss with imbalanced batches has a stationary
+point where the optimal constant prediction (σ = positive rate) gives zero
+average gradient. The backbone gradients through W are negligible, so no
+feature learning occurs.
+
+**Fix:** Replace uniform batching with a `WeightedRandomSampler` that
+oversamples the minority class so each batch has ~50% positive, ~50%
+negative samples. This shifts the optimal constant to σ = 0.5 (logit = 0),
+right at the decision threshold.
+
+**Effect:** F1 improved from 0.000 to 0.406 — the model now predicts every
+sample at the threshold (some above, some below due to floating-point noise)
+instead of collapsing to all-negatives. But it still doesn't *learn
+features* — it just saturates at the balanced-batch equilibrium.
+
+### 3e. Freezing Classifier Bias at 0
+
+**Symptom:** Even with balanced sampling, the model settles at σ = 0.5 for
+every sample. The classifier weight W ≈ 0, bias b ≈ 0, and the backbone
+receives zero average gradient. The model is in a different equilibrium but
+still not learning features.
+
+**Root cause:** With a trainable bias, the optimal solution is always "set
+bias to the optimal constant, set W ≈ 0." The loss landscape has a
+degenerate minimum where features contribute nothing. The gradient for W
+through the backbone is zero on average at this point, so no escape.
+
+**Fix:** Pin `classifier.bias = 0` and set `requires_grad_(False)`. With the
+bias frozen, the model *cannot* predict a constant output. The logit is
+purely `W · features`, and the only way to reduce loss is to learn a
+non-zero W. This creates a non-zero gradient path from the backbone through
+W, enabling feature learning.
+
+### 3f. AMP re-enabled without GradScaler
+
+**Symptom:** Epoch time ~1220s with batch_size=16 on RTX 4070 (20 epochs ≈
+7 hours).
+
+**Root cause:** Removing AMP entirely was overly conservative. The NaN
+gradient issue was caused by `GradScaler` — it multiplies the loss by 2¹⁶
+before backward, pushing classifier gradients past float16's max
+representable value (65k). Without the scaler, autocast alone keeps
+gradients in float16 range (typical magnitude 10⁻³–10¹).
+
+**Fix:** Re-added `torch.amp.autocast("cuda")` around the forward pass but
+removed `GradScaler` entirely. The RTX 4070's Tensor Cores run float16
+matmuls at ~2× the throughput of float32. The classifier head stays in
+float32 automatically (autocast policy keeps output layers in fp32).
+
+---
+
+## 4. Training Speed Optimisations
+
+### 4a. TF32 Matmul Precision
+
+**Symptom:** Even without AMP, float32 matmuls on RTX 4070 can use TF32
+tensor cores (compute capability ≥ 8.0), but PyTorch defaults to "highest"
+precision mode which disables this.
+
+**Fix:** Added `torch.set_float32_matmul_precision("high")` at the start of
+`train()`. This enables TF32 tensor cores for float32 matrix multiplies,
+giving ~8× raw TOPS vs FP32 with no measurable accuracy loss for training.
+
+**File:** `model/training/train_classifier.py`
+
+### 4b. Increased DataLoader Workers
+
+**Symptom:** Audio loading was sequential (`num_workers=0`) despite 24 CPU
+cores being available.
+
+**Fix:** Changed default `--num_workers` from 0 to 4 (capped in the
+orchestrator at `min(cpu_count, 4)`). Four workers parallelise the
+`load_audio()` → `clean_audio()` → `pad_to_length()` pipeline.
+
+**Files:** `model/training/train_classifier.py`, `model/training/train.py`
+
+**Combined effect:** Epoch time reduced from ~1220s to an estimated
+700–800s (AMP + TF32 + 4 workers).
+
+---
+
+### 3g. Bias Freeze + Balanced Sampling — Partial Collapse
+
+**Symptom:** With bias frozen at 0 and balanced (50/50) batches, the model
+learns for 1-2 epochs (val_F1=0.55) then collapses back (val_F1≈0.34).
+Training loss goes UP after epoch 2, indicating unlearning.
+
+**Root cause:** With 50/50 balanced batches and no pos_weight, the optimal
+constant prediction is σ=0.5 (logit=0). With bias frozen at 0, the logit is
+purely W·features. The model finds W=0 gives σ=0.5 for all samples, which
+is a stable equilibrium — the gradient is zero on average. Random init
+provides a brief escape (epoch 1-2), but the pull toward W=0 dominates.
+
+**Resolution:** Reverted to standard recipe: imbalanced batches + pos_weight
+in BCEWithLogitsLoss, no bias freeze, no balanced sampler. The AMP NaN and
+num_labels=1 fixes from 3a/3b were likely sufficient — the balanced sampling
++ bias freeze introduced new equilibrium problems.
+
+---
+
+## Current State
+
+The training pipeline on `feat/training-bugfix` includes all fixes above.
+Latest experiment uses the standard recipe:
+
+```bash
+python -m model.training.train --pipelines cls --dry_run
+# then without --dry_run
+```
+
+### Summary of Changes
+
+| # | Fix | File(s) | Why |
+|---|-----|---------|-----|
+| 1 | `.strip().lower()` in label parsing | `dataset.py`, `merge.py` | Capitalisation mismatch |
+| 2 | README updates | `model/data/README.md`, `model/training/README.md` | Stale docs |
+| 3a | Remove AMP | `train_classifier.py` | NaN grads from float16 |
+| 3b | `num_labels=2` → `num_labels=1` | `__init__.py`, `train_classifier.py`, `evaluate.py`, `hybrid.py` | Half the head was unused |
+| 3c | Bias init → `log(pos/neg)` | `train_classifier.py` | Faster convergence |
+| 3d | `WeightedRandomSampler` | `train_classifier.py` | Balanced batches prevent all-negative cheat |
+| 3e | Freeze bias at 0 | `train_classifier.py` | Forces feature learning through W |
+| 3f | Re-add AMP (no GradScaler) | `train_classifier.py` | NaN was from scaler, not autocast |
+| 3g | Revert to imbalanced + pos_weight | `train_classifier.py` | Bias freeze + balanced sampling caused W=0 collapse |
+| 4a | TF32 matmul precision | `train_classifier.py` | ~8× TOPS on matmuls, free speed |
+| 4b | DataLoader `num_workers=4` | `train_classifier.py`, `train.py` | Parallel audio loading |
