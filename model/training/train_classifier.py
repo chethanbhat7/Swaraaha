@@ -59,7 +59,7 @@ def parse_args():
     parser.add_argument("--warmup_steps", type=int, default=500, help="Number of linear warmup steps.")
     parser.add_argument("--weight_decay", type=float, default=0.01, help="Weight decay for AdamW.")
     parser.add_argument("--patience", type=int, default=5, help="Early stopping patience (epochs without val F1 improvement).")
-    parser.add_argument("--num_workers", type=int, default=0, help="DataLoader workers.")
+    parser.add_argument("--num_workers", type=int, default=4, help="DataLoader workers.")
     parser.add_argument("--model_name", type=str, default="facebook/wav2vec2-base", help="HuggingFace model name.")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility.")
     return parser.parse_args()
@@ -155,7 +155,7 @@ def compute_class_weights(dataset, class_idx: int, num_classes: int = 2) -> Opti
     return weights.astype(np.float32)
 
 
-def train_one_epoch(model, dataloader, optimizer, scheduler, criterion, device, scaler=None):
+def train_one_epoch(model, dataloader, optimizer, scheduler, criterion, device):
     """Train for one epoch. Returns average loss."""
     import warnings
     import torch
@@ -163,6 +163,7 @@ def train_one_epoch(model, dataloader, optimizer, scheduler, criterion, device, 
 
     warnings.filterwarnings("ignore", "Detected call of.*lr_scheduler.step.*before.*optimizer.step")
 
+    use_amp = device.type == "cuda"
     model.model.train()
     total_loss = 0.0
     num_batches = 0
@@ -174,21 +175,13 @@ def train_one_epoch(model, dataloader, optimizer, scheduler, criterion, device, 
 
         optimizer.zero_grad()
 
-        use_amp = scaler is not None and device.type == "cuda"
         with torch.amp.autocast("cuda", enabled=use_amp):
             logits = model.forward(audio)
-            loss = criterion(logits[:, 1], binary_labels)
+            loss = criterion(logits.squeeze(-1), binary_labels)
 
-        if use_amp:
-            scaler.scale(loss).backward()
-            scaler.unscale_(optimizer)
-            torch.nn.utils.clip_grad_norm_(model.model.parameters(), max_norm=1.0)
-            scaler.step(optimizer)
-            scaler.update()
-        else:
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.model.parameters(), max_norm=1.0)
-            optimizer.step()
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.model.parameters(), max_norm=1.0)
+        optimizer.step()
 
         if scheduler is not None:
             scheduler.step()
@@ -223,9 +216,9 @@ def evaluate_classifier(model, dataloader, device) -> Tuple[float, float, float,
             binary_labels = labels[:, class_idx].float().to(device)
 
             logits = model.forward(audio)
-            loss = criterion(logits[:, 1], binary_labels)
+            loss = criterion(logits.squeeze(-1), binary_labels)
 
-            preds = (torch.sigmoid(logits[:, 1]) >= 0.5).cpu().numpy()
+            preds = (torch.sigmoid(logits.squeeze(-1)) >= 0.5).cpu().numpy()
             true = binary_labels.cpu().numpy()
 
             all_preds.extend(preds.tolist())
@@ -266,6 +259,8 @@ def train(args) -> Dict:
 
     set_seed(args.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if device.type == "cuda":
+        torch.set_float32_matmul_precision("high")
     class_idx = get_class_index(args.class_name)
     class_names = DYSFLUENCY_CLASSES
 
@@ -303,8 +298,19 @@ def train(args) -> Dict:
         train_dataset = AugmentedDataset(train_dataset, augmentor=AudioAugmentor())
         print(f"  Augmentation: ON")
 
+    # ---- Balanced sampling & class weights ----
+    all_labels = np.array([dataset[i][1][class_idx] for i in range(len(dataset))])
+    train_labels = all_labels[train_idx]
+    n_pos = int(train_labels.sum())
+    n_neg = len(train_labels) - n_pos
+    print(f"  Positive ratio (train): {n_pos/len(train_labels):.3f} ({n_pos}/{len(train_labels)})")
+
+    from torch.utils.data import WeightedRandomSampler
+    pos_weight = n_neg / n_pos if n_pos > 0 else 1.0
+    sample_weights = np.where(train_labels == 1, pos_weight, 1.0)
+    sampler = WeightedRandomSampler(sample_weights, num_samples=len(train_labels), replacement=True)
     train_loader = DataLoader(
-        train_dataset, batch_size=args.batch_size, shuffle=True,
+        train_dataset, batch_size=args.batch_size, sampler=sampler,
         num_workers=args.num_workers, pin_memory=(device.type == "cuda"),
     )
     val_loader = DataLoader(
@@ -312,20 +318,7 @@ def train(args) -> Dict:
         num_workers=args.num_workers, pin_memory=(device.type == "cuda"),
     )
 
-    # ---- Class weights ----
-    # Extract all labels to compute pos_weight
-    all_labels = np.array([dataset[i][1][class_idx] for i in range(len(dataset))])
-    pos_weight_val = compute_pos_weight(all_labels)
-
-    class_weights = compute_class_weights(train_dataset, class_idx)
-    if class_weights is not None:
-        weight_tensor = torch.tensor(class_weights, dtype=torch.float32).to(device)
-        criterion = torch.nn.BCEWithLogitsLoss(pos_weight=weight_tensor[1:2])
-        print(f"  Class weights: neg={class_weights[0]:.3f}, pos={class_weights[1]:.3f}")
-        print(f"  pos_weight (preprocessing): {pos_weight_val:.3f}")
-    else:
-        criterion = torch.nn.BCEWithLogitsLoss()
-        print("  Class weights: none (balanced or single class)")
+    criterion = torch.nn.BCEWithLogitsLoss()
 
     # ---- Model ----
     from model.classification import DYSFLUENCY_CLASSES as _CLASSES
@@ -354,8 +347,10 @@ def train(args) -> Dict:
     total_steps = len(train_loader) * args.epochs
     scheduler = get_warmup_linear_schedule(optimizer, args.warmup_steps, total_steps)
 
-    # ---- Mixed precision ----
-    scaler = torch.amp.GradScaler("cuda") if device.type == "cuda" else None
+    # ---- Freeze classifier bias at 0 — forces model to use features via W ----
+    with torch.no_grad():
+        model.model.classifier.bias.zero_()
+    model.model.classifier.bias.requires_grad_(False)
 
     # ---- Logging ----
     os.makedirs(args.output_dir, exist_ok=True)
@@ -375,7 +370,7 @@ def train(args) -> Dict:
         epoch_start = time.time()
 
         # Train
-        train_loss = train_one_epoch(model, train_loader, optimizer, scheduler, criterion, device, scaler)
+        train_loss = train_one_epoch(model, train_loader, optimizer, scheduler, criterion, device)
         current_lr = optimizer.param_groups[0]["lr"]
 
         # Validate
