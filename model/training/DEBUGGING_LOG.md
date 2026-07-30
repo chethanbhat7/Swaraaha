@@ -242,6 +242,25 @@ recipe used by Wav2Vec2 papers achieving F1=0.75+ on SEP-28K.
 
 ---
 
+### 3i. Gradient Clipping Destroying Learning
+
+**Symptom:** With CrossEntropyLoss + class weights, first epoch loss stays
+at 0.693 (random baseline). Model never learns. With or without weights,
+results are the same — constant prediction, F1=0.
+
+**Root cause:** `clip_grad_norm_(parameters, max_norm=1.0)` was applied to
+ALL model parameters (94.6M total). The randomly initialized classifier
+head (1538 params) has large gradients (~100 norm) at the start of training.
+The backbone (94.6M params) has tiny gradients (~0.1 norm). After clipping
+the total gradient norm to 1.0, the classifier head's gradients are reduced
+100×, and the backbone gradients become vanishingly small. Neither learns.
+
+**Fix:** Removed `clip_grad_norm_` entirely. AdamW's built-in regularization
+(weight_decay) is sufficient for stability. The classifier head can now
+update at full magnitude, carrying a usable gradient signal to the backbone.
+
+---
+
 ## Current State
 
 The training pipeline on `feat/training-bugfix` includes all fixes above.
@@ -265,5 +284,6 @@ python -m model.training.train --pipelines cls --dry_run
 | 3f | Re-add AMP (no GradScaler) | `train_classifier.py` | NaN was from scaler, not autocast |
 | 3g | Revert to imbalanced + pos_weight | `train_classifier.py` | Bias freeze + balanced sampling caused W=0 collapse |
 | 3h | BCE → CrossEntropyLoss + num_labels=2 | `__init__.py`, `train_classifier.py`, `evaluate.py`, `hybrid.py` | BCE has degenerate zero-gradient equilibrium |
+| 3i | Remove gradient clipping | `train_classifier.py` | `max_norm=1.0` killed learning by scaling head grads 100× |
 | 4a | TF32 matmul precision | `train_classifier.py` | ~8× TOPS on matmuls, free speed |
 | 4b | DataLoader `num_workers=4` | `train_classifier.py`, `train.py` | Parallel audio loading |

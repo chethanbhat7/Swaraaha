@@ -158,7 +158,6 @@ def train_one_epoch(model, dataloader, optimizer, scheduler, criterion, device):
             loss = criterion(logits, binary_labels)
 
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.model.parameters(), max_norm=1.0)
         optimizer.step()
 
         if scheduler is not None:
