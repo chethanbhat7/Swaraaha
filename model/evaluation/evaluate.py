@@ -130,10 +130,10 @@ def evaluate_classifier(args) -> Dict:
             binary_labels = labels[:, class_idx]
 
             logits = model.forward(audio)
-            probs = torch.sigmoid(logits[:, 1]).cpu().numpy()
-            preds = (probs >= args.threshold).astype(int)
+            probs = torch.softmax(logits, dim=-1).cpu().numpy()
+            preds = (probs[:, 1] >= args.threshold).astype(int)
 
-            all_scores.extend(probs.tolist())
+            all_scores.extend(probs[:, 1].tolist())
             all_preds.extend(preds.tolist())
             all_labels.extend(binary_labels.numpy().tolist())
 

@@ -121,7 +121,7 @@ class HybridClassifier:
         logits_list = []
         for clf in self.base_classifiers:
             logits = clf.forward(input_values, attention_mask)  # [batch, 2]
-            logits_list.append(logits[:, 1])  # take "present" logit
+            logits_list.append(logits[:, 1])  # "present" logit -> [batch]
 
         combined = torch.stack(logits_list, dim=-1)  # [batch, 5]
         return self.combiner(combined)

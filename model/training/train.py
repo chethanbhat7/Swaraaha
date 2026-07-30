@@ -64,8 +64,8 @@ class SystemInfo:
         return 4
 
     def optimal_num_workers(self) -> int:
-        """Suggest optimal DataLoader workers."""
-        return self.cpu_count
+        """Suggest optimal DataLoader workers (capped at 4 to avoid overhead)."""
+        return min(self.cpu_count, 4)
 
     def __str__(self) -> str:
         lines = [
