@@ -402,7 +402,7 @@ def train(args) -> Dict:
     model = ClassifierCls(model_name=args.model_name)
     model.model.to(device)
     if device.type == "cuda":
-        model.model = torch.compile(model.model)
+        model._model = torch.compile(model._model)
     total_params = sum(p.numel() for p in model.model.parameters())
     print(f"  Total parameters: {total_params:,}")
 
