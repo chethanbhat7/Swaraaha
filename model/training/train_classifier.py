@@ -28,6 +28,13 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 
+# Args that must match for checkpoint resume
+RESUME_KEYS = [
+    "class_name", "data_dir", "model_name", "lr", "batch_size",
+    "max_length_seconds", "warmup_steps", "weight_decay",
+    "freeze_backbone_epochs", "loss_type", "focal_gamma", "seed",
+]
+
 
 def compute_pos_weight(labels: np.ndarray) -> float:
     """Compute pos_weight for BCEWithLogitsLoss from binary labels."""
@@ -65,6 +72,7 @@ def parse_args():
     parser.add_argument("--freeze_backbone_epochs", type=int, default=2, help="Freeze backbone for first N epochs (train head only).")
     parser.add_argument("--loss_type", type=str, default="focal", choices=["focal", "cross_entropy"], help="Loss function.")
     parser.add_argument("--focal_gamma", type=float, default=2.0, help="Focal loss gamma (only used if --loss_type=focal).")
+    parser.add_argument("--clean", action="store_true", help="Ignore checkpoint and start training from scratch.")
     return parser.parse_args()
 
 
@@ -224,6 +232,52 @@ def evaluate_classifier(model, dataloader, device) -> Tuple[float, float, float,
     return accuracy, f1, avg_loss, all_labels, all_preds
 
 
+def _resume_checkpoint_path(args) -> str:
+    return os.path.join(args.output_dir, f"{args.class_name}_checkpoint.pt")
+
+
+def _save_resume_state(model, optimizer, scheduler, epoch, best_f1, history, args, backbone_frozen):
+    import torch
+    path = _resume_checkpoint_path(args)
+    ckpt = {
+        "epoch": epoch,
+        "model_state_dict": model.model.state_dict(),
+        "optimizer_state_dict": optimizer.state_dict(),
+        "scheduler_state_dict": scheduler.state_dict() if scheduler else None,
+        "best_f1": best_f1,
+        "history": history,
+        "args": {k: getattr(args, k) for k in RESUME_KEYS},
+        "backbone_frozen": backbone_frozen,
+    }
+    torch.save(ckpt, path)
+
+
+def _try_load_resume(args, device):
+    path = _resume_checkpoint_path(args)
+    if args.clean or not os.path.isfile(path):
+        return None
+
+    import torch
+    ckpt = torch.load(path, map_location=device, weights_only=False)
+    saved_args = ckpt.get("args", {})
+    current_args = {k: getattr(args, k) for k in RESUME_KEYS}
+
+    mismatch = []
+    for k in RESUME_KEYS:
+        sv = saved_args.get(k)
+        cv = current_args[k]
+        if sv != cv:
+            mismatch.append(f"    {k}: saved={sv}, current={cv}")
+
+    if mismatch:
+        print("  Checkpoint args mismatch — starting fresh:")
+        for m in mismatch:
+            print(m)
+        return None
+
+    return ckpt
+
+
 def train(args) -> Dict:
     """Main training function. Returns training history."""
     import torch
@@ -337,12 +391,36 @@ def train(args) -> Dict:
     if backbone_frozen:
         for p in backbone_params:
             p.requires_grad = False
-        trainable_params = head_params
         print(f"  Backbone frozen for first {args.freeze_backbone_epochs} epochs")
         print(f"  Head parameters: {sum(p.numel() for p in head_params):,}")
+
+    # ---- Checkpoint resume ----
+    resume_ckpt = _try_load_resume(args, device)
+
+    if resume_ckpt is not None:
+        model.model.load_state_dict(resume_ckpt["model_state_dict"])
+        start_epoch = resume_ckpt["epoch"] + 1
+        best_f1 = resume_ckpt["best_f1"]
+        history = resume_ckpt["history"]
+        resumed_backbone_frozen = resume_ckpt["backbone_frozen"]
+        print(f"  Resuming from epoch {resume_ckpt['epoch']} (best F1: {best_f1:.4f})")
     else:
-        trainable_params = model.model.parameters()
-        print(f"  Backbone: trainable from start")
+        start_epoch = 1
+        best_f1 = 0.0
+        history = {"train_loss": [], "val_loss": [], "val_f1": [], "val_acc": []}
+        resumed_backbone_frozen = backbone_frozen
+
+    # Ensure freeze state matches where we're resuming
+    if backbone_frozen != resumed_backbone_frozen:
+        if resumed_backbone_frozen:
+            for p in backbone_params:
+                p.requires_grad = False
+        else:
+            for p in backbone_params:
+                p.requires_grad = True
+        backbone_frozen = resumed_backbone_frozen
+
+    trainable_params = head_params if backbone_frozen else model.model.parameters()
 
     # ---- Optimizer ----
     optimizer = torch.optim.AdamW(
@@ -350,23 +428,35 @@ def train(args) -> Dict:
     )
 
     total_steps = len(train_loader) * args.epochs
-    scheduler = get_warmup_linear_schedule(optimizer, args.warmup_steps, total_steps)
+    if backbone_frozen:
+        scheduler = get_warmup_linear_schedule(optimizer, args.warmup_steps, total_steps)
+    else:
+        remaining = len(train_loader) * (args.epochs - start_epoch + 1)
+        scheduler = get_warmup_linear_schedule(optimizer, 0, remaining)
+
+    if resume_ckpt is not None:
+        optimizer.load_state_dict(resume_ckpt["optimizer_state_dict"])
+        if resume_ckpt["scheduler_state_dict"] is not None:
+            scheduler.load_state_dict(resume_ckpt["scheduler_state_dict"])
 
     # ---- Logging ----
     os.makedirs(args.output_dir, exist_ok=True)
     log_path = os.path.join(args.output_dir, f"{args.class_name}_training_log.csv")
-    logger = CSVLogger(log_path, ["epoch", "train_loss", "val_loss", "val_acc", "val_f1", "lr"])
+    log_mode = "a" if resume_ckpt is not None else "w"
+    logger = CSVLogger(log_path, ["epoch", "train_loss", "val_loss", "val_acc", "val_f1", "lr"], mode=log_mode)
 
     early_stopping = EarlyStopping(patience=args.patience, mode="max")
 
-    # ---- Training ----
-    best_f1 = 0.0
-    history = {"train_loss": [], "val_loss": [], "val_f1": [], "val_acc": []}
+    if start_epoch > args.epochs:
+        print(f"\n  Training already complete (epoch {start_epoch - 1}/{args.epochs})")
+        final_path = os.path.join(args.output_dir, f"{args.class_name}_final.pt")
+        save_checkpoint(model, optimizer, args.epochs, {"val_f1": best_f1}, final_path, scheduler)
+        return history
 
-    print(f"\n  Starting training for {args.epochs} epochs...\n")
+    print(f"\n  {'Resuming' if resume_ckpt else 'Starting'} training ({start_epoch}/{args.epochs})...\n")
     start_time = time.time()
 
-    for epoch in range(1, args.epochs + 1):
+    for epoch in range(start_epoch, args.epochs + 1):
         epoch_start = time.time()
 
         # Unfreeze backbone at the right epoch
@@ -407,6 +497,9 @@ def train(args) -> Dict:
             f"val_acc={val_acc:.3f} | val_F1={val_f1:.3f} | "
             f"lr={current_lr:.2e} | {epoch_time:.1f}s"
         )
+
+        # Save resume checkpoint
+        _save_resume_state(model, optimizer, scheduler, epoch, best_f1, history, args, backbone_frozen)
 
         # Checkpoint best
         if val_f1 > best_f1:
