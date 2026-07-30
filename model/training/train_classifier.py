@@ -24,7 +24,7 @@ import argparse
 import os
 import sys
 import time
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -33,6 +33,7 @@ RESUME_KEYS = [
     "class_name", "data_dir", "model_name", "lr", "batch_size",
     "max_length_seconds", "warmup_steps", "weight_decay",
     "freeze_backbone_epochs", "loss_type", "focal_gamma", "seed",
+    "gradient_accumulation_steps",
 ]
 
 
@@ -66,12 +67,14 @@ def parse_args():
     parser.add_argument("--warmup_steps", type=int, default=500, help="Number of linear warmup steps.")
     parser.add_argument("--weight_decay", type=float, default=0.01, help="Weight decay for AdamW.")
     parser.add_argument("--patience", type=int, default=5, help="Early stopping patience (epochs without val F1 improvement).")
-    parser.add_argument("--num_workers", type=int, default=4, help="DataLoader workers.")
+    parser.add_argument("--num_workers", type=int, default=0, help="DataLoader workers (0 = auto-detect).")
     parser.add_argument("--model_name", type=str, default="facebook/wav2vec2-base", help="HuggingFace model name.")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility.")
-    parser.add_argument("--freeze_backbone_epochs", type=int, default=2, help="Freeze backbone for first N epochs (train head only).")
+    parser.add_argument("--freeze_backbone_epochs", type=int, default=1, help="Freeze backbone for first N epochs (train head only).")
     parser.add_argument("--loss_type", type=str, default="focal", choices=["focal", "cross_entropy"], help="Loss function.")
     parser.add_argument("--focal_gamma", type=float, default=2.0, help="Focal loss gamma (only used if --loss_type=focal).")
+    parser.add_argument("--gradient_accumulation_steps", type=int, default=1, help="Accumulate gradients over N steps before optimizer update.")
+    parser.add_argument("--cache_dir", type=str, default=None, help="Cache directory for preprocessed audio (auto-derived from data_dir if omitted).")
     parser.add_argument("--clean", action="store_true", help="Ignore checkpoint and start training from scratch.")
     return parser.parse_args()
 
@@ -144,7 +147,7 @@ class SubsetDataset:
         return self.dataset[self.indices[idx]]
 
 
-def train_one_epoch(model, dataloader, optimizer, scheduler, criterion, device):
+def train_one_epoch(model, dataloader, optimizer, scheduler, criterion, device, accumulation_steps=1):
     """Train for one epoch. Returns average loss."""
     import warnings
     import torch
@@ -156,26 +159,34 @@ def train_one_epoch(model, dataloader, optimizer, scheduler, criterion, device):
     model.model.train()
     total_loss = 0.0
     num_batches = 0
+    optimizer.zero_grad()
 
-    for audio, labels in tqdm(dataloader, desc="  Train", leave=False):
+    for i, (audio, labels) in enumerate(tqdm(dataloader, desc="  Train", leave=False)):
         audio = audio.to(device)
         class_idx = model.class_idx
         binary_labels = labels[:, class_idx].long().to(device)
 
-        optimizer.zero_grad()
-
         with torch.amp.autocast("cuda", enabled=use_amp):
             logits = model.forward(audio)
             loss = criterion(logits, binary_labels)
+            loss = loss / accumulation_steps
 
         loss.backward()
-        optimizer.step()
 
+        if (i + 1) % accumulation_steps == 0:
+            optimizer.step()
+            optimizer.zero_grad()
+            if scheduler is not None:
+                scheduler.step()
+
+        total_loss += loss.item() * accumulation_steps
+        num_batches += 1
+
+    if num_batches % accumulation_steps != 0:
+        optimizer.step()
+        optimizer.zero_grad()
         if scheduler is not None:
             scheduler.step()
-
-        total_loss += loss.item()
-        num_batches += 1
 
     return total_loss / max(num_batches, 1)
 
@@ -297,6 +308,10 @@ def train(args) -> Dict:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if device.type == "cuda":
         torch.set_float32_matmul_precision("high")
+
+    if args.num_workers == 0:
+        args.num_workers = os.cpu_count() or 4
+
     class_idx = get_class_index(args.class_name)
     class_names = DYSFLUENCY_CLASSES
 
@@ -307,15 +322,26 @@ def train(args) -> Dict:
     print(f"  Model: {args.model_name}")
     print(f"  Data: {args.data_dir}")
     print(f"  Epochs: {args.epochs}, Batch: {args.batch_size}, LR: {args.lr}")
+    if args.gradient_accumulation_steps > 1:
+        print(f"  Gradient accumulation: {args.gradient_accumulation_steps} steps")
 
     # ---- Dataset ----
     print("\n  Loading dataset...")
+    cache_dir = args.cache_dir
+    if cache_dir is None:
+        cache_dir = os.path.join(
+            os.path.dirname(args.data_dir.rstrip("/")),
+            "cache",
+            os.path.basename(args.data_dir.rstrip("/")),
+        )
     dataset = ClassificationDataset(
         data_dir=args.data_dir,
         sr=16000,
         max_length_seconds=args.max_length_seconds,
+        cache_dir=cache_dir,
     )
     print(f"  Total samples: {len(dataset)}")
+    print(f"  Cache: {cache_dir}")
 
     if len(dataset) == 0:
         print("  ERROR: No samples found. Check data_dir structure.")
@@ -375,6 +401,8 @@ def train(args) -> Dict:
     print(f"  Loading pretrained model: {args.model_name}...")
     model = ClassifierCls(model_name=args.model_name)
     model.model.to(device)
+    if device.type == "cuda":
+        model.model = torch.compile(model.model)
     total_params = sum(p.numel() for p in model.model.parameters())
     print(f"  Total parameters: {total_params:,}")
 
@@ -423,16 +451,23 @@ def train(args) -> Dict:
     trainable_params = head_params if backbone_frozen else model.model.parameters()
 
     # ---- Optimizer ----
-    optimizer = torch.optim.AdamW(
-        trainable_params, lr=args.lr, weight_decay=args.weight_decay,
-    )
-
-    total_steps = len(train_loader) * args.epochs
-    if backbone_frozen:
-        scheduler = get_warmup_linear_schedule(optimizer, args.warmup_steps, total_steps)
+    if resume_ckpt is not None and not backbone_frozen:
+        optimizer = torch.optim.AdamW([
+            {"params": head_params, "lr": args.lr, "weight_decay": args.weight_decay},
+            {"params": backbone_params, "lr": args.lr * 0.1, "weight_decay": args.weight_decay},
+        ])
     else:
-        remaining = len(train_loader) * (args.epochs - start_epoch + 1)
-        scheduler = get_warmup_linear_schedule(optimizer, 0, remaining)
+        optimizer = torch.optim.AdamW(
+            trainable_params, lr=args.lr, weight_decay=args.weight_decay,
+        )
+
+    optim_steps_per_epoch = (len(train_loader) + args.gradient_accumulation_steps - 1) // args.gradient_accumulation_steps
+    total_optim_steps = optim_steps_per_epoch * args.epochs
+    if backbone_frozen:
+        scheduler = get_warmup_linear_schedule(optimizer, args.warmup_steps, total_optim_steps)
+    else:
+        remaining_optim_steps = optim_steps_per_epoch * (args.epochs - start_epoch + 1)
+        scheduler = get_warmup_linear_schedule(optimizer, 0, remaining_optim_steps)
 
     if resume_ckpt is not None:
         optimizer.load_state_dict(resume_ckpt["optimizer_state_dict"])
@@ -459,20 +494,20 @@ def train(args) -> Dict:
     for epoch in range(start_epoch, args.epochs + 1):
         epoch_start = time.time()
 
-        # Unfreeze backbone at the right epoch
+        # Unfreeze backbone at the right epoch (preserving optimizer momentum)
         if backbone_frozen and epoch == args.freeze_backbone_epochs + 1:
             for p in backbone_params:
                 p.requires_grad = True
-            optimizer = torch.optim.AdamW(
-                model.model.parameters(), lr=args.lr, weight_decay=args.weight_decay,
-            )
-            remaining_steps = len(train_loader) * (args.epochs - epoch + 1)
-            scheduler = get_warmup_linear_schedule(optimizer, 0, remaining_steps)
+            optimizer.add_param_group({
+                "params": backbone_params,
+                "lr": args.lr * 0.1,
+                "weight_decay": args.weight_decay,
+            })
             backbone_frozen = False
-            print(f"  >>> Backbone UNFROZEN at epoch {epoch}")
+            print(f"  >>> Backbone UNFROZEN at epoch {epoch} (head LR={args.lr:.2e}, backbone LR={args.lr*0.1:.2e})")
 
         # Train
-        train_loss = train_one_epoch(model, train_loader, optimizer, scheduler, criterion, device)
+        train_loss = train_one_epoch(model, train_loader, optimizer, scheduler, criterion, device, args.gradient_accumulation_steps)
         current_lr = optimizer.param_groups[0]["lr"]
 
         # Validate
