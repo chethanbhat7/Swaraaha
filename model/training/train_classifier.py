@@ -170,9 +170,12 @@ def train_one_epoch(model, dataloader, optimizer, scheduler, criterion, device):
     return total_loss / max(num_batches, 1)
 
 
-def evaluate_classifier(model, dataloader, device) -> Tuple[float, float, float, np.ndarray, np.ndarray]:
+def evaluate_classifier(model, dataloader, device, weight=None) -> Tuple[float, float, float, np.ndarray, np.ndarray]:
     """
     Evaluate classifier on a dataset.
+
+    Args:
+        weight: Optional class weight tensor for CrossEntropyLoss.
 
     Returns:
         accuracy, macro_f1, loss, all_true_labels, all_pred_labels
@@ -185,7 +188,7 @@ def evaluate_classifier(model, dataloader, device) -> Tuple[float, float, float,
     total_loss = 0.0
     num_batches = 0
 
-    criterion = torch.nn.CrossEntropyLoss()
+    criterion = torch.nn.CrossEntropyLoss(weight=weight)
 
     with torch.no_grad():
         for audio, labels in tqdm(dataloader, desc="  Val", leave=False):
@@ -283,6 +286,7 @@ def train(args) -> Dict:
     n_pos = int(train_labels.sum())
     n_neg = len(train_labels) - n_pos
     print(f"  Positive ratio (train): {n_pos/len(train_labels):.3f} ({n_pos}/{len(train_labels)})")
+    pos_ratio = n_pos / max(len(train_labels), 1)
 
     train_loader = DataLoader(
         train_dataset, batch_size=args.batch_size, shuffle=True,
@@ -293,7 +297,8 @@ def train(args) -> Dict:
         num_workers=args.num_workers, pin_memory=(device.type == "cuda"),
     )
 
-    criterion = torch.nn.CrossEntropyLoss()
+    weight = torch.tensor([1.0, (1 - pos_ratio) / max(pos_ratio, 1e-7)], dtype=torch.float32, device=device)
+    criterion = torch.nn.CrossEntropyLoss(weight=weight)
 
     # ---- Model ----
     from model.classification import DYSFLUENCY_CLASSES as _CLASSES
@@ -344,7 +349,7 @@ def train(args) -> Dict:
         current_lr = optimizer.param_groups[0]["lr"]
 
         # Validate
-        val_acc, val_f1, val_loss, _, _ = evaluate_classifier(model, val_loader, device)
+        val_acc, val_f1, val_loss, _, _ = evaluate_classifier(model, val_loader, device, weight=weight)
 
         epoch_time = time.time() - epoch_start
 
