@@ -8,6 +8,7 @@ import torch
 
 from model.classification import DYSFLUENCY_CLASSES
 from model.classification.hybrid import HybridClassifier
+from backend.services.audio_utils import convert_to_wav
 
 _model: Optional[HybridClassifier] = None
 
@@ -22,6 +23,7 @@ def get_model() -> HybridClassifier:
 def classify_audio_bytes(audio_bytes: bytes) -> dict:
     import soundfile as sf
 
+    audio_bytes = convert_to_wav(audio_bytes)
     audio_data, sr = sf.read(io.BytesIO(audio_bytes))
     if sr != 16000:
         import librosa

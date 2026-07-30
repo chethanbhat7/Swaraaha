@@ -8,6 +8,7 @@ import torch
 
 from model.data.preprocessing import generate_mel_spectrogram, load_audio
 from model.localization.cnn_spectrogram import CNNSpectrogramLocalizer
+from backend.services.audio_utils import convert_to_wav
 
 _model: Optional[CNNSpectrogramLocalizer] = None
 
@@ -22,6 +23,7 @@ def get_model() -> CNNSpectrogramLocalizer:
 def localize_audio_bytes(audio_bytes: bytes) -> dict:
     import soundfile as sf
 
+    audio_bytes = convert_to_wav(audio_bytes)
     audio_data, sr = sf.read(io.BytesIO(audio_bytes))
     if sr != 16000:
         import librosa
