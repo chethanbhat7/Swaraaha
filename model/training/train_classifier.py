@@ -149,13 +149,13 @@ def train_one_epoch(model, dataloader, optimizer, scheduler, criterion, device):
     for audio, labels in tqdm(dataloader, desc="  Train", leave=False):
         audio = audio.to(device)
         class_idx = model.class_idx
-        binary_labels = labels[:, class_idx].float().to(device)
+        binary_labels = labels[:, class_idx].long().to(device)
 
         optimizer.zero_grad()
 
         with torch.amp.autocast("cuda", enabled=use_amp):
             logits = model.forward(audio)
-            loss = criterion(logits.squeeze(-1), binary_labels)
+            loss = criterion(logits, binary_labels)
 
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.model.parameters(), max_norm=1.0)
@@ -185,18 +185,19 @@ def evaluate_classifier(model, dataloader, device) -> Tuple[float, float, float,
     total_loss = 0.0
     num_batches = 0
 
-    criterion = torch.nn.BCEWithLogitsLoss()
+    criterion = torch.nn.CrossEntropyLoss()
 
     with torch.no_grad():
         for audio, labels in tqdm(dataloader, desc="  Val", leave=False):
             audio = audio.to(device)
             class_idx = model.class_idx
-            binary_labels = labels[:, class_idx].float().to(device)
+            binary_labels = labels[:, class_idx].long().to(device)
 
             logits = model.forward(audio)
-            loss = criterion(logits.squeeze(-1), binary_labels)
+            loss = criterion(logits, binary_labels)
 
-            preds = (torch.sigmoid(logits.squeeze(-1)) >= 0.5).cpu().numpy()
+            probs = torch.softmax(logits, dim=-1)
+            preds = (probs[:, 1] >= 0.5).cpu().numpy()
             true = binary_labels.cpu().numpy()
 
             all_preds.extend(preds.tolist())
@@ -283,7 +284,6 @@ def train(args) -> Dict:
     n_neg = len(train_labels) - n_pos
     print(f"  Positive ratio (train): {n_pos/len(train_labels):.3f} ({n_pos}/{len(train_labels)})")
 
-    pos_weight = torch.tensor([n_neg / n_pos], device=device) if n_pos > 0 else torch.tensor([1.0], device=device)
     train_loader = DataLoader(
         train_dataset, batch_size=args.batch_size, shuffle=True,
         num_workers=args.num_workers, pin_memory=(device.type == "cuda"),
@@ -293,7 +293,7 @@ def train(args) -> Dict:
         num_workers=args.num_workers, pin_memory=(device.type == "cuda"),
     )
 
-    criterion = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+    criterion = torch.nn.CrossEntropyLoss()
 
     # ---- Model ----
     from model.classification import DYSFLUENCY_CLASSES as _CLASSES

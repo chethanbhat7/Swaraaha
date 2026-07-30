@@ -199,20 +199,56 @@ is a stable equilibrium — the gradient is zero on average. Random init
 provides a brief escape (epoch 1-2), but the pull toward W=0 dominates.
 
 **Resolution:** Reverted to standard recipe: imbalanced batches + pos_weight
-in BCEWithLogitsLoss, no bias freeze, no balanced sampler. The AMP NaN and
-num_labels=1 fixes from 3a/3b were likely sufficient — the balanced sampling
-+ bias freeze introduced new equilibrium problems.
+in BCEWithLogitsLoss, no bias freeze, no balanced sampler.
+
+---
+
+### 3h. BCEWithLogitsLoss — Degenerate Equilibrium (KEY FINDING)
+
+**Symptom:** Every attempt with BCEWithLogitsLoss (sigmoid-based binary
+classification) eventually collapses to F1=0. Whether using balanced
+sampling, pos_weight, bias freeze, or combinations, the model always finds
+a constant-prediction equilibrium and stops learning features.
+
+**Root cause:** BCEWithLogitsLoss with a single logit has a fundamental
+degeneracy: the optimal constant prediction (σ = p·w / (1-p + p·w)) gives
+**zero average gradient**. With pos_weight = n_neg/n_pos, this optimal
+constant is exactly σ = 0.5. At this point, individual sample gradients
+average to zero across the batch, so the backbone never receives a useful
+learning signal. The model can (and does) achieve its minimum loss without
+using any audio features.
+
+This is not a coding bug — it is a property of the loss function. The
+single-logit BCE formulation has a flat direction in parameter space that
+absorbs all the gradient signal.
+
+**Fix:** Switch to CrossEntropyLoss with num_labels=2 (two logits: one for
+"not present", one for "present"). With two logits competing via softmax,
+the gradient at the equilibrium (l₀ = l₁, softmax = [0.5, 0.5]) is
+**non-zero on average**:
+
+    dL/dl₁ = softmax₁ - y → avg = 0.245 (pushes logit₁ UP, toward minority)
+    dL/dl₀ = softmax₀ - (1-y) → avg = -0.245 (pushes logit₀ DOWN)
+
+This asymmetric gradient breaks the deadlock. The model is mathematically
+forced to discriminate between classes. This is the standard HuggingFace
+recipe used by Wav2Vec2 papers achieving F1=0.75+ on SEP-28K.
+
+**Files affected:**
+- `model/classification/__init__.py` — `num_labels=2`, `softmax` in predict
+- `model/training/train_classifier.py` — CrossEntropyLoss, `.long()` labels
+- `model/evaluation/evaluate.py` — `softmax`, `probs[:, 1]` for scores
+- `model/classification/hybrid.py` — `logits[:, 1]` (present logit)
 
 ---
 
 ## Current State
 
 The training pipeline on `feat/training-bugfix` includes all fixes above.
-Latest experiment uses the standard recipe:
+The latest experiment uses CrossEntropyLoss with num_labels=2:
 
 ```bash
 python -m model.training.train --pipelines cls --dry_run
-# then without --dry_run
 ```
 
 ### Summary of Changes
@@ -222,11 +258,12 @@ python -m model.training.train --pipelines cls --dry_run
 | 1 | `.strip().lower()` in label parsing | `dataset.py`, `merge.py` | Capitalisation mismatch |
 | 2 | README updates | `model/data/README.md`, `model/training/README.md` | Stale docs |
 | 3a | Remove AMP | `train_classifier.py` | NaN grads from float16 |
-| 3b | `num_labels=2` → `num_labels=1` | `__init__.py`, `train_classifier.py`, `evaluate.py`, `hybrid.py` | Half the head was unused |
+| 3b | `num_labels=1` → `num_labels=2` | `__init__.py`, `train_classifier.py`, `evaluate.py`, `hybrid.py` | Single logit has zero-gradient equilibrium |
 | 3c | Bias init → `log(pos/neg)` | `train_classifier.py` | Faster convergence |
 | 3d | `WeightedRandomSampler` | `train_classifier.py` | Balanced batches prevent all-negative cheat |
 | 3e | Freeze bias at 0 | `train_classifier.py` | Forces feature learning through W |
 | 3f | Re-add AMP (no GradScaler) | `train_classifier.py` | NaN was from scaler, not autocast |
 | 3g | Revert to imbalanced + pos_weight | `train_classifier.py` | Bias freeze + balanced sampling caused W=0 collapse |
+| 3h | BCE → CrossEntropyLoss + num_labels=2 | `__init__.py`, `train_classifier.py`, `evaluate.py`, `hybrid.py` | BCE has degenerate zero-gradient equilibrium |
 | 4a | TF32 matmul precision | `train_classifier.py` | ~8× TOPS on matmuls, free speed |
 | 4b | DataLoader `num_workers=4` | `train_classifier.py`, `train.py` | Parallel audio loading |

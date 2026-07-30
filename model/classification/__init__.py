@@ -37,7 +37,7 @@ class BaseWav2VecClassifier:
 
         self.model_name = model_name
         self._model = Wav2Vec2ForSequenceClassification.from_pretrained(
-            model_name, num_labels=1
+            model_name, num_labels=2
         )
 
     @property
@@ -54,7 +54,7 @@ class BaseWav2VecClassifier:
             attention_mask: Optional torch.Tensor of shape [batch_size, sequence_length]
 
         Returns:
-            torch.Tensor of shape [batch_size, 1] — single logit per sample.
+            torch.Tensor of shape [batch_size, 2] — logits per class (not-present, present).
         """
         return self._model(input_values=input_values, attention_mask=attention_mask).logits
 
@@ -78,7 +78,8 @@ class BaseWav2VecClassifier:
         self._model.eval()
         with torch.no_grad():
             logits = self.forward(audio_tensor)
-            prob = torch.sigmoid(logits[0, 0]).item()
+            probs = torch.softmax(logits, dim=-1)
+            prob = probs[0, 1].item()
             label = 1 if prob >= 0.5 else 0
             confidence = prob if label == 1 else 1.0 - prob
 
