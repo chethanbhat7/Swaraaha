@@ -62,6 +62,9 @@ def parse_args():
     parser.add_argument("--num_workers", type=int, default=4, help="DataLoader workers.")
     parser.add_argument("--model_name", type=str, default="facebook/wav2vec2-base", help="HuggingFace model name.")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility.")
+    parser.add_argument("--freeze_backbone_epochs", type=int, default=2, help="Freeze backbone for first N epochs (train head only).")
+    parser.add_argument("--loss_type", type=str, default="focal", choices=["focal", "cross_entropy"], help="Loss function.")
+    parser.add_argument("--focal_gamma", type=float, default=2.0, help="Focal loss gamma (only used if --loss_type=focal).")
     return parser.parse_args()
 
 
@@ -169,12 +172,9 @@ def train_one_epoch(model, dataloader, optimizer, scheduler, criterion, device):
     return total_loss / max(num_batches, 1)
 
 
-def evaluate_classifier(model, dataloader, device, weight=None) -> Tuple[float, float, float, np.ndarray, np.ndarray]:
+def evaluate_classifier(model, dataloader, device) -> Tuple[float, float, float, np.ndarray, np.ndarray]:
     """
     Evaluate classifier on a dataset.
-
-    Args:
-        weight: Optional class weight tensor for CrossEntropyLoss.
 
     Returns:
         accuracy, macro_f1, loss, all_true_labels, all_pred_labels
@@ -187,7 +187,7 @@ def evaluate_classifier(model, dataloader, device, weight=None) -> Tuple[float, 
     total_loss = 0.0
     num_batches = 0
 
-    criterion = torch.nn.CrossEntropyLoss(weight=weight)
+    criterion = torch.nn.CrossEntropyLoss()
 
     with torch.no_grad():
         for audio, labels in tqdm(dataloader, desc="  Val", leave=False):
@@ -234,6 +234,7 @@ def train(args) -> Dict:
     from model.training.utils import (
         CSVLogger,
         EarlyStopping,
+        FocalLoss,
         get_warmup_linear_schedule,
         save_checkpoint,
     )
@@ -279,13 +280,12 @@ def train(args) -> Dict:
         train_dataset = AugmentedDataset(train_dataset, augmentor=AudioAugmentor())
         print(f"  Augmentation: ON")
 
-    # ---- Class distribution & pos_weight ----
+    # ---- Class distribution ----
     all_labels = np.array([dataset[i][1][class_idx] for i in range(len(dataset))])
     train_labels = all_labels[train_idx]
     n_pos = int(train_labels.sum())
     n_neg = len(train_labels) - n_pos
     print(f"  Positive ratio (train): {n_pos/len(train_labels):.3f} ({n_pos}/{len(train_labels)})")
-    pos_ratio = n_pos / max(len(train_labels), 1)
 
     train_loader = DataLoader(
         train_dataset, batch_size=args.batch_size, shuffle=True,
@@ -296,8 +296,13 @@ def train(args) -> Dict:
         num_workers=args.num_workers, pin_memory=(device.type == "cuda"),
     )
 
-    weight = torch.tensor([1.0, (1 - pos_ratio) / max(pos_ratio, 1e-7)], dtype=torch.float32, device=device)
-    criterion = torch.nn.CrossEntropyLoss(weight=weight)
+    # ---- Loss ----
+    if args.loss_type == "focal":
+        criterion = FocalLoss(gamma=args.focal_gamma)
+        print(f"  Loss: Focal (gamma={args.focal_gamma})")
+    else:
+        criterion = torch.nn.CrossEntropyLoss()
+        print(f"  Loss: CrossEntropy (no weights)")
 
     # ---- Model ----
     from model.classification import DYSFLUENCY_CLASSES as _CLASSES
@@ -316,11 +321,32 @@ def train(args) -> Dict:
     print(f"  Loading pretrained model: {args.model_name}...")
     model = ClassifierCls(model_name=args.model_name)
     model.model.to(device)
-    print(f"  Parameters: {sum(p.numel() for p in model.model.parameters()):,}")
+    total_params = sum(p.numel() for p in model.model.parameters())
+    print(f"  Total parameters: {total_params:,}")
+
+    # ---- Freeze backbone setup ----
+    backbone_params = []
+    head_params = []
+    for name, param in model.model.named_parameters():
+        if "classifier" in name:
+            head_params.append(param)
+        else:
+            backbone_params.append(param)
+
+    backbone_frozen = args.freeze_backbone_epochs > 0
+    if backbone_frozen:
+        for p in backbone_params:
+            p.requires_grad = False
+        trainable_params = head_params
+        print(f"  Backbone frozen for first {args.freeze_backbone_epochs} epochs")
+        print(f"  Head parameters: {sum(p.numel() for p in head_params):,}")
+    else:
+        trainable_params = model.model.parameters()
+        print(f"  Backbone: trainable from start")
 
     # ---- Optimizer ----
     optimizer = torch.optim.AdamW(
-        model.model.parameters(), lr=args.lr, weight_decay=args.weight_decay,
+        trainable_params, lr=args.lr, weight_decay=args.weight_decay,
     )
 
     total_steps = len(train_loader) * args.epochs
@@ -343,12 +369,24 @@ def train(args) -> Dict:
     for epoch in range(1, args.epochs + 1):
         epoch_start = time.time()
 
+        # Unfreeze backbone at the right epoch
+        if backbone_frozen and epoch == args.freeze_backbone_epochs + 1:
+            for p in backbone_params:
+                p.requires_grad = True
+            optimizer = torch.optim.AdamW(
+                model.model.parameters(), lr=args.lr, weight_decay=args.weight_decay,
+            )
+            remaining_steps = len(train_loader) * (args.epochs - epoch + 1)
+            scheduler = get_warmup_linear_schedule(optimizer, 0, remaining_steps)
+            backbone_frozen = False
+            print(f"  >>> Backbone UNFROZEN at epoch {epoch}")
+
         # Train
         train_loss = train_one_epoch(model, train_loader, optimizer, scheduler, criterion, device)
         current_lr = optimizer.param_groups[0]["lr"]
 
         # Validate
-        val_acc, val_f1, val_loss, _, _ = evaluate_classifier(model, val_loader, device, weight=weight)
+        val_acc, val_f1, val_loss, _, _ = evaluate_classifier(model, val_loader, device)
 
         epoch_time = time.time() - epoch_start
 

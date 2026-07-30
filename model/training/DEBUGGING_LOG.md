@@ -261,14 +261,83 @@ update at full magnitude, carrying a usable gradient signal to the backbone.
 
 ---
 
+### 3j. Class Weights Create Zero-Gradient Equilibrium (CrossEntropy version)
+
+**Symptom:** With CrossEntropyLoss + class weights [1.0, 2.92] (inverse frequency
+weighting), loss stays at exactly 0.693 = -ln(0.5) for 4+ epochs. F1=0. Model
+never moves from uniform prediction.
+
+**Root cause:** The weight `w₁ = n_neg/n_pos = (1-r)/r` creates an exact
+zero-gradient equilibrium at the uniform output point (logits=[0,0],
+softmax=[0.5, 0.5]):
+
+```
+dL/d(logit₀) = (r·w₁ − (1−r)·w₀) · 0.5
+dL/d(logit₁) = ((1−r)·w₀ − r·w₁) · 0.5
+
+With r=0.255, w₀=1.0, w₁=2.92:  dL = [0, 0] exactly
+```
+
+This is the same degeneracy as BCE + pos_weight (3h), just in the 2-logit
+CrossEntropy formulation. The weights perfectly balance the class gradient
+contributions, so at 50/50 output every sample's gradient cancels its
+counterpart. The model is **not stuck due to insufficient gradient magnitude**
+— it is stuck because the expected gradient is mathematically zero.
+
+Additionally, CrossEntropyLoss with `reduction='mean'` and `weight` normalizes
+by `sum(weight[target])`, not by batch size. This means the loss value at
+uniform output is always 0.693 regardless of class distribution, masking the
+problem.
+
+**Fix:** Two changes:
+1. **FocalLoss** (γ=2.0) replaces CrossEntropyLoss. Focal loss downweights
+   easy examples via `(1-p_t)^γ`. At uniform output (p_t=0.5), the gradient
+   for positive and negative samples is NOT equal in magnitude:
+   negative gradient = -0.075, positive gradient = +0.075 (vs CrossEntropy's
+   ±0.5). While the direction still favours the majority class, Focal loss
+   naturally focuses training on minority (positive) samples as the model
+   becomes confident about negatives.
+2. **Freeze backbone for 2 epochs** — Train only the randomly-initialized
+   classifier head (1538 params) on the fixed Wav2Vec2 features. This lets
+   the head learn the correct logit mapping before the 94.6M backbone params
+   are exposed to gradients. After unfreezing, the backbone fine-tunes with
+   a head that already produces useful logits.
+
+**Files affected:**
+- `model/training/utils.py` — Added `FocalLoss` class
+- `model/training/train_classifier.py` — Added `--freeze_backbone_epochs`,
+  `--loss_type`, `--focal_gamma` args; freeze/unfreeze logic; removed class
+  weights
+
+---
+
 ## Current State
 
 The training pipeline on `feat/training-bugfix` includes all fixes above.
-The latest experiment uses CrossEntropyLoss with num_labels=2:
+The current recipe uses FocalLoss + backbone freezing:
 
 ```bash
-python -m model.training.train --pipelines cls --dry_run
+python -m model.training.train_classifier \
+    --class_name prolongation \
+    --data_dir data/train \
+    --epochs 20 \
+    --batch_size 16 \
+    --lr 3e-5 \
+    --freeze_backbone_epochs 2 \
+    --loss_type focal \
+    --focal_gamma 2.0 \
+    --output_dir model/weights
 ```
+
+Key design decisions:
+- **FocalLoss** (γ=2.0) — breaks zero-gradient equilibrium without perfect
+  class weighting
+- **Freeze backbone for 2 epochs** — head-only training lets the classifier
+  stabilize before backbone fine-tuning
+- **No class weights** — FocalLoss handles imbalance implicitly
+- **No gradient clipping** — was silently killing learning (3i)
+- **AMP with autocast (no GradScaler)** — safe float16 for speed
+- **Imbalanced batching** — natural distribution, no balanced sampler
 
 ### Summary of Changes
 
@@ -285,5 +354,6 @@ python -m model.training.train --pipelines cls --dry_run
 | 3g | Revert to imbalanced + pos_weight | `train_classifier.py` | Bias freeze + balanced sampling caused W=0 collapse |
 | 3h | BCE → CrossEntropyLoss + num_labels=2 | `__init__.py`, `train_classifier.py`, `evaluate.py`, `hybrid.py` | BCE has degenerate zero-gradient equilibrium |
 | 3i | Remove gradient clipping | `train_classifier.py` | `max_norm=1.0` killed learning by scaling head grads 100× |
+| 3j | FocalLoss + backbone freezing | `utils.py`, `train_classifier.py` | Class weights also create zero-gradient equilibrium |
 | 4a | TF32 matmul precision | `train_classifier.py` | ~8× TOPS on matmuls, free speed |
 | 4b | DataLoader `num_workers=4` | `train_classifier.py`, `train.py` | Parallel audio loading |

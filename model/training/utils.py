@@ -9,6 +9,7 @@ import json
 import os
 from typing import Dict, List, Optional
 
+import torch
 import numpy as np
 
 
@@ -184,6 +185,25 @@ def get_warmup_linear_schedule(optimizer, warmup_steps: int, total_steps: int):
         num_warmup_steps=warmup_steps,
         num_training_steps=total_steps,
     )
+
+
+class FocalLoss(torch.nn.Module):
+    def __init__(self, gamma: float = 2.0, reduction: str = "mean"):
+        super().__init__()
+        self.gamma = gamma
+        self.reduction = reduction
+
+    def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        ce_loss = torch.nn.functional.cross_entropy(logits, targets, reduction="none")
+        probs = torch.softmax(logits, dim=-1)
+        pt = probs.gather(1, targets.unsqueeze(1)).squeeze(1)
+        focal_weight = (1 - pt) ** self.gamma
+        loss = focal_weight * ce_loss
+        if self.reduction == "mean":
+            return loss.mean()
+        elif self.reduction == "sum":
+            return loss.sum()
+        return loss
 
 
 def count_parameters(model) -> int:
