@@ -404,6 +404,8 @@ def train(args) -> Dict:
     if device.type == "cuda":
         import warnings
         warnings.filterwarnings("ignore", category=UserWarning, module="torch")
+        import logging
+        logging.getLogger("torch._dynamo").setLevel(logging.ERROR)
         torch._dynamo.config.suppress_errors = True
         model._model = torch.compile(model._model)
     total_params = sum(p.numel() for p in model.model.parameters())
@@ -506,6 +508,8 @@ def train(args) -> Dict:
                 "lr": args.lr * 0.1,
                 "weight_decay": args.weight_decay,
             })
+            scheduler.base_lrs.append(args.lr * 0.1)
+            scheduler.lr_lambdas.append(scheduler.lr_lambdas[0])
             backbone_frozen = False
             print(f"  >>> Backbone UNFROZEN at epoch {epoch} (head LR={args.lr:.2e}, backbone LR={args.lr*0.1:.2e})")
 
