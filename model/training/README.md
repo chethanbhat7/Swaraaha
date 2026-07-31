@@ -109,13 +109,17 @@ Trains five independent binary classifiers (one per dysfluency type) on top of `
 | `--patience` | 5 | Early stopping patience |
 | `--output_dir` | `model/weights` | Where to save weights |
 | `--num_workers` | `auto` | DataLoader workers (`auto` = CPU core count) |
+| `--freeze_backbone_epochs` | 3 | Freeze W2V2 backbone for first N epochs (train head only) |
 | `--gradient_accumulation_steps` | 1 | Accumulate gradients over N batches (effective BS = BS × steps) |
+| `--loss_type` | `focal` | Loss function: `focal` or `cross_entropy` |
+| `--focal_gamma` | 2.0 | Focal loss focusing parameter (only if `--loss_type=focal`) |
+| `--warmup_steps` | 500 | Linear LR warmup steps |
 | `--clean` | false | Ignore resume checkpoint and start training from scratch |
 
 ### Training details
 
 - **Split:** Stratified 80/20 train/val split per class
-- **Loss:** BCEWithLogitsLoss with automatic class-weight balancing
+- **Loss:** Focal loss (γ=2.0) for better handling of class imbalance
 - **Optimizer:** AdamW with linear warmup (500 steps) + linear decay
 - **Mixed precision:** Automatic on CUDA via `torch.amp.GradScaler`
 - **Augmentation:** On-the-fly `AudioAugmentor` (noise, pitch shift, time stretch, roll, scale)

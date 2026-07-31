@@ -144,6 +144,8 @@ audio, labels = dataset[0]
 # labels: uint8 ndarray, shape (5,) — [prolongation, block, soundrep, wordrep, interjection]
 ```
 
+**Audio cache:** Preprocessed audio is automatically cached to `data/cache/{split}` (pickle). The first epoch processes every sample from scratch; subsequent runs load the cached pickles instantly, saving repeated `load_audio` + `clean_audio` overhead.
+
 ### Localization Dataset
 
 `LocalizationDataset` converts intervals into a binary frame mask aligned to the spectrogram:

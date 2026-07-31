@@ -357,3 +357,102 @@ Key design decisions:
 | 3j | FocalLoss + backbone freezing | `utils.py`, `train_classifier.py` | Class weights also create zero-gradient equilibrium |
 | 4a | TF32 matmul precision | `train_classifier.py` | ~8× TOPS on matmuls, free speed |
 | 4b | DataLoader `num_workers=4` | `train_classifier.py`, `train.py` | Parallel audio loading |
+| 4c | Audio preprocessing cache | `dataset.py` | Pickle cache for load_audio → clean_audio → pad_to_length pipeline |
+| 4d | Auto `num_workers` from CPU count | `train_classifier.py` | Removed cap at 4, now uses `os.cpu_count()` |
+| 4e | Gradient accumulation | `train_classifier.py` | `--gradient_accumulation_steps` for effective batch size scaling |
+| 4f | `torch.compile` | `train_classifier.py` | JIT-compile model on CUDA via `torch.compile` |
+
+### 4g. `torch.compile` Property Assignment
+
+**Symptom:** `AttributeError` — `model.model = torch.compile(model.model)` failed because `model.model` is a read-only `@property` that returns `self._model`.
+
+**Fix:** Assign to `model._model` directly: `model._model = torch.compile(model._model)`.
+
+**File:** `train_classifier.py`
+
+---
+
+## 5. Unfreeze — Differential LR & Optimizer State
+
+**Symptom:** When backbone unfreezes after epoch N, the old code re-created the optimizer from scratch. This (a) lost AdamW momentum from head-only training, and (b) applied the same LR to all params.
+
+**Fix:** Instead of recreating the optimizer, add a second param group with `lr * 0.1` for backbone params:
+
+```python
+optimizer.add_param_group({"params": backbone_params, "lr": args.lr * 0.1})
+scheduler.base_lrs.append(args.lr * 0.1)
+scheduler.lr_lambdas.append(scheduler.lr_lambdas[0])
+```
+
+This preserves the head's optimizer state and applies a 10× smaller LR to backbone params.
+
+**File:** `train_classifier.py`
+
+---
+
+## 6. Training Resume
+
+**Symptom:** An interrupted training run (Ctrl+C, crash) lost all progress. No way to resume from the last completed epoch.
+
+**Fix:** Added checkpoint-based resume. After each epoch, a `{class}_checkpoint.pt` file is saved containing: model, optimizer, scheduler, epoch, history, best_F1, backbone_frozen flag, and CLI args. On startup, `_try_load_resume()` checks:
+  - If checkpoint exists AND saved args match current args → restore state, continue training
+  - If args differ → start fresh (config changed, old checkpoint invalid)
+  - If `--clean` flag → ignore checkpoint, force fresh start
+
+**Files:** `train_classifier.py`, `utils.py`
+**Functions:** `save_resume_checkpoint()`, `load_resume_checkpoint()`, `args_match()`
+
+---
+
+## Current State
+
+The training pipeline on `feat/training-resume` includes all fixes above.
+
+```bash
+python -m model.training.train_classifier \
+    --class_name prolongation \
+    --data_dir data/train \
+    --epochs 20 \
+    --batch_size 16 \
+    --lr 3e-5 \
+    --freeze_backbone_epochs 2 \
+    --loss_type focal \
+    --focal_gamma 2.0 \
+    --gradient_accumulation_steps 1 \
+    --num_workers auto \
+    --output_dir model/weights
+```
+
+Key design decisions:
+- **Audio cache** — preprocessed audio cached to `data/cache/{split}` pickle files; subsequent runs load in ~1s
+- **Auto `num_workers`** — uses all CPU cores for data loading
+- **`torch.compile`** — JIT-compiles model on CUDA for ~2× training speed
+- **Gradient accumulation** — scales effective batch size without memory increase
+- **Stable unfreeze** — preserves optimizer momentum, applies 10× smaller LR to backbone
+- **Training resume** — checkpoint-based interruption recovery with args validation
+
+### Summary of Changes
+
+| # | Fix | File(s) | Why |
+|---|-----|---------|-----|
+| 1 | `.strip().lower()` in label parsing | `dataset.py`, `merge.py` | Capitalisation mismatch |
+| 2 | README updates | `model/data/README.md`, `model/training/README.md` | Stale docs |
+| 3a | Remove AMP | `train_classifier.py` | NaN grads from float16 |
+| 3b | `num_labels=1` → `num_labels=2` | `__init__.py`, `train_classifier.py`, `evaluate.py`, `hybrid.py` | Single logit has zero-gradient equilibrium |
+| 3c | Bias init → `log(pos/neg)` | `train_classifier.py` | Faster convergence |
+| 3d | `WeightedRandomSampler` | `train_classifier.py` | Balanced batches prevent all-negative cheat |
+| 3e | Freeze bias at 0 | `train_classifier.py` | Forces feature learning through W |
+| 3f | Re-add AMP (no GradScaler) | `train_classifier.py` | NaN was from scaler, not autocast |
+| 3g | Revert to imbalanced + pos_weight | `train_classifier.py` | Bias freeze + balanced sampling caused W=0 collapse |
+| 3h | BCE → CrossEntropyLoss + num_labels=2 | `__init__.py`, `train_classifier.py`, `evaluate.py`, `hybrid.py` | BCE has degenerate zero-gradient equilibrium |
+| 3i | Remove gradient clipping | `train_classifier.py` | `max_norm=1.0` killed learning by scaling head grads 100× |
+| 3j | FocalLoss + backbone freezing | `utils.py`, `train_classifier.py` | Class weights also create zero-gradient equilibrium |
+| 4a | TF32 matmul precision | `train_classifier.py` | ~8× TOPS on matmuls, free speed |
+| 4b | DataLoader `num_workers=4` | `train_classifier.py`, `train.py` | Parallel audio loading |
+| 4c | Audio preprocessing cache | `dataset.py` | Avoid re-processing audio every run |
+| 4d | Auto `num_workers` from CPU count | `train_classifier.py` | No hard cap, uses `os.cpu_count()` |
+| 4e | Gradient accumulation | `train_classifier.py` | Effective batch size scaling |
+| 4f | `torch.compile` | `train_classifier.py` | JIT compilation on CUDA |
+| 4g | `torch.compile` property fix | `train_classifier.py` | `model.model` is read-only property |
+| 5 | Stable unfreeze (preserve optimizer, 10× LR) | `train_classifier.py` | Loses momentum when recreating optimizer |
+| 6 | Training resume checkpoint | `train_classifier.py`, `utils.py` | Interruption recovery |
