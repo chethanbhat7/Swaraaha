@@ -1,17 +1,25 @@
 """Main window with QStackedWidget for page navigation."""
 
-import numpy as np
-from PySide6.QtWidgets import (
-    QMainWindow, QStackedWidget, QWidget, QVBoxLayout, QFileDialog,
-)
-from PySide6.QtCore import QThread, Signal
+import os
 
-from app.ui.home_page import HomePage
-from app.ui.analysis_page import AnalysisPage
+import numpy as np
+from PySide6.QtCore import QThread, Signal
+from PySide6.QtWidgets import (
+    QFileDialog,
+    QMainWindow,
+    QStackedWidget,
+    QVBoxLayout,
+    QWidget,
+)
+
 from app.core.audio_handler import AudioHandler
 from app.core.model_runner import ModelRunner
-from app.ui.theme import set_theme, is_dark_mode
+from app.ui.analysis_page import AnalysisPage
+from app.ui.home_page import HomePage
 from app.ui.styles import build_stylesheet
+from app.ui.theme import is_dark_mode, set_theme
+
+_AUDIO_EXTENSIONS = {".wav", ".mp3", ".flac"}
 
 
 class AnalysisWorker(QThread):
@@ -63,11 +71,26 @@ class MainWindow(QMainWindow):
         self._home_page.load_clicked.connect(self._on_load)
         self._home_page.play_clicked.connect(self._on_play)
         self._home_page.analyze_clicked.connect(self._on_analyze)
+        self._home_page.file_selected.connect(self._on_file_selected)
 
         self._analysis_page.back_clicked.connect(self._go_home)
 
         theme_action = self.menuBar().addAction("Toggle Dark Mode")
         theme_action.triggered.connect(self._toggle_theme)
+
+        self.setAcceptDrops(True)
+
+    def _on_file_selected(self, path: str):
+        self._load_path(path)
+
+    def _load_path(self, path: str):
+        try:
+            audio = self._audio_handler.load_audio(path)
+            self._current_audio = audio
+            self._home_page.get_audio_controls().set_audio_loaded()
+            self.statusBar().showMessage(f"Loaded: {path}")
+        except Exception as e:
+            self.statusBar().showMessage(f"Error loading file: {e}")
 
     def _on_record(self):
         self._audio_handler.start_recording()
@@ -90,13 +113,7 @@ class MainWindow(QMainWindow):
             self, "Load Audio", "", "Audio Files (*.wav *.mp3 *.flac);;All Files (*)"
         )
         if path:
-            try:
-                audio = self._audio_handler.load_audio(path)
-                self._current_audio = audio
-                self._home_page.get_audio_controls().set_audio_loaded()
-                self.statusBar().showMessage(f"Loaded: {path}")
-            except Exception as e:
-                self.statusBar().showMessage(f"Error loading file: {e}")
+            self._load_path(path)
 
     def _on_play(self):
         if self._current_audio is not None:
@@ -132,3 +149,24 @@ class MainWindow(QMainWindow):
     def _toggle_theme(self):
         set_theme(not is_dark_mode())
         self.setStyleSheet(build_stylesheet())
+
+    def dragEnterEvent(self, event):
+        if self._first_audio_path(event.mimeData()) is not None:
+            event.acceptProposedAction()
+
+    def dropEvent(self, event):
+        path = self._first_audio_path(event.mimeData())
+        if path:
+            self._load_path(path)
+            self._home_page.get_file_panel().add_recent(path)
+
+    @staticmethod
+    def _first_audio_path(mime) -> str | None:
+        if not mime.hasUrls():
+            return None
+        for url in mime.urls():
+            if url.isLocalFile():
+                local = url.toLocalFile()
+                if os.path.splitext(local)[1].lower() in _AUDIO_EXTENSIONS:
+                    return local
+        return None
