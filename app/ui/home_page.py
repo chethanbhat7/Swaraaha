@@ -1,10 +1,11 @@
-"""Home page: Rainbow Passage PDF viewer + audio controls."""
+"""Home page: Passage/Files tabs + audio controls."""
 
-from PySide6.QtWidgets import QWidget, QHBoxLayout, QSplitter
-from PySide6.QtCore import Signal, Qt
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtWidgets import QHBoxLayout, QSplitter, QTabWidget, QWidget
 
-from app.ui.pdf_viewer import PdfViewer
 from app.ui.audio_controls import AudioControls
+from app.ui.file_panel import FilePanel
+from app.ui.pdf_viewer import PdfViewer
 
 
 class HomePage(QWidget):
@@ -13,6 +14,7 @@ class HomePage(QWidget):
     load_clicked = Signal()
     play_clicked = Signal()
     analyze_clicked = Signal()
+    file_selected = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -24,8 +26,16 @@ class HomePage(QWidget):
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
 
+        self._tabs = QTabWidget()
+        self._tabs.setDocumentMode(True)
+
         self._pdf_viewer = PdfViewer()
-        splitter.addWidget(self._pdf_viewer)
+        self._tabs.addTab(self._pdf_viewer, "Passage")
+
+        self._file_panel = FilePanel()
+        self._tabs.addTab(self._file_panel, "Files")
+
+        splitter.addWidget(self._tabs)
 
         self._audio_controls = AudioControls()
         splitter.addWidget(self._audio_controls)
@@ -36,6 +46,7 @@ class HomePage(QWidget):
 
         layout.addWidget(splitter)
 
+        self._file_panel.file_selected.connect(self.file_selected)
         self._audio_controls.record_clicked.connect(self.record_clicked)
         self._audio_controls.stop_clicked.connect(self.stop_clicked)
         self._audio_controls.load_clicked.connect(self.load_clicked)
@@ -44,6 +55,9 @@ class HomePage(QWidget):
 
     def get_pdf_viewer(self) -> PdfViewer:
         return self._pdf_viewer
+
+    def get_file_panel(self) -> FilePanel:
+        return self._file_panel
 
     def get_audio_controls(self) -> AudioControls:
         return self._audio_controls
