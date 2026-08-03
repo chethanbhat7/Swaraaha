@@ -40,3 +40,18 @@ export async function retrieveAudioFile(id: string): Promise<File | null> {
     return null
   }
 }
+
+export async function clearAudioFiles(): Promise<void> {
+  try {
+    const db = await getDB()
+    return new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite')
+      const store = tx.objectStore(STORE_NAME)
+      const request = store.clear()
+      request.onsuccess = () => resolve()
+      request.onerror = () => reject(request.error)
+    })
+  } catch (err) {
+    console.error("IndexedDB clear error:", err)
+  }
+}

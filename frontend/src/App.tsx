@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom'
-import { retrieveAudioFile } from './utils/db'
+import { retrieveAudioFile, clearAudioFiles } from './utils/db'
 import { 
   Activity, 
   Mic, 
@@ -258,11 +258,36 @@ function HistoryPage({ setAnalyzedFile }: { setAnalyzedFile: React.Dispatch<Reac
     navigate('/results')
   }
 
+  const handleClearHistory = async () => {
+    const confirmed = window.confirm(
+      "Are you sure you want to clear your entire assessment history? This will delete all saved audio files and analysis reports permanently."
+    )
+    if (!confirmed) return
+
+    try {
+      localStorage.removeItem('swaraaha_history')
+      await clearAudioFiles()
+      setHistoryItems([])
+    } catch (e) {
+      console.error("Failed to clear history:", e)
+    }
+  }
+
   return (
     <div className="p-8 space-y-6 max-w-4xl animate-fade-in text-text-primary">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">Assessment History</h2>
-        <p className="text-sm text-text-secondary mt-1">Review past patient recordings, classifications, and generated reports.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Assessment History</h2>
+          <p className="text-sm text-text-secondary mt-1">Review past patient recordings, classifications, and generated reports.</p>
+        </div>
+        {historyItems.length > 0 && (
+          <button
+            onClick={handleClearHistory}
+            className="px-4 py-2 border border-red-500/20 hover:border-red-500 bg-red-500/5 hover:bg-red-500/10 text-red-500 text-xs font-semibold rounded-lg transition duration-200 cursor-pointer"
+          >
+            Clear History
+          </button>
+        )}
       </div>
       <div className="bg-bg-card border border-border-color rounded-xl overflow-hidden shadow-xs">
         <table className="w-full text-left border-collapse">
@@ -276,23 +301,31 @@ function HistoryPage({ setAnalyzedFile }: { setAnalyzedFile: React.Dispatch<Reac
             </tr>
           </thead>
           <tbody className="text-xs divide-y divide-border-color">
-            {historyItems.map((item) => (
-              <tr 
-                key={item.id} 
-                onClick={() => handleRowClick(item)}
-                className="hover:bg-hover-color/50 transition cursor-pointer"
-              >
-                <td className="p-4 font-mono font-bold text-accent-teal">{item.id}</td>
-                <td className="p-4 text-text-secondary">{item.date} at {item.time}</td>
-                <td className="p-4 font-medium">{item.name}</td>
-                <td className="p-4 text-text-secondary">{item.mode}</td>
-                <td className="p-4">
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-500">
-                    {item.status}
-                  </span>
+            {historyItems.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="p-8 text-center text-text-secondary italic">
+                  No assessments recorded yet.
                 </td>
               </tr>
-            ))}
+            ) : (
+              historyItems.map((item) => (
+                <tr 
+                  key={item.id} 
+                  onClick={() => handleRowClick(item)}
+                  className="hover:bg-hover-color/50 transition cursor-pointer"
+                >
+                  <td className="p-4 font-mono font-bold text-accent-teal">{item.id}</td>
+                  <td className="p-4 text-text-secondary">{item.date} at {item.time}</td>
+                  <td className="p-4 font-medium">{item.name}</td>
+                  <td className="p-4 text-text-secondary">{item.mode}</td>
+                  <td className="p-4">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-500">
+                      {item.status}
+                    </span>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
