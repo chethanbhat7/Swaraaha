@@ -1,1 +1,74 @@
 @import "tailwindcss";
+
+@theme {
+  --color-accent-teal: #14B8A6;
+  --color-success-green: #10B981;
+  --color-warning-amber: #F59E0B;
+  --color-error-red: #EF4444;
+
+  --color-bg-app: var(--bg-app);
+  --color-bg-sidebar: var(--bg-sidebar);
+  --color-bg-card: var(--bg-card);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-border-color: var(--border-color);
+  --color-hover-color: var(--hover-color);
+
+  --radius-16: 16px;
+  --radius-custom: 16px;
+}
+
+:root {
+  --bg-app: #F6F8FA;
+  --bg-sidebar: #F8FAFC;
+  --bg-card: #FFFFFF;
+  --text-primary: #111827;
+  --text-secondary: #6B7280;
+  --border-color: #E5E7EB;
+  --hover-color: #F1F5F9;
+  
+  color-scheme: light;
+}
+
+.dark {
+  --bg-app: #0F172A;
+  --bg-sidebar: #111827;
+  --bg-card: #1E293B;
+  --text-primary: #F8FAFC;
+  --text-secondary: #94A3B8;
+  --border-color: #334155;
+  --hover-color: #273449;
+  
+  color-scheme: dark;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+/* Smooth transitions */
+* {
+  transition-property: background-color, border-color, text-decoration-color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+/* Medical waveform recording styles */
+.waveform-canvas {
+  image-rendering: pixelated;
+}
