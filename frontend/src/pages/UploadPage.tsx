@@ -14,9 +14,7 @@ import {
   AlertCircle,
   Volume2
 } from 'lucide-react'
-import { analyzeAudio, classifyAudio } from '../api/client'
 import PdfViewer from '../components/PdfViewer'
-import { storeAudioFile } from '../utils/db'
 
 function AudioPlayer({ file }: { file: File }) {
   const [audioUrl, setAudioUrl] = useState<string | null>(null)
@@ -168,7 +166,7 @@ export default function UploadPage({
   const [isRecording, setIsRecording] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
   const [recordingTime, setRecordingTime] = useState(0)
-  const [noiseLevel, setNoiseLevel] = useState(0)
+
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
@@ -181,9 +179,9 @@ export default function UploadPage({
 
   // Analysis options
   const [analysisMode, setAnalysisMode] = useState<'full' | 'classify'>('full')
-  const [generateReport, setGenerateReport] = useState(true)
-  const [isLoading, setIsLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+
+  const [selectedLanguage, setSelectedLanguage] = useState<'english' | 'kannada' | 'hindi'>('english')
 
   // Clean up recording on unmount
   useEffect(() => {
@@ -392,18 +390,10 @@ export default function UploadPage({
       animationFrameRef.current = requestAnimationFrame(draw)
       analyser.getByteTimeDomainData(dataArray)
 
-      // Calculate simple RMS (noise level)
-      let sum = 0
-      for (let i = 0; i < bufferLength; i++) {
-        const val = (dataArray[i] - 128) / 128
-        sum += val * val
-      }
-      const rms = Math.sqrt(sum / bufferLength)
-      setNoiseLevel(Math.min(Math.round(rms * 250), 100))
-
       ctx.clearRect(0, 0, width, height)
       ctx.lineWidth = 2.5
       ctx.strokeStyle = '#14B8A6' // teal-500
+
       ctx.beginPath()
 
       const sliceWidth = width / bufferLength
@@ -436,69 +426,22 @@ export default function UploadPage({
       return
     }
 
-    setIsLoading(true)
     setErrorMsg(null)
 
-    // Save report generating option
-    sessionStorage.setItem('generate_report', generateReport ? 'true' : 'false')
+    // Clear previous results & save analysis configs to sessionStorage
+    sessionStorage.removeItem('results')
+    sessionStorage.setItem('analysis_mode', analysisMode)
+    sessionStorage.setItem('generate_report', 'true')
 
-    try {
-      let results
-      if (analysisMode === 'full') {
-        results = await analyzeAudio(file)
-      } else {
-        const classification = await classifyAudio(file)
-        results = {
-          classification,
-          localization: { regions: [] }
-        }
-      }
+    sessionStorage.setItem('transcription_language', selectedLanguage)
+    sessionStorage.setItem('filename', file.name)
+    sessionStorage.setItem('filesize', `${(file.size / (1024 * 1024)).toFixed(1)} MB`)
+    sessionStorage.setItem('duration', fileDuration)
+    sessionStorage.setItem('patient_name', 'N/A')
+    sessionStorage.setItem('patient_phone', 'N/A')
 
-      sessionStorage.setItem('results', JSON.stringify(results))
-      sessionStorage.setItem('filename', file.name)
-      sessionStorage.setItem('filesize', `${(file.size / (1024 * 1024)).toFixed(1)} MB`)
-      sessionStorage.setItem('duration', fileDuration)
-      sessionStorage.setItem('patient_name', 'N/A')
-      sessionStorage.setItem('patient_phone', 'N/A')
-
-      // Add to Assessment History
-      const id = `SWR-${Math.floor(1000 + Math.random() * 9000)}`
-      const now = new Date()
-      const historyItem = {
-        id,
-        date: now.toISOString().split('T')[0],
-        time: now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-        name: file.name,
-        size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
-        duration: fileDuration,
-        mode: analysisMode === 'full' ? 'Full Analysis' : 'Classification Only',
-        status: 'Completed',
-        results,
-        generateReport,
-        patientName: 'N/A',
-        patientPhone: 'N/A'
-      }
-
-      const historyJson = localStorage.getItem('swaraaha_history')
-      const existingHistory = historyJson ? JSON.parse(historyJson) : []
-      localStorage.setItem('swaraaha_history', JSON.stringify([historyItem, ...existingHistory]))
-
-      try {
-        await storeAudioFile(id, file)
-      } catch (e) {
-        console.error("Failed to store audio in IndexedDB:", e)
-      }
-
-      // Delay slightly for premium loading feel
-      setTimeout(() => {
-        navigate('/results')
-      }, 1500)
-
-    } catch (err) {
-      console.error('Analysis failed:', err)
-      setErrorMsg("The server failed to analyze the speech. Please verify backend is running.")
-      setIsLoading(false)
-    }
+    // Navigate immediately to the results page
+    navigate('/results')
   }
 
   // Format bytes helper
@@ -651,26 +594,6 @@ export default function UploadPage({
                   className="w-full max-w-[360px] bg-bg-app border border-border-color rounded-lg waveform-canvas"
                 />
 
-                {/* Noise Level Meter */}
-                {isRecording && (
-                  <div className="w-full max-w-[260px] space-y-1">
-                    <div className="flex justify-between text-[9px] font-semibold text-text-secondary uppercase">
-                      <span>Mic Noise Level</span>
-                      <span>{noiseLevel}%</span>
-                    </div>
-                    <div className="h-1.5 bg-hover-color rounded-full overflow-hidden">
-                      <div
-                        className={`h-full transition-all duration-75 rounded-full ${noiseLevel > 70
-                          ? 'bg-error-red'
-                          : noiseLevel > 40
-                            ? 'bg-warning-amber'
-                            : 'bg-accent-teal'
-                          }`}
-                        style={{ width: `${noiseLevel}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
 
                 {/* Timer Clock */}
                 <div className="text-2xl font-bold font-mono tracking-wider select-none">
@@ -825,19 +748,43 @@ export default function UploadPage({
               </div>
             </div>
 
-            {/* Checkbox Options */}
-            <div className="pt-3 border-t border-border-color/50 flex items-center gap-2 select-none">
-              <input
-                id="generateReport"
-                type="checkbox"
-                checked={generateReport}
-                onChange={(e) => setGenerateReport(e.target.checked)}
-                className="w-4 h-4 accent-accent-teal rounded-lg border-border-color cursor-pointer"
-              />
-              <label htmlFor="generateReport" className="text-xs font-semibold cursor-pointer">
-                Generate Clinical Diagnostic Report (PDF)
-              </label>
+            {/* Language Selection */}
+            <div className="pt-3 border-t border-border-color/50 space-y-2 select-none">
+              <label className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Transcription Language</label>
+              <div className="flex gap-4 flex-wrap">
+                <label className="flex items-center gap-1.5 text-xs font-semibold cursor-pointer">
+                  <input
+                    type="radio"
+                    name="transcriptionLanguage"
+                    checked={selectedLanguage === 'english'}
+                    onChange={() => setSelectedLanguage('english')}
+                    className="accent-accent-teal cursor-pointer"
+                  />
+                  <span>English</span>
+                </label>
+                <label className="flex items-center gap-1.5 text-xs font-semibold cursor-pointer">
+                  <input
+                    type="radio"
+                    name="transcriptionLanguage"
+                    checked={selectedLanguage === 'kannada'}
+                    onChange={() => setSelectedLanguage('kannada')}
+                    className="accent-accent-teal cursor-pointer"
+                  />
+                  <span>ಕನ್ನಡ (Kannada)</span>
+                </label>
+                <label className="flex items-center gap-1.5 text-xs font-semibold cursor-pointer">
+                  <input
+                    type="radio"
+                    name="transcriptionLanguage"
+                    checked={selectedLanguage === 'hindi'}
+                    onChange={() => setSelectedLanguage('hindi')}
+                    className="accent-accent-teal cursor-pointer"
+                  />
+                  <span>हिंदी (Hindi)</span>
+                </label>
+              </div>
             </div>
+
           </div>
         </section>
 
@@ -845,21 +792,11 @@ export default function UploadPage({
         <div className="space-y-3">
           <button
             onClick={handleStartAnalysis}
-            disabled={!file || isLoading}
+            disabled={!file}
             className="w-full py-3.5 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 disabled:from-border-color disabled:to-border-color text-white text-xs font-bold rounded-xl transition duration-200 shadow-sm disabled:shadow-none flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed transform hover:scale-[1.01] active:scale-[0.99]"
             style={{ borderRadius: '12px' }}
           >
-            {isLoading ? (
-              <>
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-                <span>Analyzing Speech Features...</span>
-              </>
-            ) : (
-              <span>Start Speech Analysis</span>
-            )}
+            <span>Start Speech Analysis</span>
           </button>
 
           {/* Secure lock metadata indicator */}
