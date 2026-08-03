@@ -11,10 +11,13 @@ import {
   Pause,
   Download
 } from 'lucide-react'
+import { TranscriptionData, analyzeAudio, classifyAudio } from '../api/client'
+import { storeAudioFile } from '../utils/db'
 
 interface AnalysisResults {
   classification: Record<string, { label: number; confidence: number }>
   localization: { regions: Array<{ start: number; end: number; confidence: number }> }
+  transcription?: TranscriptionData
 }
 
 const CLASS_DISPLAY_NAMES: Record<string, string> = {
@@ -28,9 +31,10 @@ const CLASS_DISPLAY_NAMES: Record<string, string> = {
 interface WaveformViewProps {
   file: File | null
   regions: Array<{ start: number; end: number; confidence: number }>
+  transcription?: TranscriptionData
 }
 
-function WaveformView({ file, regions }: WaveformViewProps) {
+function WaveformView({ file, regions, transcription }: WaveformViewProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const [audioBuffer, setAudioBuffer] = useState<AudioBuffer | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -249,8 +253,14 @@ function WaveformView({ file, regions }: WaveformViewProps) {
       <audio
         ref={audioRef}
         src={audioUrl || ''}
+        onTimeUpdate={() => {
+          if (audioRef.current) {
+            setCurrentTime(audioRef.current.currentTime)
+          }
+        }}
         onEnded={() => {
           setIsPlaying(false)
+          setCurrentTime(0)
           if (animationRef.current) cancelAnimationFrame(animationRef.current)
         }}
       />
@@ -337,6 +347,49 @@ function WaveformView({ file, regions }: WaveformViewProps) {
           <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-500" /> Playhead</span>
         </div>
       </div>
+
+      {/* Dynamic Transcription Display */}
+      {transcription && (
+        <div className="pt-4 border-t border-border-color/50 space-y-3">
+          {/* Active chunk subtitle */}
+          <div className="bg-bg-sidebar border border-border-color rounded-xl p-4 flex flex-col gap-1.5 shadow-xs">
+            <div className="flex items-center justify-between">
+              <span className="text-[9px] uppercase font-bold text-accent-teal tracking-wider flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-accent-teal animate-pulse" />
+                Live Transcription
+              </span>
+            </div>
+            <p className="text-sm font-semibold text-text-primary italic min-h-[1.5rem] leading-relaxed">
+              {(() => {
+                if (!transcription.chunks || transcription.chunks.length === 0) {
+                  return "No transcription available.";
+                }
+
+                if (currentTime === 0) {
+                  return "Click Play to read transcription...";
+                }
+
+                // 1. Find exact active chunk
+                const activeChunk = transcription.chunks.find(
+                  chunk => currentTime >= chunk.start && currentTime <= chunk.end
+                );
+                if (activeChunk) {
+                  return `"${activeChunk.text}"`;
+                }
+
+                // 2. Persist the last spoken chunk during silences/gaps
+                const pastChunks = transcription.chunks.filter(chunk => currentTime >= chunk.start);
+                if (pastChunks.length > 0) {
+                  return `"${pastChunks[pastChunks.length - 1].text}"`;
+                }
+
+                // 3. Priming display (show first segment if playhead has started but not reached it yet)
+                return `"${transcription.chunks[0].text}"`;
+              })()}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -351,35 +404,211 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
   const [patientPhone, setPatientPhone] = useState('')
   const [showPrintModal, setShowPrintModal] = useState(false)
   const [reportDate, setReportDate] = useState('')
-  const [showReport, setShowReport] = useState(false)
+  const showReport = true
+
+  // Loading and background processing states
+  const [isLoading, setIsLoading] = useState(false)
+  const [loadingStep, setLoadingStep] = useState("Initializing analysis...")
+  const [loadingProgress, setLoadingProgress] = useState(5)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
   
   const reportRef = useRef<HTMLDivElement>(null)
+
+  const performAnalysis = async (file: File) => {
+    setIsLoading(true)
+    setErrorMsg(null)
+    setLoadingProgress(10)
+    setLoadingStep("Extracting speech features...")
+
+    // Simulate progress updates periodically to look premium
+    const progressInterval = setInterval(() => {
+      setLoadingProgress((prev) => {
+        if (prev < 90) {
+          return prev + Math.floor(Math.random() * 5) + 2
+        }
+        return prev
+      })
+    }, 800)
+
+    try {
+      const mode = sessionStorage.getItem('analysis_mode') || 'full'
+      const genReport = sessionStorage.getItem('generate_report') === 'true'
+      const lang = sessionStorage.getItem('transcription_language') || 'english'
+
+      // Step transitions based on timer
+      setTimeout(() => setLoadingStep("Classifying stuttering categories..."), 1500)
+      setTimeout(() => setLoadingStep("Localizing speech stutters..."), 3000)
+      setTimeout(() => setLoadingStep("Transcribing speech..."), 5000)
+      setTimeout(() => setLoadingStep("Generating clinical diagnostic report..."), 7000)
+
+      let res
+      if (mode === 'full') {
+        res = await analyzeAudio(file, lang)
+      } else {
+        const response = await classifyAudio(file, lang)
+        res = {
+          classification: response.classification,
+          localization: { regions: [] },
+          transcription: response.transcription
+        }
+      }
+
+      clearInterval(progressInterval)
+      setLoadingProgress(100)
+      setLoadingStep("Analysis complete!")
+
+      // Save to sessionStorage
+      sessionStorage.setItem('results', JSON.stringify(res))
+
+      // Add to Assessment History
+      const id = `SWR-${Math.floor(1000 + Math.random() * 9000)}`
+      const now = new Date()
+      const historyItem = {
+        id,
+        date: now.toISOString().split('T')[0],
+        time: now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+        name: file.name,
+        size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
+        duration: sessionStorage.getItem('duration') || '00:10',
+        mode: mode === 'full' ? 'Full Analysis' : 'Classification Only',
+        status: 'Completed',
+        results: res,
+        generateReport: genReport,
+        patientName: 'N/A',
+        patientPhone: 'N/A'
+      }
+
+      const historyJson = localStorage.getItem('swaraaha_history')
+      const existingHistory = historyJson ? JSON.parse(historyJson) : []
+      localStorage.setItem('swaraaha_history', JSON.stringify([historyItem, ...existingHistory]))
+
+      try {
+        await storeAudioFile(id, file)
+      } catch (e) {
+        console.error("Failed to store audio in IndexedDB:", e)
+      }
+
+      // Briefly wait at 100% to let progress bar feel complete
+      setTimeout(() => {
+        setResults(res)
+        setIsLoading(false)
+      }, 500)
+
+    } catch (err) {
+      clearInterval(progressInterval)
+      console.error('Background analysis failed:', err)
+      setErrorMsg("Failed to complete speech analysis. Please verify the backend is running.")
+      setIsLoading(false)
+    }
+  }
 
   useEffect(() => {
     const data = sessionStorage.getItem('results')
     const name = sessionStorage.getItem('filename')
     const size = sessionStorage.getItem('filesize')
     const dur = sessionStorage.getItem('duration')
-    const shouldReport = sessionStorage.getItem('generate_report') === 'true'
     const pName = sessionStorage.getItem('patient_name')
     const pPhone = sessionStorage.getItem('patient_phone')
-    
-    if (!data) {
-      navigate('/')
-      return
-    }
-    setResults(JSON.parse(data))
+
+    // Initial state population
     setFilename(name || 'patient_recording.wav')
     setFilesize(size || '18 MB')
     setDuration(dur || '02:14')
     setPatientName(pName || 'N/A')
     setPatientPhone(pPhone || 'N/A')
-    setShowReport(shouldReport)
+
 
     // Set today's date
     const d = new Date()
     setReportDate(d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }))
-  }, [navigate])
+
+    if (data) {
+      setResults(JSON.parse(data))
+      setIsLoading(false)
+    } else {
+      // No results in session storage. Let's check if we have a file to analyze!
+      if (analyzedFile) {
+        performAnalysis(analyzedFile)
+      } else {
+        // No file and no results: redirect back to home page
+        navigate('/')
+      }
+    }
+  }, [navigate, analyzedFile])
+
+  if (isLoading) {
+    return (
+      <div className="p-6 md:p-8 max-w-2xl mx-auto h-[80vh] flex flex-col items-center justify-center animate-fade-in text-text-primary">
+        <div className="w-full bg-bg-card border border-border-color rounded-2xl p-8 space-y-6 shadow-xl flex flex-col items-center text-center" style={{ borderRadius: '24px' }}>
+          
+          {/* Animated Glow Logo Spinner */}
+          <div className="relative flex items-center justify-center w-16 h-16 rounded-2xl bg-teal-500 text-white shadow-lg animate-bounce">
+            <Activity size={32} className="animate-pulse" />
+            <span className="absolute -top-1 -right-1 flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-teal-500"></span>
+            </span>
+          </div>
+
+          <div className="space-y-2">
+            <h2 className="text-lg font-bold tracking-tight">Speech Diagnostics In Progress</h2>
+            <p className="text-xs text-text-secondary max-w-sm">
+              We are processing your recording. This typically takes between 2 to 10 seconds.
+            </p>
+          </div>
+
+          {/* Premium Progress Bar Wrapper */}
+          <div className="w-full space-y-2 max-w-md pt-2">
+            <div className="flex justify-between text-[10px] font-semibold text-text-secondary uppercase font-mono">
+              <span className="text-accent-teal">{loadingStep}</span>
+              <span>{loadingProgress}%</span>
+            </div>
+            <div className="h-2 w-full bg-hover-color/50 rounded-full overflow-hidden border border-border-color/50">
+              <div 
+                className="h-full bg-gradient-to-r from-teal-500 to-emerald-400 rounded-full transition-all duration-300 shadow-sm"
+                style={{ width: `${loadingProgress}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Informational tips */}
+          <div className="pt-4 border-t border-border-color/50 w-full max-w-md flex justify-center text-[10px] text-text-secondary select-none">
+            <div className="flex items-center gap-2">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-accent-teal" />
+              <span>Whisper-Tiny language adapters active</span>
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-accent-teal" />
+              <span>GPU/CPU inference optimized</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (errorMsg) {
+    return (
+      <div className="p-6 md:p-8 max-w-md mx-auto h-[80vh] flex flex-col items-center justify-center animate-fade-in text-text-primary">
+        <div className="w-full bg-bg-card border border-error-red/20 rounded-2xl p-8 space-y-6 shadow-xl flex flex-col items-center text-center" style={{ borderRadius: '24px' }}>
+          <div className="p-4 bg-error-red/10 text-error-red rounded-full">
+            <Activity size={32} />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-lg font-bold tracking-tight">Analysis Failed</h2>
+            <p className="text-xs text-text-secondary">
+              {errorMsg}
+            </p>
+          </div>
+          <button
+            onClick={() => navigate('/')}
+            className="w-full py-2 bg-accent-teal hover:bg-teal-600 text-white text-xs font-bold rounded-lg shadow-sm transition cursor-pointer"
+            style={{ borderRadius: '8px' }}
+          >
+            Go Back & Try Again
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   if (!results) return null
 
@@ -454,7 +683,7 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
       {/* INTERACTIVE WAVEFORM CARD (Hidden in Print) */}
       {results && (
         <div className="print:hidden">
-          <WaveformView file={analyzedFile} regions={results.localization.regions} />
+          <WaveformView file={analyzedFile} regions={results.localization.regions} transcription={results.transcription} />
         </div>
       )}
 
@@ -638,6 +867,7 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
         </div>
       )}
 
+
       {/* PRINT CLINICAL PDF REPORT (Formal medical document format) */}
       {showReport && (
         <div 
@@ -770,7 +1000,7 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
           {/* Recommendations Block */}
           <div className="space-y-2 border-t border-gray-200 pt-6">
             <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider">
-              3. Clinical Guidance & Recommendations
+              {results.localization.regions.length > 0 ? "3." : "2."} Clinical Guidance & Recommendations
             </h3>
             <p className="text-xs text-gray-600 leading-relaxed text-justify">
               This speech sample was evaluated using standardized reading passages. 
