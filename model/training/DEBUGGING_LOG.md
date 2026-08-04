@@ -313,7 +313,7 @@ problem.
 
 ## Current State
 
-The training pipeline on `feat/training-bugfix` includes all fixes above.
+The training pipeline on `feat/model-registry` includes all fixes above.
 The current recipe uses FocalLoss + backbone freezing:
 
 ```bash
@@ -338,6 +338,12 @@ Key design decisions:
 - **No gradient clipping** — was silently killing learning (3i)
 - **AMP with autocast (no GradScaler)** — safe float16 for speed
 - **Imbalanced batching** — natural distribution, no balanced sampler
+- **Audio cache** — preprocessed audio cached to `data/cache/{split}` pickle
+- **`torch.compile`** — JIT-compiles model on CUDA for ~2× speed
+- **Gradient accumulation** — effective batch size scaling
+- **Stable unfreeze** — preserves optimizer momentum, 10× smaller LR to backbone
+- **Training resume** — checkpoint-based interruption recovery
+- **Model registry** — `Classifier()`, `Localizer()`, `ModelRegistry()` API for loading
 
 ### Summary of Changes
 
@@ -406,7 +412,7 @@ This preserves the head's optimizer state and applies a 10× smaller LR to backb
 
 ## Current State
 
-The training pipeline on `feat/training-resume` includes all fixes above.
+The training pipeline on `feat/model-registry` includes all fixes above.
 
 ```bash
 python -m model.training.train_classifier \
@@ -423,13 +429,9 @@ python -m model.training.train_classifier \
     --output_dir model/weights
 ```
 
-Key design decisions:
-- **Audio cache** — preprocessed audio cached to `data/cache/{split}` pickle files; subsequent runs load in ~1s
-- **Auto `num_workers`** — uses all CPU cores for data loading
-- **`torch.compile`** — JIT-compiles model on CUDA for ~2× training speed
-- **Gradient accumulation** — scales effective batch size without memory increase
-- **Stable unfreeze** — preserves optimizer momentum, applies 10× smaller LR to backbone
-- **Training resume** — checkpoint-based interruption recovery with args validation
+All 5 classifiers trained. Model registry (`model/registry.py`) provides the API
+for loading trained models. Use `Classifier()`, `Localizer()`, or `ModelRegistry()`
+— do not import model classes directly.
 
 ### Summary of Changes
 
@@ -504,22 +506,17 @@ Two epochs (~1500s each) are wasted on the post-unfreeze collapse. Candidate fix
 
 Eliminating these 2 dead epochs would push the effective ceiling toward ~0.55+.
 
-### 8c. Train the other four classifiers
+### 8c. ~~Train the other four classifiers~~ ✅ Done
 
-Only `prolongation` is trained. `block`, `soundrep`, `wordrep`, `interjection`
-are needed for the full pipeline (`train_all_classifiers.sh`).
+All 5 classifiers trained. Results (val F1):
+- prolongation: 0.5239, block: 0.5288, soundrep: 0.0019, wordrep: 0.0135, interjection: 0.6830
 
-### 8d. Integrate trained weights into the app
+### 8d. ~~Integrate trained weights into the app~~ ✅ Done
 
-Two format mismatches block drop-in use of the trained checkpoints:
-1. `train_classifier.py`'s `save_checkpoint()` writes
-   `{epoch, model_state_dict, optimizer_state_dict, metrics, ...}`, but
-   `BaseWav2VecClassifier.from_pretrained()` expects
-   `{model_name, model_state_dict, class_name, class_idx}` — a conversion step
-   (or an explicit save in the classifier's native format) is required.
-2. `backend/services/classifier.py` loads a `HybridClassifier`, which needs all
-   five base classifiers **plus** the combiner MLP. Individual per-class
-   checkpoints alone are insufficient for the backend.
+Solved via the **model registry** (`model/registry.py` + `model/registry.json`).
+The registry loads individual classifier checkpoints and constructs a `HybridClassifier`
+with combiner. The backend service (`backend/services/classifier.py`) now uses `Classifier()`
+instead of bare `HybridClassifier()`.
 
 ### 8e. Bigger model or pretrained ASR features
 

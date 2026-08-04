@@ -85,20 +85,10 @@ class HybridClassifier:
         self.model_name = model_name
 
         if base_classifiers is None:
-            from model.classification.block import BlockClassifier
-            from model.classification.interjection import InterjectionClassifier
-            from model.classification.prolongation import ProlongationClassifier
-            from model.classification.soundrep import SoundRepClassifier
-            from model.classification.wordrep import WordRepClassifier
-
-            cls_map = {
-                "prolongation": ProlongationClassifier,
-                "block": BlockClassifier,
-                "soundrep": SoundRepClassifier,
-                "wordrep": WordRepClassifier,
-                "interjection": InterjectionClassifier,
-            }
-            self.base_classifiers = [cls_map[c](model_name) for c in DYSFLUENCY_CLASSES]
+            from model.classification import get_classifier_class
+            self.base_classifiers = [
+                get_classifier_class(c)(model_name) for c in DYSFLUENCY_CLASSES
+            ]
         else:
             assert len(base_classifiers) == NUM_CLASSES
             self.base_classifiers = base_classifiers
@@ -193,25 +183,13 @@ class HybridClassifier:
         Returns:
             HybridClassifier instance with loaded weights.
         """
-        from model.classification.block import BlockClassifier
-        from model.classification.interjection import InterjectionClassifier
-        from model.classification.prolongation import ProlongationClassifier
-        from model.classification.soundrep import SoundRepClassifier
-        from model.classification.wordrep import WordRepClassifier
+        from model.classification import get_classifier_class
 
         checkpoint = torch.load(path, map_location="cpu", weights_only=False)
 
-        cls_map = {
-            "prolongation": ProlongationClassifier,
-            "block": BlockClassifier,
-            "soundrep": SoundRepClassifier,
-            "wordrep": WordRepClassifier,
-            "interjection": InterjectionClassifier,
-        }
-
         base_classifiers = []
         for cls_name in DYSFLUENCY_CLASSES:
-            clf_cls = cls_map[cls_name]
+            clf_cls = get_classifier_class(cls_name)
             info = checkpoint["base_classifiers"][cls_name]
             clf = clf_cls(model_name=info["model_name"])
             clf.model.load_state_dict(info["model_state_dict"])

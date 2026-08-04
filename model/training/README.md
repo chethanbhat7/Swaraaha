@@ -24,7 +24,7 @@ Train everything with auto-detected system resources:
 python -m model.training.train
 ```
 
-This detects your GPU (RTX 4070 → batch size 16, etc.) and trains all five classifiers plus both localizers.
+This detects your GPU and trains all five classifiers plus both localizers.
 
 Select specific pipelines:
 
@@ -126,7 +126,6 @@ Trains five independent binary classifiers (one per dysfluency type) on top of `
 - **Audio cache:** Preprocessed audio is cached to `data/cache/{split}` (pickle) — subsequent runs load instantly
 - **`torch.compile`:** Model is JIT-compiled via `torch.compile` when on CUDA for faster training
 - **Checkpointing:** Saves best model (by val F1), final model, and resume checkpoint (model + optimizer + scheduler + args)
-- **Outputs:** `{class}_best.pt`, `{class}_final.pt`, `{class}_training_log.csv`, training curves PNG
 
 ---
 
@@ -182,42 +181,47 @@ Trains Wav2Vec 2.0 backbone + temporal attention head for per-frame dysfluency p
 
 ## Output Structure
 
+All outputs use **parameter-specific fingerprint naming**. The filename encodes every hyperparameter:
+
+```
+{class}_e{epochs}_b{batch_size}_lr{lr}_frz{freeze_backbone_epochs}_{loss_type}_g{focal_gamma}_ga{gradient_accumulation_steps}_wu{warmup_steps}_wd{weight_decay}_ml{max_length_seconds}_s{seed}_{data_short}_{model_short}_{suffix}.pt
+```
+
+Example:
+```
+prolongation_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml10_s42_train_w2v2base_best.pt
+```
+
+Suffixes: `_best.pt` (best val F1), `_final.pt` (last epoch), `_checkpoint.pt` (resume state), `_log.csv` (training metrics), `_curves.png` (training curves), `_training.log` (terminal output).
+
 ```
 model/weights/
-├── prolongation_best.pt
-├── prolongation_final.pt
-├── prolongation_training_log.csv
-├── block_best.pt
-├── block_final.pt
-├── block_training_log.csv
-├── soundrep_best.pt
-├── soundrep_final.pt
-├── soundrep_training_log.csv
-├── wordrep_best.pt
-├── wordrep_final.pt
-├── wordrep_training_log.csv
-├── interjection_best.pt
-├── interjection_final.pt
-├── interjection_training_log.csv
-├── localizer_best.pt
-├── localizer_final.pt
-├── localization_training_log.csv
-├── w2v2_localizer_best.pt
-├── w2v2_localizer_final.pt
-├── w2v2_localization_training_log.csv
+├── prolongation_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml10_s42_train_w2v2base_best.pt
+├── prolongation_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml10_s42_train_w2v2base_final.pt
+├── prolongation_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml10_s42_train_w2v2base_checkpoint.pt
+├── prolongation_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml10_s42_train_w2v2base_log.csv
+├── prolongation_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml10_s42_train_w2v2base_training.log
+├── ... (same pattern for block, soundrep, wordrep, interjection)
 └── training_curves/
-    ├── prolongation_curves.png
-    ├── block_curves.png
-    ├── soundrep_curves.png
-    ├── wordrep_curves.png
-    ├── interjection_curves.png
-    ├── localization_curves.png
-    └── w2v2_localization_curves.png
+    ├── prolongation_e20_b8_..._curves.png
+    └── ...
+```
+
+To use trained models, register them in `model/registry.json`:
+
+```json
+{
+  "classification": {
+    "prolongation": "model/weights/prolongation_e20_b8_lr3e-5_..._best.pt",
+    "block": "model/weights/block_e20_b8_lr3e-5_..._best.pt",
+    ...
+  }
+}
 ```
 
 ---
 
-### Training Resume
+## Training Resume
 
 Training auto-saves a resume checkpoint after every epoch. If interrupted (Ctrl+C, crash), re-running the **same command** picks up from the last completed epoch:
 

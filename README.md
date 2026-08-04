@@ -14,9 +14,13 @@ Swaraaha/
 ├── backend/           # FastAPI API server
 ├── model/             # ML models, training, evaluation (shared)
 │   ├── classification/  # Wav2Vec 2.0 binary classifiers + hybrid combiner
-│   ├── localization/    # CNN spectrogram-image localization
+│   ├── localization/    # CNN spectrogram + Wav2Vec2 localization
 │   ├── training/        # Training pipelines
-│   └── evaluation/      # Metrics and evaluation scripts
+│   ├── evaluation/      # Metrics and evaluation scripts
+│   ├── data/            # Dataset loading, preprocessing, augmentation
+│   ├── config/          # Hyperparameter defaults
+│   ├── registry.py      # Model registry API (Classifier, Localizer, ModelRegistry)
+│   └── registry.json    # Active model paths
 ├── app/               # PySide6 desktop application
 ├── docker-compose.yml
 ├── backend.Dockerfile
@@ -26,9 +30,9 @@ Swaraaha/
 **Two pipelines, independent of each other:**
 
 1. **Classification** — five Wav2Vec 2.0 binary classifiers (one per dysfluency type) combined via a hybrid MLP model. Answers *what kind* of stutter.
-2. **Localization** — CNN over spectrogram images to pinpoint *where* in the audio a dysfluency occurs.
+2. **Localization** — CNN over spectrogram images or Wav2Vec2 temporal attention to pinpoint *where* in the audio a dysfluency occurs.
 
-Both `frontend/` + `backend/` (web) and `app/` (desktop) load from the shared `model/` directory.
+Both `frontend/` + `backend/` (web) and `app/` (desktop) load from the shared `model/` directory via the model registry.
 
 ### Tech Stack
 
@@ -40,6 +44,30 @@ Both `frontend/` + `backend/` (web) and `app/` (desktop) load from the shared `m
 | ML | PyTorch, Hugging Face Transformers (Wav2Vec 2.0), librosa |
 | Container | Docker, docker-compose |
 | Deploy | Render (backend only) |
+
+## Accessing Trained Models
+
+**Always use the model registry API** to load and run trained models. Do not instantiate model classes directly or load checkpoints manually.
+
+```python
+from model import Classifier, Localizer, ModelRegistry
+
+# All classifiers (HybridClassifier with combiner)
+clf = Classifier()
+result = clf.predict(audio_tensor)           # {class_name: (label, confidence)}
+
+# Single classifier
+clf = Classifier("prolongation")
+result = clf.predict(audio_tensor)           # (label, confidence)
+
+# Everything at once
+m = ModelRegistry()
+all_results = m.run_all(audio_tensor)        # classify + localize
+```
+
+The registry (`model/registry.json`) maps task names to checkpoint paths. To swap which checkpoint is active, update the path in the JSON file. No code changes needed.
+
+**Do not** import `HybridClassifier`, `ProlongationClassifier`, etc. directly — use `Classifier()` instead. This ensures models load from the registry and stay in sync with which checkpoints are active.
 
 ## Dataset Setup
 
@@ -58,6 +86,21 @@ python -m model.data.setup
 ```
 
 See [`model/data/README.md`](model/data/README.md) for detailed instructions and manual setup options.
+
+## Training
+
+```bash
+# Train all 5 classifiers
+bash model/training/train_all_classifiers.sh
+
+# Or train one at a time
+python -m model.training.train_classifier --class_name prolongation
+
+# Or use the orchestrator
+python -m model.training.train
+```
+
+See [`model/training/README.md`](model/training/README.md) for all flags, resume, and tuning options.
 
 ## Running the Web App
 

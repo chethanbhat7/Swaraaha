@@ -1,13 +1,9 @@
 # PROJECT.md — Swaraaha
 
 > Context file for AI coding assistants (Antigravity, Claude Code, Cursor, etc).
-> Read this fully before making changes. This is a **fresh project, built
-> from scratch** — not a fork or continuation of any prior repo. Treat
-> anything not explicitly described here as **not yet built**, not as
-> "check the code for it."
-> Update this file whenever architecture, conventions, model design, or
-> active work changes. This is the persistent memory across sessions —
-> nothing here should be assumed stale just because a session ended.
+> Read this fully before making changes. Update this file whenever architecture,
+> conventions, model design, or active work changes. This is the persistent memory
+> across sessions — nothing here should be assumed stale just because a session ended.
 
 ## 1. What this project is
 
@@ -24,32 +20,27 @@ It ships as both a **web app** and a **desktop app**.
 
 ```
 Swaraaha/
-├── frontend/     # Web app UI
-├── backend/      # Web app API / server
-├── models/       # ML models, training code, weights — shared source of truth
-└── app/          # PyQt5 desktop app
+├── frontend/     # Web app UI (React + Vite + TypeScript)
+├── backend/      # Web app API / server (FastAPI)
+├── model/        # ML models, training, evaluation — shared source of truth
+├── app/          # PySide6 desktop app
+└── docs/         # Documentation and design specs
 ```
 
 - `frontend/` + `backend/` together make up the web app.
-- `app/` is a separate, independently-runnable **desktop app** (PyQt5).
-  It is not a legacy leftover to be replaced — it's a maintained, parallel
-  interface to the same models.
-- `models/` is the single source of truth for model architecture, weights,
-  and training/eval code. Both `app/` and `backend/` should load from here
-  rather than each keeping their own copy of model code.
+- `app/` is a separate, independently-runnable **desktop app** (PySide6).
+- `model/` is the single source of truth for model architecture, weights,
+  training/eval code, and the model registry. Both `app/` and `backend/`
+  load from here via the registry API.
 
 ## 3. Tech stack
 
-**Not yet fixed in code — these are working defaults based on prior stack
-experience. Confirm before treating as final, but assume these unless told
-otherwise:**
-- **Frontend:** React
-- **Backend:** FastAPI (Python) — natural fit since it can share process
-  space / imports with the PyTorch model code in `models/`
-- **Desktop app (`app/`):** PyQt5
-- **ML:** PyTorch, plus `transformers` (for Wav2Vec 2.0), `librosa`
-- **Containerization:** Docker (see §6)
-- **Deployment:** Render (see §6)
+- **Frontend:** React 19, Vite, TypeScript, Tailwind CSS
+- **Backend:** FastAPI (Python 3.11)
+- **Desktop app (`app/`):** PySide6
+- **ML:** PyTorch, Hugging Face Transformers (Wav2Vec 2.0), librosa
+- **Containerization:** Docker
+- **Deployment:** Render (backend only)
 
 ## 4. Model architecture
 
@@ -59,91 +50,90 @@ outputs are shown together rather than merged into one score:
 ### 4a. Classification pipeline — "what kind of stutter"
 - **Five binary classifiers**, one per dysfluency class: `prolongation`,
   `block`, `soundrep`, `wordrep`, `interjection`.
-- Each classifier is based on **Wav2Vec 2.0**, fine-tuned per class.
-- A **hybrid model** sits on top of these five and combines their outputs
-  into a final classification result. Combination strategy (e.g. weighted
-  ensemble, learned meta-classifier, stacking) is **not decided yet** —
-  flag this as an open design decision if asked to implement it.
+- Each classifier is based on **Wav2Vec 2.0** (`facebook/wav2vec2-base`), fine-tuned per class.
+- A **hybrid MLP combiner** (`CombinerMLP`) sits on top and combines the five
+  classifier outputs into a final multi-class prediction.
+- All models are loaded via the **model registry** (`model/registry.py` + `model/registry.json`).
 
 ### 4b. Localization pipeline — "where in the audio it happened"
-- A **CNN-based image model** that runs convolutional kernels over the
-  audio's **spectrogram image** to detect irregularities in the waveform
-  and pinpoint the specific time location of a stutter event.
-- This is treated as image processing (spectrogram-as-image), not raw
-  waveform/sequence modeling.
-- **Active exploration:** also investigating whether comparable
-  localization can be achieved **without image processing** — e.g. running
-  models directly over audio transcription/sequence features instead of a
-  spectrogram image. This is a parallel approach being evaluated alongside
-  the CNN one, not a settled replacement. If asked to build "the
-  localization model," check which approach (CNN-image vs.
-  transcript/sequence-based) is the one intended before assuming.
+- **CNN spectrogram model** — runs convolutional kernels over mel-spectrograms to detect dysfluency regions.
+- **Wav2Vec2 temporal attention model** — uses Wav2Vec2 backbone + attention head for frame-level prediction from raw audio.
+- Both are loaded via the model registry when trained checkpoints are available.
 
 ### How the two pipelines relate
 They are **independent**: the hybrid classifier gives "this audio contains
 X type of dysfluency," the localization model separately gives "at this
 point in the audio." Results are presented together to the user, not
-fused into a single model or score. Do not build tight coupling between
-them (e.g. one depending on the other's output as input) unless explicitly
-asked to.
+fused into a single model or score.
 
-## 5. Infrastructure
+## 5. Model Registry
 
-- **Docker:** used to containerize the app for scaling — most likely
-  separate containers/services for `backend` (API) and `models` (inference),
-  possibly `frontend` as a static build served separately. Exact
-  docker-compose / multi-service layout not decided yet.
-- **Deployment:** **Render** is the target platform for the web app
-  (frontend + backend). The desktop app (`app/`) is not deployed anywhere —
-  it stays a local install.
+The model registry decouples model loading from model training.
 
-## 6. Conventions
+**Always use the registry API to access trained models.** Do not instantiate model classes directly or load checkpoints manually.
+
+```python
+from model import Classifier, Localizer, ModelRegistry
+
+clf = Classifier()                    # all 5 classifiers + combiner
+clf = Classifier("prolongation")      # single classifier
+loc = Localizer("cnn")               # single localizer
+m = ModelRegistry()                   # everything at once
+m.run_all(audio_tensor)               # classify + localize in one call
+```
+
+- **`model/registry.json`** — lists available model checkpoint paths, grouped by task (classification, localization).
+- **`model/registry.py`** — Python API with `Classifier`, `Localizer`, and `ModelRegistry` classes. Models are lazy-loaded on first `predict()` call.
+
+To change which checkpoint is active, update the path in `registry.json`. No code changes needed. Training does NOT write to the registry — model selection is manual.
+
+**Do not** import `HybridClassifier`, `ProlongationClassifier`, etc. directly — use `Classifier()` instead. This ensures models load from the registry and stay in sync with which checkpoints are active.
+
+## 6. Training
+
+Training uses **parameter-specific fingerprint naming** — all hyperparameters are encoded in the output filename:
+
+```
+prolongation_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml10_s42_train_w2v2base_best.pt
+```
+
+Key features:
+- **Checkpoint-based resume** — interrupted training resumes from the last epoch
+- **Audio preprocessing cache** — preprocessed audio cached to `data/cache/` for fast re-runs
+- **Focal loss** — handles class imbalance without explicit class weights
+- **Backbone freezing** — head-only training for first N epochs, then unfreeze with 10× lower LR
+- **`torch.compile`** — JIT compilation on CUDA for ~2× speed
+- **Gradient accumulation** — effective batch size scaling
+
+All 5 classifiers have been trained. Results (val F1):
+- prolongation: 0.5239, block: 0.5288, soundrep: 0.0019, wordrep: 0.0135, interjection: 0.6830
+
+## 7. Conventions
 
 - **Commit messages:** Follow [Conventional Commits](https://www.conventionalcommits.org/):
   ```
   <type>[optional scope]: <description>
-
-  [optional body]
-
-  [optional footer(s)]
   ```
   - **Types:** `fix`, `feat`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`, `ci`, `build`
   - **Scopes:** `(model)`, `(data)`, `(app)`, `(localization)`, `(classification)`, `(training)`, `(eval)`
-  - **Examples:**
-    - `feat(model): add CNN spectrogram localization model`
-    - `fix(data): correct frame label alignment for hop_length=512`
-    - `docs(project): update conventions to Conventional Commits`
-    - `refactor(model): extract base classifier class from 5 binary classifiers`
-    - `feat(app)!: redesign main window layout` (breaking change)
 - Keep `model/` framework-agnostic where possible so both `backend/`
-  (FastAPI) and `app/` (PyQt5) can import from it without pulling in
+  (FastAPI) and `app/` (PySide6) can import from it without pulling in
   web-only or desktop-only dependencies.
+- Model weights (`model/weights/`) are git-ignored — they live locally only.
 
-## 7. Known constraints / things to be careful about
+## 8. Current state
 
-- **Two separate "app" concepts exist**: `app/` (desktop) is a real,
-  distinct piece from the web app (`frontend/` + `backend/`). Never assume
-  "the app" means the web app by default — check context.
-- The hybrid classifier's combination method is undecided — don't invent
-  and hardcode a specific ensemble strategy as if it were settled; flag it
-  as a design choice when it comes up.
-- Localization approach (image/CNN vs. transcript/sequence-based) is under
-  active comparison, not finalized — same caution as above.
-- No dataset, trained weights, or scaffolding exist yet — this is a ground-
-  up build. Treat every directory in §2 as starting empty.
-
-## 8. Current state / open items
-
-_(Keep this section updated across sessions — note what's in progress, what
-was last worked on, and any known bugs or TODOs here.)_
-
-- [x] Wav2Vec 2.0 per-class binary classifiers — implemented in `model/classification/`
-- [x] Hybrid combiner model — MLP approach in `model/classification/hybrid.py`
-- [x] Repo scaffolding for `frontend/`, `backend/`, `app/` — completed
-- [x] CNN spectrogram-image localization model — implemented in `model/localization/`
-- [x] Web app (frontend/backend) — React + FastAPI MVP, `frontend/` and `backend/`
-- [x] Docker setup — `backend.Dockerfile` and `docker-compose.yml`
-- [x] Render deployment — `render.yaml` Blueprint
-- [ ] Explore non-image (transcript/sequence-based) localization — deferred
-- [ ] Train models on actual dataset — pending (requires labeled data)
-- [ ] PyQt5 desktop app full implementation — pending
+- [x] Wav2Vec 2.0 per-class binary classifiers — `model/classification/`
+- [x] Hybrid combiner model (MLP) — `model/classification/hybrid.py`
+- [x] CNN spectrogram localization — `model/localization/cnn_spectrogram.py`
+- [x] Wav2Vec2 temporal attention localization — `model/localization/wav2vec2_localizer.py`
+- [x] Web app (frontend/backend) — React + FastAPI
+- [x] Docker setup — `backend.Dockerfile` + `docker-compose.yml`
+- [x] Render deployment — `render.yaml`
+- [x] Data pipeline — download, merge, prepare (3 datasets: Boli, SEP-28K, UCLASS)
+- [x] Training pipeline — all 5 classifiers trained, checkpoint resume, audio cache
+- [x] Model registry — JSON + Python API for loading trained models
+- [x] PySide6 desktop app — scaffolding complete
+- [ ] Localizer training — no trained checkpoints yet
+- [ ] Threshold tuning — sweep val set for optimal F1
+- [ ] Warm restart LR schedule — extend training beyond 20 epochs

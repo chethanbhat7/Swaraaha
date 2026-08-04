@@ -103,17 +103,8 @@ def evaluate_classifier(args) -> Dict:
     eval_loader = DataLoader(eval_dataset, batch_size=args.batch_size, shuffle=False)
 
     # Load model
-    cls_map = {
-        "prolongation": "model.classification.prolongation.ProlongationClassifier",
-        "block": "model.classification.block.BlockClassifier",
-        "soundrep": "model.classification.soundrep.SoundRepClassifier",
-        "wordrep": "model.classification.wordrep.WordRepClassifier",
-        "interjection": "model.classification.interjection.InterjectionClassifier",
-    }
-    module_path, cls_name_str = cls_map[args.class_name].rsplit(".", 1)
-    import importlib
-    mod = importlib.import_module(module_path)
-    ClassifierCls = getattr(mod, cls_name_str)
+    from model.classification import get_classifier_class
+    ClassifierCls = get_classifier_class(args.class_name)
 
     model = ClassifierCls()
     load_checkpoint(args.model_path, model=model)

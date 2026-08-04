@@ -6,18 +6,17 @@ from typing import Optional
 import numpy as np
 import torch
 
-from model.classification import DYSFLUENCY_CLASSES
-from model.classification.hybrid import HybridClassifier
+from model.registry import Classifier
 from backend.services.audio_utils import convert_to_wav
 
-_model: Optional[HybridClassifier] = None
+_clf: Optional[Classifier] = None
 
 
-def get_model() -> HybridClassifier:
-    global _model
-    if _model is None:
-        _model = HybridClassifier()
-    return _model
+def get_model() -> Classifier:
+    global _clf
+    if _clf is None:
+        _clf = Classifier()
+    return _clf
 
 
 def classify_audio_bytes(audio_bytes: bytes) -> dict:
