@@ -5,9 +5,28 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
+from model.config.defaults import DYSFLUENCY_CLASSES
 
-DYSFLUENCY_CLASSES = ["prolongation", "block", "soundrep", "wordrep", "interjection"]
 NUM_CLASSES = len(DYSFLUENCY_CLASSES)
+
+
+def get_classifier_class(class_name: str):
+    """Lazily import and return the classifier class for a dysfluency class."""
+    _CLASSIFIER_MODULES = {
+        "prolongation": "model.classification.prolongation.ProlongationClassifier",
+        "block": "model.classification.block.BlockClassifier",
+        "soundrep": "model.classification.soundrep.SoundRepClassifier",
+        "wordrep": "model.classification.wordrep.WordRepClassifier",
+        "interjection": "model.classification.interjection.InterjectionClassifier",
+    }
+    if class_name not in _CLASSIFIER_MODULES:
+        raise ValueError(
+            f"Unknown dysfluency class: {class_name!r}. "
+            f"Available: {list(_CLASSIFIER_MODULES)}"
+        )
+    module_path, cls_name_str = _CLASSIFIER_MODULES[class_name].rsplit(".", 1)
+    import importlib
+    return getattr(importlib.import_module(module_path), cls_name_str)
 
 
 class BaseWav2VecClassifier:
@@ -123,9 +142,7 @@ class BaseWav2VecClassifier:
         return f"{self.__class__.__name__}(model={self.model_name})"
 
 
-# Concrete classifiers (import from submodules to avoid circular imports):
-#   from model.classification.prolongation import ProlongationClassifier
-#   from model.classification.block import BlockClassifier
-#   from model.classification.soundrep import SoundRepClassifier
-#   from model.classification.wordrep import WordRepClassifier
-#   from model.classification.interjection import InterjectionClassifier
+# Concrete classifiers (import from submodules to avoid circular imports).
+# Use get_classifier_class(name) to resolve a classifier by dysfluency class:
+#   from model.classification import get_classifier_class
+#   Cls = get_classifier_class("prolongation")

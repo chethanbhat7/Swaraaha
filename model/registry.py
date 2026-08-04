@@ -25,6 +25,8 @@ import json
 import os
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+from model.fingerprint import model_name_from_path
+
 _REGISTRY_PATH = os.path.join(os.path.dirname(__file__), "registry.json")
 
 
@@ -43,6 +45,34 @@ def _resolve_path(path: str) -> str:
         return path
     project_root = os.path.dirname(os.path.dirname(__file__))
     return os.path.join(project_root, path)
+
+
+def _load_classifier(class_name: str, path: str):
+    """Load a classifier from a checkpoint, handling training and classifier formats."""
+    import torch
+
+    checkpoint = torch.load(path, map_location="cpu", weights_only=False)
+
+    if "model_name" in checkpoint:
+        from model.classification import get_classifier_class
+        return get_classifier_class(class_name).from_pretrained(path)
+
+    from model.classification import BaseWav2VecClassifier, DYSFLUENCY_CLASSES
+    from transformers import Wav2Vec2ForSequenceClassification
+
+    model_name = model_name_from_path(path)
+    model = Wav2Vec2ForSequenceClassification.from_pretrained(model_name, num_labels=2)
+
+    state_dict = checkpoint["model_state_dict"]
+    state_dict = {k.replace("_orig_mod.", ""): v for k, v in state_dict.items()}
+    model.load_state_dict(state_dict, strict=True)
+
+    instance = BaseWav2VecClassifier.__new__(BaseWav2VecClassifier)
+    instance.model_name = model_name
+    instance._model = model
+    instance.class_name = class_name
+    instance.class_idx = DYSFLUENCY_CLASSES.index(class_name)
+    return instance
 
 
 class Classifier:
@@ -68,20 +98,7 @@ class Classifier:
                     f"Registry entry: classification.{self.class_name}"
                 )
 
-            from model.classification.prolongation import ProlongationClassifier
-            from model.classification.block import BlockClassifier
-            from model.classification.soundrep import SoundRepClassifier
-            from model.classification.wordrep import WordRepClassifier
-            from model.classification.interjection import InterjectionClassifier
-
-            cls_map = {
-                "prolongation": ProlongationClassifier,
-                "block": BlockClassifier,
-                "soundrep": SoundRepClassifier,
-                "wordrep": WordRepClassifier,
-                "interjection": InterjectionClassifier,
-            }
-            self._model = cls_map[self.class_name].from_pretrained(path)
+            self._model = _load_classifier(self.class_name, path)
         else:
             missing = []
             for name in ["prolongation", "block", "soundrep", "wordrep", "interjection"]:
@@ -96,24 +113,11 @@ class Classifier:
 
             from model.classification import DYSFLUENCY_CLASSES
             from model.classification.hybrid import HybridClassifier, CombinerMLP
-            from model.classification.prolongation import ProlongationClassifier
-            from model.classification.block import BlockClassifier
-            from model.classification.soundrep import SoundRepClassifier
-            from model.classification.wordrep import WordRepClassifier
-            from model.classification.interjection import InterjectionClassifier
-
-            cls_map = {
-                "prolongation": ProlongationClassifier,
-                "block": BlockClassifier,
-                "soundrep": SoundRepClassifier,
-                "wordrep": WordRepClassifier,
-                "interjection": InterjectionClassifier,
-            }
 
             base_classifiers = []
             for name in DYSFLUENCY_CLASSES:
                 path = _resolve_path(classification[name])
-                base_classifiers.append(cls_map[name].from_pretrained(path))
+                base_classifiers.append(_load_classifier(name, path))
 
             self._model = HybridClassifier.__new__(HybridClassifier)
             self._model.model_name = "facebook/wav2vec2-base"

@@ -27,8 +27,8 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
+from model.config.defaults import DYSFLUENCY_CLASSES
 
-DYSFLUENCY_CLASSES = ["prolongation", "block", "soundrep", "wordrep", "interjection"]
 NUM_CLASSES = len(DYSFLUENCY_CLASSES)
 CLASS_TO_IDX = {cls: i for i, cls in enumerate(DYSFLUENCY_CLASSES)}
 

@@ -22,75 +22,19 @@ Usage:
 
 import argparse
 import os
-import re
 import sys
 import time
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
-# Args that must match for checkpoint resume
-RESUME_KEYS = [
-    "class_name", "data_dir", "model_name", "lr", "batch_size",
-    "max_length_seconds", "warmup_steps", "weight_decay",
-    "freeze_backbone_epochs", "loss_type", "focal_gamma", "seed",
-    "gradient_accumulation_steps", "epochs",
-]
-
-FINGERPRINT_FMT = "{class_name}_e{epochs}_b{batch_size}_lr{lr}_frz{freeze_backbone_epochs}_{loss_type}_g{focal_gamma}_ga{gradient_accumulation_steps}_wu{warmup_steps}_wd{weight_decay}_ml{max_length_seconds}_s{seed}_{data_short}_{model_short}"
-
-_MODEL_ALIASES = {
-    "facebook/wav2vec2-base": "w2v2base",
-    "facebook/wav2vec2-large": "w2v2large",
-}
-
-
-def _fmt_fp(v):
-    if isinstance(v, float):
-        s = f"{v:.10g}"
-        s = re.sub(r'e([+-])0(\d)', r'e\1\2', s)
-        return s
-    return str(v)
-
-
-def fingerprint(args) -> str:
-    values = {k: _fmt_fp(getattr(args, k)) for k in RESUME_KEYS}
-    values["data_short"] = os.path.basename(args.data_dir.rstrip("/"))
-    values["model_short"] = _MODEL_ALIASES.get(args.model_name, args.model_name.replace("/", "_"))
-    return FINGERPRINT_FMT.format(**values)
-
-
-def parse_fingerprint(fp: str) -> dict:
-    """Parse a fingerprint string back into a dict of params."""
-    pattern = (
-        r'^(?P<class_name>\w+)'
-        r'_e(?P<epochs>\d+)'
-        r'_b(?P<batch_size>\d+)'
-        r'_lr(?P<lr>[\d.e\-]+)'
-        r'_frz(?P<freeze_backbone_epochs>\d+)'
-        r'_(?P<loss_type>\w+)'
-        r'_g(?P<focal_gamma>[\d.e\-]+)'
-        r'_ga(?P<gradient_accumulation_steps>\d+)'
-        r'_wu(?P<warmup_steps>\d+)'
-        r'_wd(?P<weight_decay>[\d.e\-]+)'
-        r'_ml(?P<max_length_seconds>[\d.e\-]+)'
-        r'_s(?P<seed>\d+)'
-        r'_(?P<data_short>\w+)'
-        r'_(?P<model_short>\w+)$'
-    )
-    m = re.match(pattern, fp)
-    if not m:
-        raise ValueError(f"Cannot parse fingerprint: {fp}")
-    d = m.groupdict()
-    for k in ("epochs", "batch_size", "freeze_backbone_epochs",
-              "gradient_accumulation_steps", "warmup_steps", "seed"):
-        d[k] = int(d[k])
-    for k in ("lr", "focal_gamma", "weight_decay", "max_length_seconds"):
-        d[k] = float(d[k])
-    _MODEL_SHORT = {v: k for k, v in _MODEL_ALIASES.items()}
-    ms = d.pop("model_short")
-    d["model_name"] = _MODEL_SHORT.get(ms, ms)
-    return d
+from model.fingerprint import (
+    FINGERPRINT_FMT,
+    MODEL_ALIASES,
+    RESUME_KEYS,
+    fingerprint,
+    parse_fingerprint,
+)
 
 
 def compute_pos_weight(labels: np.ndarray) -> float:
@@ -455,18 +399,8 @@ def train(args) -> Dict:
         print(f"  Loss: CrossEntropy (no weights)")
 
     # ---- Model ----
-    from model.classification import DYSFLUENCY_CLASSES as _CLASSES
-    cls_map = {
-        "prolongation": "model.classification.prolongation.ProlongationClassifier",
-        "block": "model.classification.block.BlockClassifier",
-        "soundrep": "model.classification.soundrep.SoundRepClassifier",
-        "wordrep": "model.classification.wordrep.WordRepClassifier",
-        "interjection": "model.classification.interjection.InterjectionClassifier",
-    }
-    module_path, cls_name_str = cls_map[args.class_name].rsplit(".", 1)
-    import importlib
-    mod = importlib.import_module(module_path)
-    ClassifierCls = getattr(mod, cls_name_str)
+    from model.classification import get_classifier_class
+    ClassifierCls = get_classifier_class(args.class_name)
 
     print(f"  Loading pretrained model: {args.model_name}...")
     model = ClassifierCls(model_name=args.model_name)

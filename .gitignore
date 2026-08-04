@@ -23,11 +23,7 @@ build/
 venv/
 
 # Model weights (large files)
-model/weights/*.pt
-model/weights/*.pth
-model/weights/*.bin
-model/weights/*.onnx
-model/weights/checkpoints/
+model/weights/
 
 # Raw data and processed data (large, not committed)
 RawData/
