@@ -225,6 +225,21 @@ To add a dataset: add an entry to `DATASET_LIST` in `config.py` and write a norm
 
 ---
 
+## Using Trained Models
+
+After training, use the **model registry API** to load and run models. Do not import model classes directly or load checkpoints manually.
+
+```python
+from model import Classifier
+
+clf = Classifier()  # loads all 5 trained classifiers from registry
+result = clf.predict(audio_tensor)
+```
+
+See the [root README](../../README.md#accessing-trained-models) for full API details.
+
+---
+
 ## Troubleshooting
 
 | Problem | Fix |
