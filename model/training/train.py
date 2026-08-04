@@ -164,9 +164,19 @@ def main():
     )
     parser.add_argument("--data_dir", type=str, default="data/train", help="Training data directory.")
     parser.add_argument("--output_dir", type=str, default="model/weights", help="Output directory for weights.")
+    parser.add_argument(
+        "--class_names",
+        nargs="+",
+        choices=CLASS_NAMES,
+        default=None,
+        help="Which classifiers to train in the cls pipeline (default: all 5).",
+    )
     parser.add_argument("--dry_run", action="store_true", help="Show what would be run without executing.")
     parser.add_argument("extra_args", nargs="*", help="Additional args passed to each pipeline script.")
     args = parser.parse_args()
+
+    if args.class_names and "cls" not in args.pipelines:
+        parser.error("--class_names requires the 'cls' pipeline (add cls to --pipelines).")
 
     system = SystemInfo().detect()
 
