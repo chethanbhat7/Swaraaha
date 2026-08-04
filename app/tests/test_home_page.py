@@ -4,10 +4,12 @@ from app.ui.home_page import HomePage
 def test_home_page_has_tabs_and_panel(qapp):
     page = HomePage()
     tabs = page._tabs
-    assert tabs.count() == 2
+    assert tabs.count() == 3
     assert tabs.tabText(0) == "Passage"
     assert tabs.tabText(1) == "Files"
+    assert tabs.tabText(2) == "Transcription"
     assert page.get_file_panel() is tabs.widget(1)
+    assert page.get_transcription_panel() is tabs.widget(2)
 
 
 def test_home_page_reemits_file_selected(qapp, tmp_path):

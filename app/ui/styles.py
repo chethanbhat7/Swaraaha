@@ -33,6 +33,70 @@ def build_stylesheet():
         background-color: {COLORS['primary_container']};
     }}
 
+    /* === Sidebar Segmented Nav Buttons === */
+    QFrame[cssClass="nav_bar"] {
+        background-color: {COLORS['surface_variant']};
+        border-radius: {RADIUS['sm']}px;
+        padding: 4px;
+    }
+    QPushButton[cssClass="nav_btn"] {
+        background-color: transparent;
+        color: {COLORS['on_surface']};
+        border: none;
+        border-radius: {RADIUS['sm']}px;
+        padding: 8px 16px;
+        font-size: 14px;
+        font-weight: 500;
+        min-height: 36px;
+    }
+    QPushButton[cssClass="nav_btn"]:hover {
+        background-color: {COLORS['primary_container']}88;
+        color: {COLORS['primary']};
+    }
+    QPushButton[cssClass="nav_btn_active"] {
+        background-color: {COLORS['surface']};
+        color: {COLORS['primary']};
+        border: 1px solid {COLORS['outline']}33;
+        border-radius: {RADIUS['sm']}px;
+        padding: 8px 16px;
+        font-size: 14px;
+        font-weight: 600;
+        min-height: 36px;
+    }
+
+    /* === Tab Widget & Tab Bar === */
+    QTabWidget::pane {{
+        border: 1px solid {COLORS['outline']}33;
+        border-radius: {RADIUS['md']}px;
+        background-color: {COLORS['surface']};
+        top: -1px;
+    }}
+
+    QTabBar::tab {{
+        background-color: {COLORS['surface_variant']};
+        color: {COLORS['on_surface']};
+        border: 1px solid {COLORS['outline']}33;
+        border-bottom: none;
+        border-top-left-radius: {RADIUS['sm']}px;
+        border-top-right-radius: {RADIUS['sm']}px;
+        padding: 10px 20px;
+        font-size: 14px;
+        font-weight: 500;
+        margin-right: 4px;
+    }}
+
+    QTabBar::tab:selected {{
+        background-color: {COLORS['surface']};
+        color: {COLORS['primary']};
+        font-weight: 600;
+        border-top: 3px solid {COLORS['primary']};
+    }}
+
+    QTabBar::tab:hover:!selected {{
+        background-color: {COLORS['primary_container']}88;
+        color: {COLORS['primary']};
+    }}
+
     /* === Buttons === */
     QPushButton {{
         background-color: {COLORS['primary']};
@@ -67,6 +131,29 @@ def build_stylesheet():
     }}
     QPushButton[cssClass="secondary"]:hover {{
         background-color: {COLORS['primary_container']};
+    }}
+
+    /* === Zoom Button === */
+    QPushButton[cssClass="zoom_btn"] {{
+        background-color: {COLORS['surface_variant']};
+        color: {COLORS['on_surface']};
+        border: 1px solid {COLORS['outline']}44;
+        border-radius: {RADIUS['sm']}px;
+        padding: 0px;
+        font-size: 18px;
+        font-weight: bold;
+        min-width: 32px;
+        max-width: 32px;
+        min-height: 32px;
+        max-height: 32px;
+    }}
+    QPushButton[cssClass="zoom_btn"]:hover {{
+        background-color: {COLORS['primary_container']};
+        color: {COLORS['primary']};
+        border-color: {COLORS['primary']};
+    }}
+    QPushButton[cssClass="zoom_btn"]:pressed {{
+        background-color: {COLORS['primary_container']}CC;
     }}
 
     /* === Record Button === */
@@ -119,6 +206,25 @@ def build_stylesheet():
         line-height: 1.6;
     }}
 
+    /* === List Widget === */
+    QListWidget {{
+        background-color: {COLORS['surface']};
+        border: 1px solid {COLORS['outline']}33;
+        border-radius: {RADIUS['md']}px;
+        padding: {SPACING['xs']}px;
+    }}
+    QListWidget::item {{
+        padding: {SPACING['sm']}px {SPACING['md']}px;
+        border-radius: {RADIUS['sm']}px;
+    }}
+    QListWidget::item:hover {{
+        background-color: {COLORS['surface_variant']};
+    }}
+    QListWidget::item:selected {{
+        background-color: {COLORS['primary_container']};
+        color: {COLORS['primary']};
+    }}
+
     /* === Status Bar === */
     QStatusBar {{
         background-color: {COLORS['surface_variant']};
@@ -127,7 +233,7 @@ def build_stylesheet():
         font-size: 12px;
     }}
 
-    /* === Table Widget (Results) === */
+    /* === Table Widget (Results & Transcription) === */
     QTableWidget {{
         background-color: {COLORS['surface']};
         border: 1px solid {COLORS['outline']}33;
