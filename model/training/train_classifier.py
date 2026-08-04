@@ -22,6 +22,7 @@ Usage:
 
 import argparse
 import os
+import re
 import sys
 import time
 from typing import Dict, List, Optional, Tuple
@@ -33,8 +34,63 @@ RESUME_KEYS = [
     "class_name", "data_dir", "model_name", "lr", "batch_size",
     "max_length_seconds", "warmup_steps", "weight_decay",
     "freeze_backbone_epochs", "loss_type", "focal_gamma", "seed",
-    "gradient_accumulation_steps",
+    "gradient_accumulation_steps", "epochs",
 ]
+
+FINGERPRINT_FMT = "{class_name}_e{epochs}_b{batch_size}_lr{lr}_frz{freeze_backbone_epochs}_{loss_type}_g{focal_gamma}_ga{gradient_accumulation_steps}_wu{warmup_steps}_wd{weight_decay}_ml{max_length_seconds}_s{seed}_{data_short}_{model_short}"
+
+_MODEL_ALIASES = {
+    "facebook/wav2vec2-base": "w2v2base",
+    "facebook/wav2vec2-large": "w2v2large",
+}
+
+
+def _fmt_fp(v):
+    if isinstance(v, float):
+        s = f"{v:.10g}"
+        s = re.sub(r'e([+-])0(\d)', r'e\1\2', s)
+        return s
+    return str(v)
+
+
+def fingerprint(args) -> str:
+    values = {k: _fmt_fp(getattr(args, k)) for k in RESUME_KEYS}
+    values["data_short"] = os.path.basename(args.data_dir.rstrip("/"))
+    values["model_short"] = _MODEL_ALIASES.get(args.model_name, args.model_name.replace("/", "_"))
+    return FINGERPRINT_FMT.format(**values)
+
+
+def parse_fingerprint(fp: str) -> dict:
+    """Parse a fingerprint string back into a dict of params."""
+    pattern = (
+        r'^(?P<class_name>\w+)'
+        r'_e(?P<epochs>\d+)'
+        r'_b(?P<batch_size>\d+)'
+        r'_lr(?P<lr>[\d.e\-]+)'
+        r'_frz(?P<freeze_backbone_epochs>\d+)'
+        r'_(?P<loss_type>\w+)'
+        r'_g(?P<focal_gamma>[\d.e\-]+)'
+        r'_ga(?P<gradient_accumulation_steps>\d+)'
+        r'_wu(?P<warmup_steps>\d+)'
+        r'_wd(?P<weight_decay>[\d.e\-]+)'
+        r'_ml(?P<max_length_seconds>[\d.e\-]+)'
+        r'_s(?P<seed>\d+)'
+        r'_(?P<data_short>\w+)'
+        r'_(?P<model_short>\w+)$'
+    )
+    m = re.match(pattern, fp)
+    if not m:
+        raise ValueError(f"Cannot parse fingerprint: {fp}")
+    d = m.groupdict()
+    for k in ("epochs", "batch_size", "freeze_backbone_epochs",
+              "gradient_accumulation_steps", "warmup_steps", "seed"):
+        d[k] = int(d[k])
+    for k in ("lr", "focal_gamma", "weight_decay", "max_length_seconds"):
+        d[k] = float(d[k])
+    _MODEL_SHORT = {v: k for k, v in _MODEL_ALIASES.items()}
+    ms = d.pop("model_short")
+    d["model_name"] = _MODEL_SHORT.get(ms, ms)
+    return d
 
 
 def compute_pos_weight(labels: np.ndarray) -> float:
@@ -243,8 +299,29 @@ def evaluate_classifier(model, dataloader, device) -> Tuple[float, float, float,
     return accuracy, f1, avg_loss, all_labels, all_preds
 
 
+class TeeLogger:
+    """Write to both stdout and a file."""
+
+    def __init__(self, path):
+        self.file = open(path, "w")
+        self._stdout = sys.stdout
+
+    def write(self, text):
+        self._stdout.write(text)
+        self.file.write(text)
+        self.file.flush()
+
+    def flush(self):
+        self._stdout.flush()
+        self.file.flush()
+
+    def close(self):
+        self.file.close()
+        sys.stdout = self._stdout
+
+
 def _resume_checkpoint_path(args) -> str:
-    return os.path.join(args.output_dir, f"{args.class_name}_checkpoint.pt")
+    return os.path.join(args.output_dir, f"{fingerprint(args)}_checkpoint.pt")
 
 
 def _save_resume_state(model, optimizer, scheduler, epoch, best_f1, history, args, backbone_frozen):
@@ -270,22 +347,6 @@ def _try_load_resume(args, device):
 
     import torch
     ckpt = torch.load(path, map_location=device, weights_only=False)
-    saved_args = ckpt.get("args", {})
-    current_args = {k: getattr(args, k) for k in RESUME_KEYS}
-
-    mismatch = []
-    for k in RESUME_KEYS:
-        sv = saved_args.get(k)
-        cv = current_args[k]
-        if sv != cv:
-            mismatch.append(f"    {k}: saved={sv}, current={cv}")
-
-    if mismatch:
-        print("  Checkpoint args mismatch — starting fresh:")
-        for m in mismatch:
-            print(m)
-        return None
-
     return ckpt
 
 
@@ -305,6 +366,15 @@ def train(args) -> Dict:
     )
 
     set_seed(args.seed)
+    fp = fingerprint(args)
+    os.makedirs(args.output_dir, exist_ok=True)
+    tee = TeeLogger(os.path.join(args.output_dir, f"{fp}_training.log"))
+    sys.stdout = tee
+
+    print(f"\n  Configuration:")
+    for k in RESUME_KEYS:
+        print(f"    {k}: {getattr(args, k)}")
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if device.type == "cuda":
         torch.set_float32_matmul_precision("high")
@@ -481,7 +551,7 @@ def train(args) -> Dict:
 
     # ---- Logging ----
     os.makedirs(args.output_dir, exist_ok=True)
-    log_path = os.path.join(args.output_dir, f"{args.class_name}_training_log.csv")
+    log_path = os.path.join(args.output_dir, f"{fp}_log.csv")
     log_mode = "a" if resume_ckpt is not None else "w"
     logger = CSVLogger(log_path, ["epoch", "train_loss", "val_loss", "val_acc", "val_f1", "lr"], mode=log_mode)
 
@@ -489,8 +559,9 @@ def train(args) -> Dict:
 
     if start_epoch > args.epochs:
         print(f"\n  Training already complete (epoch {start_epoch - 1}/{args.epochs})")
-        final_path = os.path.join(args.output_dir, f"{args.class_name}_final.pt")
+        final_path = os.path.join(args.output_dir, f"{fp}_final.pt")
         save_checkpoint(model, optimizer, args.epochs, {"val_f1": best_f1}, final_path, scheduler)
+        tee.close()
         return history
 
     print(f"\n  {'Resuming' if resume_ckpt else 'Starting'} training ({start_epoch}/{args.epochs})...\n")
@@ -546,7 +617,7 @@ def train(args) -> Dict:
         # Checkpoint best
         if val_f1 > best_f1:
             best_f1 = val_f1
-            ckpt_path = os.path.join(args.output_dir, f"{args.class_name}_best.pt")
+            ckpt_path = os.path.join(args.output_dir, f"{fp}_best.pt")
             save_checkpoint(model, optimizer, epoch, {"val_f1": val_f1, "val_acc": val_acc}, ckpt_path, scheduler)
 
         # Early stopping
@@ -555,7 +626,7 @@ def train(args) -> Dict:
             break
 
     # Save final model
-    final_path = os.path.join(args.output_dir, f"{args.class_name}_final.pt")
+    final_path = os.path.join(args.output_dir, f"{fp}_final.pt")
     save_checkpoint(model, optimizer, epoch, {"val_f1": best_f1}, final_path, scheduler)
 
     total_time = time.time() - start_time
@@ -566,12 +637,13 @@ def train(args) -> Dict:
     print(f"  Saved: {final_path}")
 
     # Save training curves
-    _save_training_curves(history, args.class_name, args.output_dir)
+    _save_training_curves(history, args.class_name, fp, args.output_dir)
 
+    tee.close()
     return history
 
 
-def _save_training_curves(history: Dict, class_name: str, output_dir: str) -> None:
+def _save_training_curves(history: Dict, class_name: str, fp: str, output_dir: str) -> None:
     """Save training loss and F1 curves as PNG."""
     import matplotlib
     matplotlib.use("Agg")
@@ -601,7 +673,7 @@ def _save_training_curves(history: Dict, class_name: str, output_dir: str) -> No
     ax2.grid(True, alpha=0.3)
 
     fig.tight_layout()
-    path = os.path.join(curves_dir, f"{class_name}_curves.png")
+    path = os.path.join(curves_dir, f"{fp}_curves.png")
     fig.savefig(path, dpi=150, bbox_inches="tight")
     plt.close(fig)
     print(f"  Training curves saved: {path}")
