@@ -108,16 +108,24 @@ Trains five independent binary classifiers (one per dysfluency type) on top of `
 | `--model_name` | `facebook/wav2vec2-base` | HuggingFace model |
 | `--patience` | 5 | Early stopping patience |
 | `--output_dir` | `model/weights` | Where to save weights |
-| `--num_workers` | 0 | DataLoader workers |
+| `--num_workers` | `auto` | DataLoader workers (`auto` = CPU core count) |
+| `--freeze_backbone_epochs` | 3 | Freeze W2V2 backbone for first N epochs (train head only) |
+| `--gradient_accumulation_steps` | 1 | Accumulate gradients over N batches (effective BS = BS × steps) |
+| `--loss_type` | `focal` | Loss function: `focal` or `cross_entropy` |
+| `--focal_gamma` | 2.0 | Focal loss focusing parameter (only if `--loss_type=focal`) |
+| `--warmup_steps` | 500 | Linear LR warmup steps |
+| `--clean` | false | Ignore resume checkpoint and start training from scratch |
 
 ### Training details
 
 - **Split:** Stratified 80/20 train/val split per class
-- **Loss:** BCEWithLogitsLoss with automatic class-weight balancing
+- **Loss:** Focal loss (γ=2.0) for better handling of class imbalance
 - **Optimizer:** AdamW with linear warmup (500 steps) + linear decay
 - **Mixed precision:** Automatic on CUDA via `torch.amp.GradScaler`
 - **Augmentation:** On-the-fly `AudioAugmentor` (noise, pitch shift, time stretch, roll, scale)
-- **Checkpointing:** Saves best model (by val F1) and final model
+- **Audio cache:** Preprocessed audio is cached to `data/cache/{split}` (pickle) — subsequent runs load instantly
+- **`torch.compile`:** Model is JIT-compiled via `torch.compile` when on CUDA for faster training
+- **Checkpointing:** Saves best model (by val F1), final model, and resume checkpoint (model + optimizer + scheduler + args)
 - **Outputs:** `{class}_best.pt`, `{class}_final.pt`, `{class}_training_log.csv`, training curves PNG
 
 ---
@@ -209,6 +217,24 @@ model/weights/
 
 ---
 
+### Training Resume
+
+Training auto-saves a resume checkpoint after every epoch. If interrupted (Ctrl+C, crash), re-running the **same command** picks up from the last completed epoch:
+
+```bash
+python -m model.training.train_classifier --class_name prolongation
+# ^C after epoch 3
+python -m model.training.train_classifier --class_name prolongation  # resumes at epoch 4
+```
+
+If you change any flag (e.g., `--lr`), the checkpoint is invalidated — training starts fresh. Use `--clean` to force a fresh start:
+
+```bash
+python -m model.training.train_classifier --class_name prolongation --clean
+```
+
+---
+
 ## Default Hyperparameters
 
 Defined in `model/config/defaults.py`:
@@ -236,8 +262,10 @@ GRADIENT_CLIP_MAX_NORM = 1.0
 
 | Utility | Description |
 |---------|-------------|
-| `save_checkpoint()` / `load_checkpoint()` | Save/load model, optimizer, scheduler state |
+| `save_checkpoint()` / `load_checkpoint()` | Save/load model, optimizer, scheduler, history, and CLI args |
 | `CSVLogger` | Append-only CSV logging for training metrics |
+| `save_resume_checkpoint()` / `load_resume_checkpoint()` | Full training state for interruption-safe resume |
+| `args_match()` | Compares saved vs current CLI args to detect config changes |
 | `EarlyStopping` | Patience-based early stopping monitor |
 | `get_warmup_linear_schedule()` | Linear warmup + linear decay LR schedule using `transformers` scheduler |
 | `format_duration()` | HH:MM:SS formatting for training time |

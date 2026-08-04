@@ -93,13 +93,14 @@ class CSVLogger:
         logger.close()
     """
 
-    def __init__(self, path: str, fields: List[str]):
+    def __init__(self, path: str, fields: List[str], mode: str = "w"):
         self.path = path
         self.fields = fields
         os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-        self._file = open(path, "w", newline="")
+        self._file = open(path, mode, newline="")
         self._writer = csv.DictWriter(self._file, fieldnames=fields)
-        self._writer.writeheader()
+        if mode == "w":
+            self._writer.writeheader()
         self._file.flush()
 
     def log(self, **kwargs) -> None:

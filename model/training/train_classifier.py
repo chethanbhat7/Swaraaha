@@ -24,9 +24,17 @@ import argparse
 import os
 import sys
 import time
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
+
+# Args that must match for checkpoint resume
+RESUME_KEYS = [
+    "class_name", "data_dir", "model_name", "lr", "batch_size",
+    "max_length_seconds", "warmup_steps", "weight_decay",
+    "freeze_backbone_epochs", "loss_type", "focal_gamma", "seed",
+    "gradient_accumulation_steps",
+]
 
 
 def compute_pos_weight(labels: np.ndarray) -> float:
@@ -59,12 +67,15 @@ def parse_args():
     parser.add_argument("--warmup_steps", type=int, default=500, help="Number of linear warmup steps.")
     parser.add_argument("--weight_decay", type=float, default=0.01, help="Weight decay for AdamW.")
     parser.add_argument("--patience", type=int, default=5, help="Early stopping patience (epochs without val F1 improvement).")
-    parser.add_argument("--num_workers", type=int, default=4, help="DataLoader workers.")
+    parser.add_argument("--num_workers", type=int, default=0, help="DataLoader workers (0 = auto-detect).")
     parser.add_argument("--model_name", type=str, default="facebook/wav2vec2-base", help="HuggingFace model name.")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility.")
-    parser.add_argument("--freeze_backbone_epochs", type=int, default=2, help="Freeze backbone for first N epochs (train head only).")
+    parser.add_argument("--freeze_backbone_epochs", type=int, default=3, help="Freeze backbone for first N epochs (train head only).")
     parser.add_argument("--loss_type", type=str, default="focal", choices=["focal", "cross_entropy"], help="Loss function.")
     parser.add_argument("--focal_gamma", type=float, default=2.0, help="Focal loss gamma (only used if --loss_type=focal).")
+    parser.add_argument("--gradient_accumulation_steps", type=int, default=1, help="Accumulate gradients over N steps before optimizer update.")
+    parser.add_argument("--cache_dir", type=str, default=None, help="Cache directory for preprocessed audio (auto-derived from data_dir if omitted).")
+    parser.add_argument("--clean", action="store_true", help="Ignore checkpoint and start training from scratch.")
     return parser.parse_args()
 
 
@@ -136,7 +147,7 @@ class SubsetDataset:
         return self.dataset[self.indices[idx]]
 
 
-def train_one_epoch(model, dataloader, optimizer, scheduler, criterion, device):
+def train_one_epoch(model, dataloader, optimizer, scheduler, criterion, device, accumulation_steps=1):
     """Train for one epoch. Returns average loss."""
     import warnings
     import torch
@@ -148,26 +159,34 @@ def train_one_epoch(model, dataloader, optimizer, scheduler, criterion, device):
     model.model.train()
     total_loss = 0.0
     num_batches = 0
+    optimizer.zero_grad()
 
-    for audio, labels in tqdm(dataloader, desc="  Train", leave=False):
+    for i, (audio, labels) in enumerate(tqdm(dataloader, desc="  Train", leave=False)):
         audio = audio.to(device)
         class_idx = model.class_idx
         binary_labels = labels[:, class_idx].long().to(device)
 
-        optimizer.zero_grad()
-
         with torch.amp.autocast("cuda", enabled=use_amp):
             logits = model.forward(audio)
             loss = criterion(logits, binary_labels)
+            loss = loss / accumulation_steps
 
         loss.backward()
-        optimizer.step()
 
+        if (i + 1) % accumulation_steps == 0:
+            optimizer.step()
+            optimizer.zero_grad()
+            if scheduler is not None:
+                scheduler.step()
+
+        total_loss += loss.item() * accumulation_steps
+        num_batches += 1
+
+    if num_batches % accumulation_steps != 0:
+        optimizer.step()
+        optimizer.zero_grad()
         if scheduler is not None:
             scheduler.step()
-
-        total_loss += loss.item()
-        num_batches += 1
 
     return total_loss / max(num_batches, 1)
 
@@ -224,6 +243,52 @@ def evaluate_classifier(model, dataloader, device) -> Tuple[float, float, float,
     return accuracy, f1, avg_loss, all_labels, all_preds
 
 
+def _resume_checkpoint_path(args) -> str:
+    return os.path.join(args.output_dir, f"{args.class_name}_checkpoint.pt")
+
+
+def _save_resume_state(model, optimizer, scheduler, epoch, best_f1, history, args, backbone_frozen):
+    import torch
+    path = _resume_checkpoint_path(args)
+    ckpt = {
+        "epoch": epoch,
+        "model_state_dict": model.model.state_dict(),
+        "optimizer_state_dict": optimizer.state_dict(),
+        "scheduler_state_dict": scheduler.state_dict() if scheduler else None,
+        "best_f1": best_f1,
+        "history": history,
+        "args": {k: getattr(args, k) for k in RESUME_KEYS},
+        "backbone_frozen": backbone_frozen,
+    }
+    torch.save(ckpt, path)
+
+
+def _try_load_resume(args, device):
+    path = _resume_checkpoint_path(args)
+    if args.clean or not os.path.isfile(path):
+        return None
+
+    import torch
+    ckpt = torch.load(path, map_location=device, weights_only=False)
+    saved_args = ckpt.get("args", {})
+    current_args = {k: getattr(args, k) for k in RESUME_KEYS}
+
+    mismatch = []
+    for k in RESUME_KEYS:
+        sv = saved_args.get(k)
+        cv = current_args[k]
+        if sv != cv:
+            mismatch.append(f"    {k}: saved={sv}, current={cv}")
+
+    if mismatch:
+        print("  Checkpoint args mismatch — starting fresh:")
+        for m in mismatch:
+            print(m)
+        return None
+
+    return ckpt
+
+
 def train(args) -> Dict:
     """Main training function. Returns training history."""
     import torch
@@ -243,6 +308,10 @@ def train(args) -> Dict:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if device.type == "cuda":
         torch.set_float32_matmul_precision("high")
+
+    if args.num_workers == 0:
+        args.num_workers = os.cpu_count() or 4
+
     class_idx = get_class_index(args.class_name)
     class_names = DYSFLUENCY_CLASSES
 
@@ -253,15 +322,26 @@ def train(args) -> Dict:
     print(f"  Model: {args.model_name}")
     print(f"  Data: {args.data_dir}")
     print(f"  Epochs: {args.epochs}, Batch: {args.batch_size}, LR: {args.lr}")
+    if args.gradient_accumulation_steps > 1:
+        print(f"  Gradient accumulation: {args.gradient_accumulation_steps} steps")
 
     # ---- Dataset ----
     print("\n  Loading dataset...")
+    cache_dir = args.cache_dir
+    if cache_dir is None:
+        cache_dir = os.path.join(
+            os.path.dirname(args.data_dir.rstrip("/")),
+            "cache",
+            os.path.basename(args.data_dir.rstrip("/")),
+        )
     dataset = ClassificationDataset(
         data_dir=args.data_dir,
         sr=16000,
         max_length_seconds=args.max_length_seconds,
+        cache_dir=cache_dir,
     )
     print(f"  Total samples: {len(dataset)}")
+    print(f"  Cache: {cache_dir}")
 
     if len(dataset) == 0:
         print("  ERROR: No samples found. Check data_dir structure.")
@@ -321,6 +401,13 @@ def train(args) -> Dict:
     print(f"  Loading pretrained model: {args.model_name}...")
     model = ClassifierCls(model_name=args.model_name)
     model.model.to(device)
+    if device.type == "cuda":
+        import warnings
+        warnings.filterwarnings("ignore", category=UserWarning, module="torch")
+        import logging
+        logging.getLogger("torch._dynamo").setLevel(logging.ERROR)
+        torch._dynamo.config.suppress_errors = True
+        model._model = torch.compile(model._model)
     total_params = sum(p.numel() for p in model.model.parameters())
     print(f"  Total parameters: {total_params:,}")
 
@@ -337,52 +424,97 @@ def train(args) -> Dict:
     if backbone_frozen:
         for p in backbone_params:
             p.requires_grad = False
-        trainable_params = head_params
         print(f"  Backbone frozen for first {args.freeze_backbone_epochs} epochs")
         print(f"  Head parameters: {sum(p.numel() for p in head_params):,}")
+
+    # ---- Checkpoint resume ----
+    resume_ckpt = _try_load_resume(args, device)
+
+    if resume_ckpt is not None:
+        model.model.load_state_dict(resume_ckpt["model_state_dict"])
+        start_epoch = resume_ckpt["epoch"] + 1
+        best_f1 = resume_ckpt["best_f1"]
+        history = resume_ckpt["history"]
+        resumed_backbone_frozen = resume_ckpt["backbone_frozen"]
+        print(f"  Resuming from epoch {resume_ckpt['epoch']} (best F1: {best_f1:.4f})")
     else:
-        trainable_params = model.model.parameters()
-        print(f"  Backbone: trainable from start")
+        start_epoch = 1
+        best_f1 = 0.0
+        history = {"train_loss": [], "val_loss": [], "val_f1": [], "val_acc": []}
+        resumed_backbone_frozen = backbone_frozen
+
+    # Ensure freeze state matches where we're resuming
+    if backbone_frozen != resumed_backbone_frozen:
+        if resumed_backbone_frozen:
+            for p in backbone_params:
+                p.requires_grad = False
+        else:
+            for p in backbone_params:
+                p.requires_grad = True
+        backbone_frozen = resumed_backbone_frozen
+
+    trainable_params = head_params if backbone_frozen else model.model.parameters()
 
     # ---- Optimizer ----
-    optimizer = torch.optim.AdamW(
-        trainable_params, lr=args.lr, weight_decay=args.weight_decay,
-    )
+    if resume_ckpt is not None and not backbone_frozen:
+        optimizer = torch.optim.AdamW([
+            {"params": head_params, "lr": args.lr, "weight_decay": args.weight_decay},
+            {"params": backbone_params, "lr": args.lr * 0.1, "weight_decay": args.weight_decay},
+        ])
+    else:
+        optimizer = torch.optim.AdamW(
+            trainable_params, lr=args.lr, weight_decay=args.weight_decay,
+        )
 
-    total_steps = len(train_loader) * args.epochs
-    scheduler = get_warmup_linear_schedule(optimizer, args.warmup_steps, total_steps)
+    optim_steps_per_epoch = (len(train_loader) + args.gradient_accumulation_steps - 1) // args.gradient_accumulation_steps
+    total_optim_steps = optim_steps_per_epoch * args.epochs
+    if backbone_frozen:
+        scheduler = get_warmup_linear_schedule(optimizer, args.warmup_steps, total_optim_steps)
+    else:
+        remaining_optim_steps = optim_steps_per_epoch * (args.epochs - start_epoch + 1)
+        scheduler = get_warmup_linear_schedule(optimizer, 0, remaining_optim_steps)
+
+    if resume_ckpt is not None:
+        optimizer.load_state_dict(resume_ckpt["optimizer_state_dict"])
+        if resume_ckpt["scheduler_state_dict"] is not None:
+            scheduler.load_state_dict(resume_ckpt["scheduler_state_dict"])
 
     # ---- Logging ----
     os.makedirs(args.output_dir, exist_ok=True)
     log_path = os.path.join(args.output_dir, f"{args.class_name}_training_log.csv")
-    logger = CSVLogger(log_path, ["epoch", "train_loss", "val_loss", "val_acc", "val_f1", "lr"])
+    log_mode = "a" if resume_ckpt is not None else "w"
+    logger = CSVLogger(log_path, ["epoch", "train_loss", "val_loss", "val_acc", "val_f1", "lr"], mode=log_mode)
 
     early_stopping = EarlyStopping(patience=args.patience, mode="max")
 
-    # ---- Training ----
-    best_f1 = 0.0
-    history = {"train_loss": [], "val_loss": [], "val_f1": [], "val_acc": []}
+    if start_epoch > args.epochs:
+        print(f"\n  Training already complete (epoch {start_epoch - 1}/{args.epochs})")
+        final_path = os.path.join(args.output_dir, f"{args.class_name}_final.pt")
+        save_checkpoint(model, optimizer, args.epochs, {"val_f1": best_f1}, final_path, scheduler)
+        return history
 
-    print(f"\n  Starting training for {args.epochs} epochs...\n")
+    print(f"\n  {'Resuming' if resume_ckpt else 'Starting'} training ({start_epoch}/{args.epochs})...\n")
     start_time = time.time()
 
-    for epoch in range(1, args.epochs + 1):
+    for epoch in range(start_epoch, args.epochs + 1):
         epoch_start = time.time()
 
-        # Unfreeze backbone at the right epoch
+        # Unfreeze backbone at the right epoch (preserving optimizer momentum)
         if backbone_frozen and epoch == args.freeze_backbone_epochs + 1:
             for p in backbone_params:
                 p.requires_grad = True
-            optimizer = torch.optim.AdamW(
-                model.model.parameters(), lr=args.lr, weight_decay=args.weight_decay,
-            )
-            remaining_steps = len(train_loader) * (args.epochs - epoch + 1)
-            scheduler = get_warmup_linear_schedule(optimizer, 0, remaining_steps)
+            optimizer.add_param_group({
+                "params": backbone_params,
+                "lr": args.lr * 0.1,
+                "weight_decay": args.weight_decay,
+            })
+            scheduler.base_lrs.append(args.lr * 0.1)
+            scheduler.lr_lambdas.append(scheduler.lr_lambdas[0])
             backbone_frozen = False
-            print(f"  >>> Backbone UNFROZEN at epoch {epoch}")
+            print(f"  >>> Backbone UNFROZEN at epoch {epoch} (head LR={args.lr:.2e}, backbone LR={args.lr*0.1:.2e})")
 
         # Train
-        train_loss = train_one_epoch(model, train_loader, optimizer, scheduler, criterion, device)
+        train_loss = train_one_epoch(model, train_loader, optimizer, scheduler, criterion, device, args.gradient_accumulation_steps)
         current_lr = optimizer.param_groups[0]["lr"]
 
         # Validate
@@ -407,6 +539,9 @@ def train(args) -> Dict:
             f"val_acc={val_acc:.3f} | val_F1={val_f1:.3f} | "
             f"lr={current_lr:.2e} | {epoch_time:.1f}s"
         )
+
+        # Save resume checkpoint
+        _save_resume_state(model, optimizer, scheduler, epoch, best_f1, history, args, backbone_frozen)
 
         # Checkpoint best
         if val_f1 > best_f1:

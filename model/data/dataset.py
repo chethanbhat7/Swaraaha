@@ -22,6 +22,7 @@ Label CSV format:
 """
 
 import os
+import pickle
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
@@ -234,10 +235,20 @@ class ClassificationDataset:
         data_dir: str,
         sr: int = 16000,
         max_length_seconds: float = 10.0,
+        cache_dir: Optional[str] = None,
     ):
         self.data_dir = data_dir
         self.sr = sr
         self.max_samples = int(max_length_seconds * sr)
+        self.use_cache = cache_dir is not None
+
+        if self.use_cache:
+            self.cache_dir = cache_dir
+            os.makedirs(self.cache_dir, exist_ok=True)
+            self._cache_index: Optional[Dict[str, str]] = None
+        else:
+            self.cache_dir = None
+            self._cache_index = None
 
         self.audio_dir = os.path.join(data_dir, "audio")
         self.labels_dir = os.path.join(data_dir, "labels")
@@ -282,9 +293,15 @@ class ClassificationDataset:
             audio: float32 ndarray, shape (max_samples,).
             label_vector: uint8 ndarray, shape (5,) — multi-hot.
         """
+        sample = self.samples[idx]
+
+        if self.use_cache:
+            cached = self._load_from_cache(sample["clip_id"])
+            if cached is not None:
+                return cached
+
         from model.data.preprocessing import clean_audio, load_audio, pad_to_length
 
-        sample = self.samples[idx]
         audio, _ = load_audio(sample["audio_path"], sr=self.sr)
 
         # Clean audio: DC removal, peak normalization, silence trimming
@@ -300,7 +317,27 @@ class ClassificationDataset:
 
         audio = pad_to_length(audio, self.max_samples, axis=0, pad_value=0.0)
 
-        return audio.astype(np.float32), label_vector
+        result = (audio.astype(np.float32), label_vector)
+
+        if self.use_cache:
+            self._save_to_cache(sample["clip_id"], result)
+
+        return result
+
+    def _cache_path(self, clip_id: str) -> str:
+        return os.path.join(self.cache_dir, f"{clip_id}.pkl")
+
+    def _load_from_cache(self, clip_id: str) -> Optional[Tuple[np.ndarray, np.ndarray]]:
+        path = self._cache_path(clip_id)
+        if not os.path.isfile(path):
+            return None
+        with open(path, "rb") as f:
+            return pickle.load(f)
+
+    def _save_to_cache(self, clip_id: str, data: Tuple[np.ndarray, np.ndarray]) -> None:
+        path = self._cache_path(clip_id)
+        with open(path, "wb") as f:
+            pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
 
     def get_sample_info(self, idx: int) -> Dict:
         return self.samples[idx].copy()

@@ -357,3 +357,178 @@ Key design decisions:
 | 3j | FocalLoss + backbone freezing | `utils.py`, `train_classifier.py` | Class weights also create zero-gradient equilibrium |
 | 4a | TF32 matmul precision | `train_classifier.py` | ~8× TOPS on matmuls, free speed |
 | 4b | DataLoader `num_workers=4` | `train_classifier.py`, `train.py` | Parallel audio loading |
+| 4c | Audio preprocessing cache | `dataset.py` | Pickle cache for load_audio → clean_audio → pad_to_length pipeline |
+| 4d | Auto `num_workers` from CPU count | `train_classifier.py` | Removed cap at 4, now uses `os.cpu_count()` |
+| 4e | Gradient accumulation | `train_classifier.py` | `--gradient_accumulation_steps` for effective batch size scaling |
+| 4f | `torch.compile` | `train_classifier.py` | JIT-compile model on CUDA via `torch.compile` |
+
+### 4g. `torch.compile` Property Assignment
+
+**Symptom:** `AttributeError` — `model.model = torch.compile(model.model)` failed because `model.model` is a read-only `@property` that returns `self._model`.
+
+**Fix:** Assign to `model._model` directly: `model._model = torch.compile(model._model)`.
+
+**File:** `train_classifier.py`
+
+---
+
+## 5. Unfreeze — Differential LR & Optimizer State
+
+**Symptom:** When backbone unfreezes after epoch N, the old code re-created the optimizer from scratch. This (a) lost AdamW momentum from head-only training, and (b) applied the same LR to all params.
+
+**Fix:** Instead of recreating the optimizer, add a second param group with `lr * 0.1` for backbone params:
+
+```python
+optimizer.add_param_group({"params": backbone_params, "lr": args.lr * 0.1})
+scheduler.base_lrs.append(args.lr * 0.1)
+scheduler.lr_lambdas.append(scheduler.lr_lambdas[0])
+```
+
+This preserves the head's optimizer state and applies a 10× smaller LR to backbone params.
+
+**File:** `train_classifier.py`
+
+---
+
+## 6. Training Resume
+
+**Symptom:** An interrupted training run (Ctrl+C, crash) lost all progress. No way to resume from the last completed epoch.
+
+**Fix:** Added checkpoint-based resume. After each epoch, a `{class}_checkpoint.pt` file is saved containing: model, optimizer, scheduler, epoch, history, best_F1, backbone_frozen flag, and CLI args. On startup, `_try_load_resume()` checks:
+  - If checkpoint exists AND saved args match current args → restore state, continue training
+  - If args differ → start fresh (config changed, old checkpoint invalid)
+  - If `--clean` flag → ignore checkpoint, force fresh start
+
+**Files:** `train_classifier.py`, `utils.py`
+**Functions:** `save_resume_checkpoint()`, `load_resume_checkpoint()`, `args_match()`
+
+---
+
+## Current State
+
+The training pipeline on `feat/training-resume` includes all fixes above.
+
+```bash
+python -m model.training.train_classifier \
+    --class_name prolongation \
+    --data_dir data/train \
+    --epochs 20 \
+    --batch_size 16 \
+    --lr 3e-5 \
+    --freeze_backbone_epochs 2 \
+    --loss_type focal \
+    --focal_gamma 2.0 \
+    --gradient_accumulation_steps 1 \
+    --num_workers auto \
+    --output_dir model/weights
+```
+
+Key design decisions:
+- **Audio cache** — preprocessed audio cached to `data/cache/{split}` pickle files; subsequent runs load in ~1s
+- **Auto `num_workers`** — uses all CPU cores for data loading
+- **`torch.compile`** — JIT-compiles model on CUDA for ~2× training speed
+- **Gradient accumulation** — scales effective batch size without memory increase
+- **Stable unfreeze** — preserves optimizer momentum, applies 10× smaller LR to backbone
+- **Training resume** — checkpoint-based interruption recovery with args validation
+
+### Summary of Changes
+
+| # | Fix | File(s) | Why |
+|---|-----|---------|-----|
+| 1 | `.strip().lower()` in label parsing | `dataset.py`, `merge.py` | Capitalisation mismatch |
+| 2 | README updates | `model/data/README.md`, `model/training/README.md` | Stale docs |
+| 3a | Remove AMP | `train_classifier.py` | NaN grads from float16 |
+| 3b | `num_labels=1` → `num_labels=2` | `__init__.py`, `train_classifier.py`, `evaluate.py`, `hybrid.py` | Single logit has zero-gradient equilibrium |
+| 3c | Bias init → `log(pos/neg)` | `train_classifier.py` | Faster convergence |
+| 3d | `WeightedRandomSampler` | `train_classifier.py` | Balanced batches prevent all-negative cheat |
+| 3e | Freeze bias at 0 | `train_classifier.py` | Forces feature learning through W |
+| 3f | Re-add AMP (no GradScaler) | `train_classifier.py` | NaN was from scaler, not autocast |
+| 3g | Revert to imbalanced + pos_weight | `train_classifier.py` | Bias freeze + balanced sampling caused W=0 collapse |
+| 3h | BCE → CrossEntropyLoss + num_labels=2 | `__init__.py`, `train_classifier.py`, `evaluate.py`, `hybrid.py` | BCE has degenerate zero-gradient equilibrium |
+| 3i | Remove gradient clipping | `train_classifier.py` | `max_norm=1.0` killed learning by scaling head grads 100× |
+| 3j | FocalLoss + backbone freezing | `utils.py`, `train_classifier.py` | Class weights also create zero-gradient equilibrium |
+| 4a | TF32 matmul precision | `train_classifier.py` | ~8× TOPS on matmuls, free speed |
+| 4b | DataLoader `num_workers=4` | `train_classifier.py`, `train.py` | Parallel audio loading |
+| 4c | Audio preprocessing cache | `dataset.py` | Avoid re-processing audio every run |
+| 4d | Auto `num_workers` from CPU count | `train_classifier.py` | No hard cap, uses `os.cpu_count()` |
+| 4e | Gradient accumulation | `train_classifier.py` | Effective batch size scaling |
+| 4f | `torch.compile` | `train_classifier.py` | JIT compilation on CUDA |
+| 4g | `torch.compile` property fix | `train_classifier.py` | `model.model` is read-only property |
+| 5 | Stable unfreeze (preserve optimizer, 10× LR) | `train_classifier.py` | Loses momentum when recreating optimizer |
+| 6 | Training resume checkpoint | `train_classifier.py`, `utils.py` | Interruption recovery |
+
+---
+
+## 7. First Full Run — Results (freeze=3, 20 epochs)
+
+**Best val F1: 0.5239** (epoch 19) | Final F1: 0.522 | Best val acc: 0.773
+
+```
+Epoch  1-3  | head-only      | F1 0.373 → 0.390          (head converges on frozen features)
+Epoch  4-5  | UNFROZEN       | F1 0.000 → 0.003          (collapse, ~2 wasted epochs)
+Epoch  6-16 | recovery+climb | F1 0.399 → 0.520          (breaks out, learns features)
+Epoch 17-20 | plateau        | F1 0.512 → 0.522 → 0.524   (LR decays to 0)
+```
+
+**Interpretation:**
+- The unfreeze collapse is now a **temporary transition**, not a dead end — the model
+  reliably recovers within 1-2 epochs and surpasses its pre-collapse peak.
+- `val_acc` plateaus at ~0.75, which is close to the negative base rate (74.5%).
+  The model is still conservative (predicts mostly negative) but achieves F1≈0.52 via
+  precise positive hits. Typical SEP-28K wav2vec2 results are ~0.75 F1, but this
+  val set mixes three datasets (Boli + SEP-28K + UCLASS), so 0.52 is a reasonable
+  first-pass number, not a bug.
+- At epoch 20 the LR hits exactly `0.00e+00` — the linear decay schedule is exhausted.
+  **Running more epochs with the same schedule does nothing** (zero update signal).
+
+---
+
+## 8. Future Improvements (not yet implemented)
+
+### 8a. Warm restart after LR exhaustion
+
+Since LR hits 0 at the end of the schedule, the model is mathematically frozen.
+A warm restart re-inflates LR (e.g. back to `3e-5`) and runs a second decay cycle,
+letting the optimizer escape the plateau. Cosine annealing with restarts (SGDR)
+or simply re-running with `--clean` at a higher `--epochs` are both easy paths.
+
+### 8b. Reduce the unfreeze collapse (epochs 4-5)
+
+Two epochs (~1500s each) are wasted on the post-unfreeze collapse. Candidate fixes:
+- **Lower backbone LR** — try `lr * 0.01` instead of `0.1` so the backbone barely
+  moves at first, giving the head time to adapt to changing features.
+- **Gradual / layer-wise unfreeze** — unfreeze the last transformer layer first,
+  then progressively earlier layers (standard for fine-tuning LLMs/ASR).
+- **Backbone-specific warmup** — add a separate warmup for the new backbone param
+  group so its effective LR ramps from ~0 instead of jumping in at 3e-6.
+
+Eliminating these 2 dead epochs would push the effective ceiling toward ~0.55+.
+
+### 8c. Train the other four classifiers
+
+Only `prolongation` is trained. `block`, `soundrep`, `wordrep`, `interjection`
+are needed for the full pipeline (`train_all_classifiers.sh`).
+
+### 8d. Integrate trained weights into the app
+
+Two format mismatches block drop-in use of the trained checkpoints:
+1. `train_classifier.py`'s `save_checkpoint()` writes
+   `{epoch, model_state_dict, optimizer_state_dict, metrics, ...}`, but
+   `BaseWav2VecClassifier.from_pretrained()` expects
+   `{model_name, model_state_dict, class_name, class_idx}` — a conversion step
+   (or an explicit save in the classifier's native format) is required.
+2. `backend/services/classifier.py` loads a `HybridClassifier`, which needs all
+   five base classifiers **plus** the combiner MLP. Individual per-class
+   checkpoints alone are insufficient for the backend.
+
+### 8e. Bigger model or pretrained ASR features
+
+`facebook/wav2vec2-base` (94M params) is the small variant. `wav2vec2-large`
+(315M) or a whisper-encoder baseline typically adds a few points of F1 at
+~3× training time.
+
+### 8f. Threshold tuning
+
+F1 is optimized at the default 0.5 decision threshold. Sweeping the threshold on
+the val set (precision/recall curve) can recover several points of F1 with zero
+retraining — worth doing before any architecture change.
