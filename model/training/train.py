@@ -93,6 +93,7 @@ def run_pipeline(
     output_dir: str,
     system: SystemInfo,
     extra_args: list[str] | None = None,
+    class_names: list[str] | None = None,
 ) -> int:
     """Run a single training pipeline.
 
@@ -102,6 +103,7 @@ def run_pipeline(
         output_dir: Path to save model weights.
         system: Detected system info for parameter tuning.
         extra_args: Additional CLI arguments to pass.
+        class_names: Subset of classifiers to train for 'cls' (None = all).
 
     Returns:
         Exit code (0 = success).
@@ -112,7 +114,7 @@ def run_pipeline(
 
     if pipeline == "cls":
         failed = []
-        for cls_name in CLASS_NAMES:
+        for cls_name in class_names or CLASS_NAMES:
             print(f"\n--- classifier: {cls_name} ---")
 
             cmd = [
@@ -215,6 +217,7 @@ def main():
             output_dir=args.output_dir,
             system=system,
             extra_args=args.extra_args,
+            class_names=args.class_names,
         )
         results[pipeline] = code
 
