@@ -1,15 +1,21 @@
 """Classification results table and localization timeline display."""
 
 import numpy as np
-from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem,
-    QLabel, QHeaderView,
-)
 from PySide6.QtGui import QColor
+from PySide6.QtWidgets import (
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
 
+from app.ui.table_utils import resize_table_to_contents
 from app.ui.theme import COLORS
+from app.ui.transcription_panel import TranscriptionPanel
 from app.ui.waveform_view import WaveformView
-
 
 CLASS_NAMES = ["prolongation", "block", "soundrep", "wordrep", "interjection"]
 DISPLAY_NAMES = ["Prolongation", "Block", "Sound Repetition", "Word Repetition", "Interjection"]
@@ -65,10 +71,14 @@ class ResultsPanel(QWidget):
         legend_layout.addStretch()
         layout.addLayout(legend_layout)
 
+        self._transcription_panel = TranscriptionPanel()
+        layout.addWidget(self._transcription_panel)
+
     def set_results(self, results: dict, audio: np.ndarray = None, sample_rate: int = 16000):
         """Update the panel with analysis results."""
         classifications = results.get("classifications", {})
         localizations = results.get("localizations", [])
+        transcription = results.get("transcription", None)
 
         for i, class_name in enumerate(CLASS_NAMES):
             if class_name in classifications:
@@ -87,6 +97,8 @@ class ResultsPanel(QWidget):
                 self._table.setItem(i, 1, det_item)
                 self._table.setItem(i, 2, conf_item)
 
+        resize_table_to_contents(self._table)
+
         if audio is not None and len(audio) > 0:
             self._waveform.set_audio(audio, sample_rate)
             overlays = []
@@ -94,9 +106,15 @@ class ResultsPanel(QWidget):
                 overlays.append((start_sec, end_sec, "#B3261E"))
             self._waveform.set_overlays(overlays)
 
+        if transcription:
+            self._transcription_panel.set_transcription(transcription)
+        elif audio is not None:
+            self._transcription_panel.set_audio(audio, sample_rate, localizations=localizations)
+
     def clear_results(self):
         """Clear all results."""
         for i in range(5):
             self._table.setItem(i, 1, QTableWidgetItem("—"))
             self._table.setItem(i, 2, QTableWidgetItem("—"))
         self._waveform.clear_overlays()
+        self._transcription_panel.clear()

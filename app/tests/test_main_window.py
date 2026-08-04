@@ -24,6 +24,7 @@ def test_load_path_sets_audio_and_state(qapp, app_name, tmp_path):
     assert win._current_audio is not None
     assert "Loaded" in win.statusBar().currentMessage()
     assert not win._home_page.get_audio_controls()._analyze_btn.isHidden()
+    assert not win._home_page.get_transcription_panel().isHidden()
 
 
 def test_load_path_reports_error(qapp, app_name, tmp_path):

@@ -1,13 +1,18 @@
-"""Analysis page: full-width waveform + classification results + localization timeline."""
+"""Analysis page: fixed top bar + scrollable waveform, results, and timeline."""
 
 import numpy as np
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QScrollArea,
+    QVBoxLayout,
+    QWidget,
 )
-from PySide6.QtCore import Signal
 
-from app.ui.waveform_view import WaveformView
 from app.ui.results_panel import ResultsPanel
+from app.ui.waveform_view import WaveformView
 
 
 class AnalysisPage(QWidget):
@@ -34,14 +39,33 @@ class AnalysisPage(QWidget):
         top_bar.addWidget(title)
         top_bar.addStretch()
 
+        spacer = QWidget()
+        spacer.setFixedWidth(back_btn.sizeHint().width())
+        top_bar.addWidget(spacer)
+
         layout.addLayout(top_bar)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QScrollArea.Shape.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
+        content = QWidget()
+        content_layout = QVBoxLayout(content)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setSpacing(16)
 
         self._waveform = WaveformView()
         self._waveform.setMinimumHeight(150)
-        layout.addWidget(self._waveform)
+        content_layout.addWidget(self._waveform)
 
         self._results = ResultsPanel()
-        layout.addWidget(self._results)
+        content_layout.addWidget(self._results)
+
+        content_layout.addStretch()
+
+        scroll.setWidget(content)
+        layout.addWidget(scroll, stretch=1)
 
     def set_results(self, results: dict, audio: np.ndarray = None, sample_rate: int = 16000):
         """Update the page with analysis results."""

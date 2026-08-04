@@ -56,26 +56,26 @@ class PdfViewer(QWidget):
         header_row.addStretch()
 
         self._zoom_out_btn = QPushButton("-")
-        self._zoom_out_btn.setProperty("cssClass", "secondary")
-        self._zoom_out_btn.setFixedSize(32, 32)
+        self._zoom_out_btn.setProperty("cssClass", "zoom_btn")
+        self._zoom_out_btn.setToolTip("Zoom Out")
         self._zoom_out_btn.clicked.connect(self._zoom_out)
         header_row.addWidget(self._zoom_out_btn)
 
         self._zoom_label = QLabel("100%")
-        self._zoom_label.setFixedWidth(48)
+        self._zoom_label.setFixedWidth(54)
         self._zoom_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._zoom_label.setStyleSheet("font-size: 13px;")
+        self._zoom_label.setStyleSheet("font-size: 13px; font-weight: 500;")
         header_row.addWidget(self._zoom_label)
 
         self._zoom_in_btn = QPushButton("+")
-        self._zoom_in_btn.setProperty("cssClass", "secondary")
-        self._zoom_in_btn.setFixedSize(32, 32)
+        self._zoom_in_btn.setProperty("cssClass", "zoom_btn")
+        self._zoom_in_btn.setToolTip("Zoom In")
         self._zoom_in_btn.clicked.connect(self._zoom_in)
         header_row.addWidget(self._zoom_in_btn)
 
         self._zoom_reset_btn = QPushButton("Reset")
         self._zoom_reset_btn.setProperty("cssClass", "secondary")
-        self._zoom_reset_btn.setFixedWidth(80)
+        self._zoom_reset_btn.setToolTip("Reset Zoom")
         self._zoom_reset_btn.clicked.connect(self._zoom_reset)
         header_row.addWidget(self._zoom_reset_btn)
 

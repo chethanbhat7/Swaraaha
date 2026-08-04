@@ -2,10 +2,11 @@
 
 import os
 
-from PySide6.QtCore import QDir, QSettings, Signal
+from PySide6.QtCore import QDir, QSettings, Signal, Qt
 from PySide6.QtWidgets import (
     QFileDialog,
     QFileSystemModel,
+    QHBoxLayout,
     QLabel,
     QListWidget,
     QPushButton,
@@ -40,17 +41,33 @@ class FilePanel(QWidget):
         layout.setSpacing(8)
 
         header = QLabel("Recent Files")
-        header.setStyleSheet("font-size: 16px; font-weight: 600; padding: 8px 0;")
+        header.setStyleSheet("font-size: 16px; font-weight: 600; padding: 4px 0;")
         layout.addWidget(header)
 
         self._recent_list = QListWidget()
         self._recent_list.itemActivated.connect(self._on_recent_activated)
         layout.addWidget(self._recent_list)
 
+        btn_layout = QHBoxLayout()
+        self._select_dir_btn = QPushButton("Select Directory...")
+        self._select_dir_btn.setProperty("cssClass", "secondary")
+        self._select_dir_btn.clicked.connect(self._on_select_directory)
+        btn_layout.addWidget(self._select_dir_btn)
+
         self._browse_btn = QPushButton("Browse Audio...")
         self._browse_btn.setProperty("cssClass", "secondary")
         self._browse_btn.clicked.connect(self._on_browse)
-        layout.addWidget(self._browse_btn)
+        btn_layout.addWidget(self._browse_btn)
+        layout.addLayout(btn_layout)
+
+        self._dir_label = QLabel("Directory Browser")
+        self._dir_label.setStyleSheet("font-size: 14px; font-weight: 600; padding-top: 8px;")
+        layout.addWidget(self._dir_label)
+
+        self._no_dir_label = QLabel("No directory selected.\nClick 'Select Directory...' to load a folder.")
+        self._no_dir_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._no_dir_label.setStyleSheet("color: #79747E; font-size: 13px; padding: 30px; border: 1px dashed #79747E44; border-radius: 8px;")
+        layout.addWidget(self._no_dir_label, stretch=1)
 
         self._tree = QTreeView()
         self._tree.setHeaderHidden(True)
@@ -64,8 +81,12 @@ class FilePanel(QWidget):
         self._fs_model.setNameFilters(AUDIO_FILTERS)
         self._fs_model.setNameFilterDisables(False)
         self._tree.setModel(self._fs_model)
-        start = last_dir(self._settings) or QDir.homePath()
-        self.set_current_dir(start)
+        
+        start = last_dir(self._settings)
+        if start and os.path.isdir(start):
+            self.set_current_dir(start)
+        else:
+            self.clear_directory()
 
     def _load_recents(self):
         self._recent_list.clear()
@@ -83,6 +104,12 @@ class FilePanel(QWidget):
         row = self._recent_list.row(item)
         if row < len(files) and os.path.isfile(files[row]):
             self.file_selected.emit(files[row])
+
+    def _on_select_directory(self):
+        start = last_dir(self._settings) or ""
+        folder = QFileDialog.getExistingDirectory(self, "Select Directory", start)
+        if folder:
+            self.set_current_dir(folder)
 
     def _on_browse(self):
         path, _ = QFileDialog.getOpenFileName(
@@ -102,6 +129,15 @@ class FilePanel(QWidget):
             remember_last_dir(self._settings, path)
             self._fs_model.setRootPath(path)
             self._tree.setRootIndex(self._fs_model.index(path))
+            self._tree.show()
+            self._no_dir_label.hide()
+            self._dir_label.setText(f"Folder: {os.path.basename(path) or path}")
+
+    def clear_directory(self):
+        self._tree.setRootIndex(self._fs_model.index(""))
+        self._tree.hide()
+        self._no_dir_label.show()
+        self._dir_label.setText("Directory Browser")
 
     def get_recent_files(self) -> list[str]:
         return load_recent_files(self._settings)
