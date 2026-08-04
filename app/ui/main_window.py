@@ -89,6 +89,7 @@ class MainWindow(QMainWindow):
             self._current_audio = audio
             self._home_page.get_audio_controls().set_audio_loaded()
             self._home_page.get_transcription_panel().set_audio(audio)
+            self._home_page.set_transcript_visible(True)
             self.statusBar().showMessage(f"Loaded: {path}")
         except Exception as e:
             self.statusBar().showMessage(f"Error loading file: {e}")
@@ -105,6 +106,7 @@ class MainWindow(QMainWindow):
             self._home_page.get_audio_controls().set_recording(False)
             self._home_page.get_audio_controls().set_audio_loaded()
             self._home_page.get_transcription_panel().set_audio(audio)
+            self._home_page.set_transcript_visible(True)
             self.statusBar().showMessage(f"Recorded {len(audio) / self._audio_handler.sample_rate:.1f}s of audio")
         else:
             self._home_page.get_audio_controls().set_recording(False)

@@ -1,16 +1,15 @@
 """Transcription window panel for displaying input audio speech-to-text transcription."""
 
 import json
-import os
+
 import numpy as np
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Signal
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QFileDialog,
-    QFrame,
     QHBoxLayout,
     QHeaderView,
     QLabel,
-    QMessageBox,
     QPushButton,
     QTableWidget,
     QTableWidgetItem,
@@ -18,9 +17,9 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from PySide6.QtGui import QColor, QFont
 
 from app.core.transcription import AudioTranscriber
+from app.ui.table_utils import resize_table_to_contents
 from app.ui.theme import COLORS
 
 
@@ -160,12 +159,15 @@ class TranscriptionPanel(QWidget):
             self._table.setItem(row, 3, conf_item)
             self._table.setItem(row, 4, status_item)
 
+        resize_table_to_contents(self._table)
+
     def clear(self):
         """Clear transcription display."""
         self._audio = None
         self._transcription_data = {"text": "", "words": []}
         self._text_edit.clear()
         self._table.setRowCount(0)
+        self._table.setMinimumHeight(0)
         self._status_label.setText("No Audio Loaded")
 
     def _on_transcribe_click(self):

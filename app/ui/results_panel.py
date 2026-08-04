@@ -1,16 +1,21 @@
 """Classification results table and localization timeline display."""
 
 import numpy as np
-from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem,
-    QLabel, QHeaderView,
-)
 from PySide6.QtGui import QColor
+from PySide6.QtWidgets import (
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
 
+from app.ui.table_utils import resize_table_to_contents
 from app.ui.theme import COLORS
-from app.ui.waveform_view import WaveformView
 from app.ui.transcription_panel import TranscriptionPanel
-
+from app.ui.waveform_view import WaveformView
 
 CLASS_NAMES = ["prolongation", "block", "soundrep", "wordrep", "interjection"]
 DISPLAY_NAMES = ["Prolongation", "Block", "Sound Repetition", "Word Repetition", "Interjection"]
@@ -91,6 +96,8 @@ class ResultsPanel(QWidget):
 
                 self._table.setItem(i, 1, det_item)
                 self._table.setItem(i, 2, conf_item)
+
+        resize_table_to_contents(self._table)
 
         if audio is not None and len(audio) > 0:
             self._waveform.set_audio(audio, sample_rate)

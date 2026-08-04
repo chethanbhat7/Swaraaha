@@ -34,12 +34,12 @@ def build_stylesheet():
     }}
 
     /* === Sidebar Segmented Nav Buttons === */
-    QFrame[cssClass="nav_bar"] {
+    QFrame[cssClass="nav_bar"] {{
         background-color: {COLORS['surface_variant']};
         border-radius: {RADIUS['sm']}px;
         padding: 4px;
-    }
-    QPushButton[cssClass="nav_btn"] {
+    }}
+    QPushButton[cssClass="nav_btn"] {{
         background-color: transparent;
         color: {COLORS['on_surface']};
         border: none;
@@ -48,12 +48,12 @@ def build_stylesheet():
         font-size: 14px;
         font-weight: 500;
         min-height: 36px;
-    }
-    QPushButton[cssClass="nav_btn"]:hover {
+    }}
+    QPushButton[cssClass="nav_btn"]:hover {{
         background-color: {COLORS['primary_container']}88;
         color: {COLORS['primary']};
-    }
-    QPushButton[cssClass="nav_btn_active"] {
+    }}
+    QPushButton[cssClass="nav_btn_active"] {{
         background-color: {COLORS['surface']};
         color: {COLORS['primary']};
         border: 1px solid {COLORS['outline']}33;
@@ -62,7 +62,7 @@ def build_stylesheet():
         font-size: 14px;
         font-weight: 600;
         min-height: 36px;
-    }
+    }}
 
     /* === Tab Widget & Tab Bar === */
     QTabWidget::pane {{
