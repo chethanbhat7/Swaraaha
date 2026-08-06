@@ -178,13 +178,14 @@ class MainWindow(QMainWindow):
 
         self.statusBar().showMessage("Analyzing audio...")
         self._worker = AnalysisWorker(self._model_runner, self._current_audio, self._current_language)
-        self._worker.finished.connect(self._on_analysis_done)
+        self._worker.finished.connect(lambda results, w=self._worker: self._on_analysis_done(results, w))
         self._worker.start()
 
-    def _on_analysis_done(self, results: dict):
-        if self._worker is not None:
-            self._worker.deleteLater()
-            self._worker = None
+    def _on_analysis_done(self, results: dict, worker):
+        if worker is not self._worker:
+            return
+        self._worker.deleteLater()
+        self._worker = None
         if "error" in results:
             self.statusBar().showMessage(f"Analysis failed: {results['error']}")
             return

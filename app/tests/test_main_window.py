@@ -99,6 +99,31 @@ def test_analysis_worker_passes_language(qapp):
     assert results[0] == {"ok": True}
 
 
+def test_stale_analysis_signal_does_not_clear_current_worker(qapp, app_name):
+    from app.ui.main_window import AnalysisWorker
+
+    class FakeRunner:
+        def analyze(self, audio, language="english"):
+            return {"ok": True}
+
+    win = MainWindow()
+    win._model_runner = FakeRunner()
+    win._current_audio = np.zeros(1600, dtype=np.float32)
+    win._current_language = "english"
+
+    win._on_analyze()
+    stale = win._worker
+    stale.wait(5000)
+
+    fresh = AnalysisWorker(FakeRunner(), np.zeros(1600, dtype=np.float32), "english")
+    win._worker = fresh
+
+    qapp.processEvents()
+
+    assert win._worker is fresh
+    assert win._stack.currentIndex() == 0
+
+
 def test_start_home_transcription_populates_transcript(qapp, app_name):
     win = MainWindow()
 
