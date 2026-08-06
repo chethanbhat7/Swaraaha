@@ -54,15 +54,15 @@
       )
     } else {
       grid(
-        columns: (auto, 1fr, auto),
-        align: (center, left, right),
+        columns: (1fr, 10fr, auto),
+        align: (left, left, right),
         stack(dir: ltr)[
           #{
             show "Table": none
             show "Figure": none
             it.prefix()
           }
-        ], [#h(1.5em) #it.body()], [#it.page()]
+        ], [#it.body()], [#it.page()]
       )
     }
   ]
