@@ -52,9 +52,6 @@ class AudioTranscriber:
     Supports overlaying stutter detection results onto word intervals.
     """
 
-    def __init__(self, model_name: str = "facebook/wav2vec2-base-960h"):
-        self.model_name = model_name
-
     def transcribe(
         self,
         audio: np.ndarray,
@@ -80,7 +77,7 @@ class AudioTranscriber:
                 - "duration_sec": Audio duration in seconds.
         """
         if audio is None or len(audio) == 0:
-            return {"text": "", "words": []}
+            return {"text": "", "words": [], "duration_sec": 0.0}
 
         duration_sec = len(audio) / sample_rate
 
@@ -100,7 +97,7 @@ class AudioTranscriber:
             for w in word_list:
                 w_start = w["start_sec"]
                 w_end = w["end_sec"]
-                for (st_start, st_end, conf) in localizations:
+                for (st_start, st_end, _conf) in localizations:
                     if max(w_start, st_start) < min(w_end, st_end):
                         w["stutter"] = True
                         w["stutter_type"] = "dysfluency"

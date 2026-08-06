@@ -138,6 +138,14 @@ def test_transcription_panel_table_capped(qapp, no_network):
     assert panel._table.maximumHeight() > (panel._table.horizontalHeader().height() or 30)
 
 
+def test_transcribe_empty_audio_includes_duration_sec(no_network):
+    transcriber = AudioTranscriber()
+    res = transcriber.transcribe(np.array([], dtype=np.float32))
+    assert res["text"] == ""
+    assert res["words"] == []
+    assert res["duration_sec"] == 0.0
+
+
 def test_compact_transcript_table_capped(qapp):
     from app.ui.compact_transcript import CompactTranscript
 
