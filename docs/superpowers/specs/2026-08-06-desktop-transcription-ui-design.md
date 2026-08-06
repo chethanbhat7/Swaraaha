@@ -85,6 +85,12 @@ WaitDialog(QDialog)
 - `analyze(audio, language="english")` and `transcribe(audio, localizations=None, language="english")` thread the language through to `AudioTranscriber`.
 - `AnalysisWorker` gains a `language` argument.
 
+### 4e2. `app/ui/results_panel.py` & `app/ui/transcription_panel.py` (modified)
+
+- `ResultsPanel.set_results(results, audio, sample_rate, language="english")` and `AnalysisPage.set_results(results, audio, sample_rate, language="english")` gain a `language` param; `MainWindow._on_analysis_done` threads `_current_language`.
+- `ResultsPanel` fallback re-transcription passes `language` into `transcription_panel.set_audio(audio, sample_rate, localizations=localizations, language=language)`.
+- `TranscriptionPanel.set_audio(..., language="english")` and `CompactTranscript.set_audio(..., language="english")` accept the language so any remaining synchronous call site matches the chosen language.
+
 ### 4f. `app/ui/main_window.py` (modified)
 
 - New state: `_current_language` (default `"english"`), `_transcription_worker`, `_wait_dialog`.
@@ -135,6 +141,7 @@ Analysis flow threads `_current_language` so the results-page transcript matches
   - `AudioTranscriber` language mapping + dedup: monkeypatched fake Whisper pipeline — **no network/model download in tests**.
   - `cap_table_height`: caps `setMaximumHeight` correctly.
   - `MainWindow` record/load flow: `_prompt_language()` monkeypatched so modal dialogs don't block tests; asserts background transcription populates the compact transcript.
+  - Existing tests that call `set_audio` synchronously (e.g. `test_transcription_panel_ui`) keep working since panels retain synchronous `set_transcription`.
 
 ## 8. Out of Scope
 
