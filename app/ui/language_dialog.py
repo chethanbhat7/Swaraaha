@@ -32,7 +32,7 @@ class LanguageDialog(QDialog):
         for label, code in LANGUAGES.items():
             btn = QPushButton(label)
             if code == self._selected:
-                btn.setProperty("cssClass", "nav_btn_active")
+                btn.setProperty("cssClass", "lang_btn_active")
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.clicked.connect(lambda _checked=False, c=code: self._choose(c))
             self._buttons[code] = btn

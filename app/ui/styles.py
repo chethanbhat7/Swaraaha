@@ -63,6 +63,14 @@ def build_stylesheet():
         font-weight: 600;
         min-height: 36px;
     }}
+    QPushButton[cssClass="lang_btn_active"] {{
+        background-color: {COLORS['surface_variant']};
+        color: {COLORS['primary']};
+        border: 2px solid {COLORS['primary']}66;
+    }}
+    QPushButton[cssClass="lang_btn_active"]:hover {{
+        background-color: {COLORS['primary_container']};
+    }}
 
     /* === Tab Widget & Tab Bar === */
     QTabWidget::pane {{
