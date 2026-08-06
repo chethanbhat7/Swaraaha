@@ -2,7 +2,6 @@
 
 import numpy as np
 
-
 from app.core.transcription import AudioTranscriber
 
 
@@ -12,11 +11,11 @@ class ModelRunner:
         self._loaded = False
         self.transcriber = AudioTranscriber()
 
-    def transcribe(self, audio: np.ndarray, localizations=None) -> dict:
+    def transcribe(self, audio: np.ndarray, localizations=None, language: str = "english") -> dict:
         """Run transcription pipeline on audio."""
-        return self.transcriber.transcribe(audio, localizations=localizations)
+        return self.transcriber.transcribe(audio, localizations=localizations, language=language)
 
-    def analyze(self, audio: np.ndarray) -> dict:
+    def analyze(self, audio: np.ndarray, language: str = "english") -> dict:
         """Run classification + localization + transcription on audio. Returns structured results."""
         localizations = [
             (0.5, 1.2, 0.87),
@@ -29,7 +28,7 @@ class ModelRunner:
             "wordrep": (False, 0.05),
             "interjection": (True, 0.72),
         }
-        transcription = self.transcribe(audio, localizations=localizations)
+        transcription = self.transcribe(audio, localizations=localizations, language=language)
 
         return {
             "classifications": classifications,

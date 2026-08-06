@@ -25,14 +25,15 @@ _AUDIO_EXTENSIONS = {".wav", ".mp3", ".flac"}
 class AnalysisWorker(QThread):
     finished = Signal(dict)
 
-    def __init__(self, model_runner: ModelRunner, audio: np.ndarray):
+    def __init__(self, model_runner: ModelRunner, audio: np.ndarray, language: str = "english"):
         super().__init__()
         self._model_runner = model_runner
         self._audio = audio
+        self._language = language
 
     def run(self):
         try:
-            results = self._model_runner.analyze(self._audio)
+            results = self._model_runner.analyze(self._audio, language=self._language)
             self.finished.emit(results)
         except Exception as e:
             self.finished.emit({"error": str(e)})

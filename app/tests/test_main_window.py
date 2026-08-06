@@ -69,3 +69,22 @@ def test_drop_accepts_only_audio(qapp, app_name, tmp_path):
     )
     win.dragEnterEvent(enter2)
     assert not enter2.isAccepted()
+
+
+def test_analysis_worker_passes_language(qapp):
+    from app.ui.main_window import AnalysisWorker
+
+    captured = {}
+
+    class FakeRunner:
+        def analyze(self, audio, language="english"):
+            captured["language"] = language
+            return {"ok": True}
+
+    results = []
+    worker = AnalysisWorker(FakeRunner(), np.zeros(1600, dtype=np.float32), "hindi")
+    worker.finished.connect(results.append)
+    worker.run()
+
+    assert captured["language"] == "hindi"
+    assert results[0] == {"ok": True}
