@@ -19,3 +19,13 @@ def test_language_dialog_click_returns_code(qapp):
     dialog._buttons["hindi"].click()
     assert dialog.selected() == "hindi"
     assert dialog.result() == QDialog.DialogCode.Accepted
+
+
+def test_language_dialog_clamps_invalid_current(qapp):
+    dialog = LanguageDialog("french")
+    assert dialog.selected() == "english"
+    assert dialog._buttons["english"].property("cssClass") is not None
+    assert all(
+        dialog._buttons[c].property("cssClass") is None
+        for c in ("kannada", "hindi")
+    )
