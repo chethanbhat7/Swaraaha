@@ -1,3 +1,5 @@
+import threading
+
 import numpy as np
 import pytest
 import soundfile as sf
@@ -138,6 +140,50 @@ def test_home_transcription_error_is_handled(qapp, app_name):
 
     assert win._wait_dialog is None
     assert "Transcription failed" in win.statusBar().currentMessage()
+
+
+def test_reload_dismisses_previous_wait_dialog_and_discards_stale_result(qapp, app_name):
+    win = MainWindow()
+    release_first = threading.Event()
+
+    def fake_transcribe(audio, sample_rate=16000, localizations=None, passage_text=None, language="english"):
+        if len(audio) == 1600:
+            release_first.wait(5)
+            return {
+                "text": "first result",
+                "words": [
+                    {"word": "first", "start_sec": 0.0, "end_sec": 0.4, "confidence": 0.9,
+                     "stutter": False, "stutter_type": None},
+                ],
+            }
+        return {
+            "text": "second result",
+            "words": [
+                {"word": "second", "start_sec": 0.0, "end_sec": 0.4, "confidence": 0.9,
+                 "stutter": False, "stutter_type": None},
+            ],
+        }
+
+    win._model_runner.transcriber.transcribe = fake_transcribe
+
+    win._start_home_transcription(np.zeros(1600, dtype=np.float32), "english")
+    first_dialog = win._wait_dialog
+    assert first_dialog is not None
+    assert first_dialog.isVisible()
+
+    win._start_home_transcription(np.zeros(3200, dtype=np.float32), "english")
+    second_dialog = win._wait_dialog
+    assert second_dialog is not first_dialog
+    assert not first_dialog.isVisible()
+    assert second_dialog.isVisible()
+
+    release_first.set()
+    qapp.processEvents()
+    qapp.processEvents()
+
+    assert win._wait_dialog is None
+    panel = win._home_page.get_transcription_panel()
+    assert panel._text_edit.toPlainText() == "second result"
 
 
 def test_prompt_language_uses_dialog(qapp, app_name, monkeypatch):

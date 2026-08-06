@@ -78,6 +78,52 @@ def test_transcribe_dedups_whisper_repeats(monkeypatch):
     assert res["words"][0]["start_sec"] == 0.0
 
 
+def test_transcribe_keeps_text_when_whisper_returns_no_word_chunks(monkeypatch):
+    class FakePipe:
+        def __call__(self, audio, return_timestamps="word"):
+            return {"text": "ಹಲೋ ಜಗತ್ತು", "chunks": []}
+
+    monkeypatch.setattr("app.core.transcription.get_pipeline", lambda language: FakePipe())
+    transcriber = AudioTranscriber()
+    res = transcriber.transcribe(np.zeros(16000, dtype=np.float32), language="kannada")
+
+    assert res["text"] == "ಹಲೋ ಜಗತ್ತು"
+    assert res["words"] == []
+
+
+def test_get_pipeline_tolerates_decoder_prompt_ids_failure(monkeypatch):
+    import transformers.pipelines
+
+    class FakeConfig:
+        def __init__(self):
+            self.forced_decoder_ids = None
+            self.no_timestamps_token_id = None
+
+    class FakeModel:
+        generation_config = FakeConfig()
+
+    class FakeTokenizer:
+        def get_decoder_prompt_ids(self, language="en", task="transcribe"):
+            raise RuntimeError("no decoder prompt ids")
+
+        def convert_tokens_to_ids(self, token):
+            return 50363
+
+    class FakePipe:
+        def __init__(self):
+            self.model = FakeModel()
+            self.tokenizer = FakeTokenizer()
+
+    monkeypatch.setattr(transformers.pipelines, "pipeline", lambda *a, **k: FakePipe())
+    monkeypatch.setattr("app.core.transcription._pipelines", {})
+
+    from app.core.transcription import get_pipeline
+
+    pipe = get_pipeline("kannada")
+    assert pipe is not None
+    assert pipe.model.generation_config.forced_decoder_ids is None
+
+
 def test_transcription_panel_table_capped(qapp, no_network):
     panel = TranscriptionPanel()
     words = [

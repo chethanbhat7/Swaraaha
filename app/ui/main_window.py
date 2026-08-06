@@ -138,6 +138,9 @@ class MainWindow(QMainWindow):
 
     def _start_home_transcription(self, audio: np.ndarray, language: str):
         """Run home-page transcription in the background with a wait dialog."""
+        if self._wait_dialog is not None:
+            self._wait_dialog.finish()
+            self._wait_dialog = None
         worker = TranscriptionWorker(self._model_runner.transcriber, audio, language)
         self._transcription_worker = worker
         self._wait_dialog = WaitDialog(self)
@@ -148,6 +151,8 @@ class MainWindow(QMainWindow):
     def _on_home_transcription_done(self, data: dict, worker):
         if worker is not self._transcription_worker:
             return
+        self._transcription_worker = None
+        worker.deleteLater()
         if self._wait_dialog is not None:
             self._wait_dialog.finish()
             self._wait_dialog = None
@@ -177,6 +182,9 @@ class MainWindow(QMainWindow):
         self._worker.start()
 
     def _on_analysis_done(self, results: dict):
+        if self._worker is not None:
+            self._worker.deleteLater()
+            self._worker = None
         if "error" in results:
             self.statusBar().showMessage(f"Analysis failed: {results['error']}")
             return

@@ -31,10 +31,10 @@ def get_pipeline(language: str = "english"):
         pipe = pipeline("automatic-speech-recognition", model=model_id, device="cpu")
 
         lang_code = WHISPER_LANG_CODES.get(lang, "en")
-        pipe.model.generation_config.forced_decoder_ids = pipe.tokenizer.get_decoder_prompt_ids(
-            language=lang_code, task="transcribe"
-        )
         try:
+            pipe.model.generation_config.forced_decoder_ids = pipe.tokenizer.get_decoder_prompt_ids(
+                language=lang_code, task="transcribe"
+            )
             no_timestamps_token_id = pipe.tokenizer.convert_tokens_to_ids("<|notimestamps|>")
             pipe.model.generation_config.no_timestamps_token_id = no_timestamps_token_id
         except Exception:
@@ -93,7 +93,7 @@ class AudioTranscriber:
             transcript_text = None
             word_list = []
 
-        if not transcript_text or not word_list:
+        if not transcript_text and not word_list:
             transcript_text, word_list = self._fallback_transcribe(audio, duration_sec, passage_text)
 
         if localizations and word_list:
