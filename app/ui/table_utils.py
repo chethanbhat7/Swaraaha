@@ -9,3 +9,10 @@ def resize_table_to_contents(table: QTableWidget):
     for row in range(table.rowCount()):
         height += table.rowHeight(row)
     table.setMinimumHeight(height + 4)
+
+
+def cap_table_height(table: QTableWidget, max_rows: int):
+    """Cap a table's maximum height so longer contents scroll inside the table."""
+    header_height = table.horizontalHeader().height() or 30
+    row_height = table.rowHeight(0) if table.rowCount() > 0 else 30
+    table.setMaximumHeight(header_height + max_rows * row_height + 4)
