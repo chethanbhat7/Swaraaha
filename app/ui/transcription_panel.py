@@ -19,8 +19,10 @@ from PySide6.QtWidgets import (
 )
 
 from app.core.transcription import AudioTranscriber
-from app.ui.table_utils import resize_table_to_contents
+from app.ui.table_utils import cap_table_height
 from app.ui.theme import COLORS
+
+MAX_ROWS = 10
 
 
 class TranscriptionPanel(QWidget):
@@ -35,6 +37,7 @@ class TranscriptionPanel(QWidget):
         self._transcriber = AudioTranscriber()
         self._audio = None
         self._transcription_data = {"text": "", "words": []}
+        self._language = "english"
         self._setup_ui()
 
     def _setup_ui(self):
@@ -105,9 +108,10 @@ class TranscriptionPanel(QWidget):
         self._table.setAlternatingRowColors(True)
         layout.addWidget(self._table, stretch=1)
 
-    def set_audio(self, audio: np.ndarray, sample_rate: int = 16000, localizations=None):
+    def set_audio(self, audio: np.ndarray, sample_rate: int = 16000, localizations=None, language: str = "english"):
         """Set audio array and automatically run transcription."""
         self._audio = audio
+        self._language = language
         if audio is not None and len(audio) > 0:
             self._status_label.setText(f"Audio Ready ({len(audio)/sample_rate:.1f}s)")
             self.run_transcription(localizations=localizations)
@@ -121,7 +125,7 @@ class TranscriptionPanel(QWidget):
             return
 
         self._status_label.setText("Transcribing...")
-        data = self._transcriber.transcribe(self._audio, localizations=localizations)
+        data = self._transcriber.transcribe(self._audio, localizations=localizations, language=self._language)
         self.set_transcription(data)
         self._status_label.setText("Transcription Complete")
 
@@ -132,34 +136,37 @@ class TranscriptionPanel(QWidget):
         words = data.get("words", [])
 
         self._text_edit.setPlainText(text)
-        self._table.setRowCount(len(words))
+        self._table.setUpdatesEnabled(False)
+        try:
+            self._table.setRowCount(len(words))
 
-        for row, w in enumerate(words):
-            word_item = QTableWidgetItem(str(w.get("word", "")))
-            start_item = QTableWidgetItem(f"{w.get('start_sec', 0.0):.2f}")
-            end_item = QTableWidgetItem(f"{w.get('end_sec', 0.0):.2f}")
-            conf_item = QTableWidgetItem(f"{w.get('confidence', 0.0)*100:.0f}%")
+            for row, w in enumerate(words):
+                word_item = QTableWidgetItem(str(w.get("word", "")))
+                start_item = QTableWidgetItem(f"{w.get('start_sec', 0.0):.2f}")
+                end_item = QTableWidgetItem(f"{w.get('end_sec', 0.0):.2f}")
+                conf_item = QTableWidgetItem(f"{w.get('confidence', 0.0)*100:.0f}%")
 
-            is_stutter = w.get("stutter", False)
-            status_str = "Stutter Detected" if is_stutter else "Normal"
-            status_item = QTableWidgetItem(status_str)
+                is_stutter = w.get("stutter", False)
+                status_str = "Stutter Detected" if is_stutter else "Normal"
+                status_item = QTableWidgetItem(status_str)
 
-            if is_stutter:
-                red_color = QColor(COLORS["dysfluency"]["prolongation"])
-                status_item.setForeground(red_color)
-                word_item.setForeground(red_color)
-                font = word_item.font()
-                font.setBold(True)
-                word_item.setFont(font)
-                status_item.setFont(font)
+                if is_stutter:
+                    red_color = QColor(COLORS["dysfluency"]["prolongation"])
+                    status_item.setForeground(red_color)
+                    word_item.setForeground(red_color)
+                    font = word_item.font()
+                    font.setBold(True)
+                    word_item.setFont(font)
+                    status_item.setFont(font)
 
-            self._table.setItem(row, 0, word_item)
-            self._table.setItem(row, 1, start_item)
-            self._table.setItem(row, 2, end_item)
-            self._table.setItem(row, 3, conf_item)
-            self._table.setItem(row, 4, status_item)
-
-        resize_table_to_contents(self._table)
+                self._table.setItem(row, 0, word_item)
+                self._table.setItem(row, 1, start_item)
+                self._table.setItem(row, 2, end_item)
+                self._table.setItem(row, 3, conf_item)
+                self._table.setItem(row, 4, status_item)
+        finally:
+            self._table.setUpdatesEnabled(True)
+            cap_table_height(self._table, MAX_ROWS)
 
     def clear(self):
         """Clear transcription display."""
@@ -168,6 +175,7 @@ class TranscriptionPanel(QWidget):
         self._text_edit.clear()
         self._table.setRowCount(0)
         self._table.setMinimumHeight(0)
+        self._table.setMaximumHeight(16777215)
         self._status_label.setText("No Audio Loaded")
 
     def _on_transcribe_click(self):

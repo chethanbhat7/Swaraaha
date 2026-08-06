@@ -76,3 +76,32 @@ def test_transcribe_dedups_whisper_repeats(monkeypatch):
     assert len(res["words"]) == 2
     assert res["words"][0]["word"] == "ಹಲೋ"
     assert res["words"][0]["start_sec"] == 0.0
+
+
+def test_transcription_panel_table_capped(qapp, no_network):
+    panel = TranscriptionPanel()
+    words = [
+        {"word": f"w{i}", "start_sec": float(i), "end_sec": float(i) + 0.5, "confidence": 0.9,
+         "stutter": False, "stutter_type": None}
+        for i in range(30)
+    ]
+    panel.set_transcription({"text": " ".join(w["word"] for w in words), "words": words})
+    assert panel._table.rowCount() == 30
+    full = (panel._table.horizontalHeader().height() or 30) + 30 * panel._table.rowHeight(0)
+    assert panel._table.maximumHeight() < full
+    assert panel._table.maximumHeight() > (panel._table.horizontalHeader().height() or 30)
+
+
+def test_compact_transcript_table_capped(qapp):
+    from app.ui.compact_transcript import CompactTranscript
+
+    panel = CompactTranscript()
+    words = [
+        {"word": f"w{i}", "start_sec": float(i), "end_sec": float(i) + 0.5, "confidence": 0.9,
+         "stutter": False, "stutter_type": None}
+        for i in range(30)
+    ]
+    panel.set_transcription({"text": " ".join(w["word"] for w in words), "words": words})
+    assert panel._table.rowCount() == 30
+    full = (panel._table.horizontalHeader().height() or 30) + 30 * panel._table.rowHeight(0)
+    assert panel._table.maximumHeight() < full
