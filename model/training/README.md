@@ -215,8 +215,22 @@ To use trained models, register them in `model/registry.json`:
     "prolongation": "model/weights/prolongation_e20_b8_lr3e-5_..._best.pt",
     "block": "model/weights/block_e20_b8_lr3e-5_..._best.pt",
     ...
+  },
+  "thresholds": {
+    "prolongation": 0.5,
+    "block": 0.5,
+    ...
   }
 }
+```
+
+Then access via the registry API — audio (path/bytes/numpy) is preprocessed automatically:
+
+```python
+from model import Classifier
+result = Classifier().analyze("recording.wav")      # all 5 + summary
+result = Classifier().analyze_raw("recording.wav")  # + logits
+result = Classifier("prolongation").analyze(audio)  # single class
 ```
 
 ---
