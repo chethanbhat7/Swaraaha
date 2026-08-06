@@ -1,9 +1,13 @@
+from PySide6.QtWidgets import QLabel
+
 from app.ui.wait_dialog import WaitDialog
 
 
 def test_wait_dialog_message_and_finish(qapp):
     dialog = WaitDialog()
-    assert "Generating transcript" in dialog._label.text()
+    label = dialog.findChild(QLabel)
+    assert label is not None
+    assert "Generating transcript" in label.text()
     dialog.show()
     qapp.processEvents()
     assert dialog.isVisible()

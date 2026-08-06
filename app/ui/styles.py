@@ -254,6 +254,17 @@ def build_stylesheet():
         font-weight: 600;
     }}
 
+    /* === Progress Bar (Wait Dialog Spinner) === */
+    QProgressBar {{
+        background-color: {COLORS['surface_variant']};
+        border: none;
+        border-radius: 4px;
+    }}
+    QProgressBar::chunk {{
+        background-color: {COLORS['primary']};
+        border-radius: 4px;
+    }}
+
     /* === Scroll Bar === */
     QScrollBar:vertical {{
         background: transparent;
