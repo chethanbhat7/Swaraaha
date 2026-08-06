@@ -16,6 +16,7 @@ class WaveformView(QGraphicsView):
         self._audio = None
         self._sample_rate = 16000
         self._overlays = []
+        self._resize_timer = None
         self.setRenderHint(QPainter.RenderHint.Antialiasing)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -96,7 +97,7 @@ class WaveformView(QGraphicsView):
     def resizeEvent(self, event):
         """Debounce redraws during resize drags."""
         super().resizeEvent(event)
-        if not hasattr(self, "_resize_timer") or self._resize_timer is None:
+        if self._resize_timer is None:
             self._resize_timer = QTimer(self)
             self._resize_timer.setSingleShot(True)
             self._resize_timer.timeout.connect(self._draw)
