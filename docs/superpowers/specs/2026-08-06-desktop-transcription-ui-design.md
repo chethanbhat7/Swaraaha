@@ -61,6 +61,8 @@ LanguageDialog(QDialog)
 ```
 
 - Modal dialog; heading "Choose the language"; three buttons, the current one pre-highlighted (active style). Clicking a button accepts and returns its code.
+- **Button styling:** the three language buttons use the app's default `QPushButton` style (primary fill, `RADIUS['lg']`, 48px min-height) so they look identical to the rest of the app's buttons; the pre-selected button gets the `nav_btn_active` QSS class (surface background + primary text + outline border, the same "selected" look used by the Passage/Files segmented nav) for one-click confirmation.
+- Button styling must be consistent with the rest of the app: same QSS classes/tokens (`styles.py`) as other buttons — full-width stacked buttons in the dialog, with the selected language using the `nav_btn_active`-style highlight so it reads as the pre-selected choice.
 
 ### 4c. `app/ui/wait_dialog.py` (new)
 
