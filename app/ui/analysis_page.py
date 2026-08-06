@@ -67,9 +67,9 @@ class AnalysisPage(QWidget):
         scroll.setWidget(content)
         layout.addWidget(scroll, stretch=1)
 
-    def set_results(self, results: dict, audio: np.ndarray = None, sample_rate: int = 16000):
+    def set_results(self, results: dict, audio: np.ndarray = None, sample_rate: int = 16000, language: str = "english"):
         """Update the page with analysis results."""
-        self._results.set_results(results, audio, sample_rate)
+        self._results.set_results(results, audio, sample_rate, language=language)
 
         if audio is not None and len(audio) > 0:
             self._waveform.set_audio(audio, sample_rate)

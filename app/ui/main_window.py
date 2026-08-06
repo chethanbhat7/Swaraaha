@@ -16,8 +16,11 @@ from app.core.audio_handler import AudioHandler
 from app.core.model_runner import ModelRunner
 from app.ui.analysis_page import AnalysisPage
 from app.ui.home_page import HomePage
+from app.ui.language_dialog import LanguageDialog
 from app.ui.styles import build_stylesheet
 from app.ui.theme import is_dark_mode, set_theme
+from app.ui.transcription_worker import TranscriptionWorker
+from app.ui.wait_dialog import WaitDialog
 
 _AUDIO_EXTENSIONS = {".wav", ".mp3", ".flac"}
 
@@ -49,6 +52,9 @@ class MainWindow(QMainWindow):
         self._model_runner = ModelRunner()
         self._current_audio = None
         self._worker = None
+        self._current_language = "english"
+        self._transcription_worker = None
+        self._wait_dialog = None
 
         self._setup_ui()
 
@@ -89,13 +95,15 @@ class MainWindow(QMainWindow):
             audio = self._audio_handler.load_audio(path)
             self._current_audio = audio
             self._home_page.get_audio_controls().set_audio_loaded()
-            self._home_page.get_transcription_panel().set_audio(audio)
+            self._home_page.get_transcription_panel().clear()
             self._home_page.set_transcript_visible(True)
+            self._start_home_transcription(audio, self._current_language)
             self.statusBar().showMessage(f"Loaded: {path}")
         except Exception as e:
             self.statusBar().showMessage(f"Error loading file: {e}")
 
     def _on_record(self):
+        self._current_language = self._prompt_language()
         self._audio_handler.start_recording()
         self._home_page.get_audio_controls().set_recording(True)
         self.statusBar().showMessage("Recording...")
@@ -106,8 +114,9 @@ class MainWindow(QMainWindow):
             self._current_audio = audio
             self._home_page.get_audio_controls().set_recording(False)
             self._home_page.get_audio_controls().set_audio_loaded()
-            self._home_page.get_transcription_panel().set_audio(audio)
+            self._home_page.get_transcription_panel().clear()
             self._home_page.set_transcript_visible(True)
+            self._start_home_transcription(audio, self._current_language)
             self.statusBar().showMessage(f"Recorded {len(audio) / self._audio_handler.sample_rate:.1f}s of audio")
         else:
             self._home_page.get_audio_controls().set_recording(False)
@@ -118,7 +127,35 @@ class MainWindow(QMainWindow):
             self, "Load Audio", "", "Audio Files (*.wav *.mp3 *.flac);;All Files (*)"
         )
         if path:
+            self._current_language = self._prompt_language()
             self._load_path(path)
+
+    def _prompt_language(self) -> str:
+        """Ask the user which language to transcribe in; keeps the last choice on cancel."""
+        dialog = LanguageDialog(self._current_language, self)
+        dialog.exec()
+        return dialog.selected()
+
+    def _start_home_transcription(self, audio: np.ndarray, language: str):
+        """Run home-page transcription in the background with a wait dialog."""
+        worker = TranscriptionWorker(self._model_runner.transcriber, audio, language)
+        self._transcription_worker = worker
+        self._wait_dialog = WaitDialog(self)
+        self._wait_dialog.show()
+        worker.finished.connect(lambda data, w=worker: self._on_home_transcription_done(data, w))
+        worker.start()
+
+    def _on_home_transcription_done(self, data: dict, worker):
+        if worker is not self._transcription_worker:
+            return
+        if self._wait_dialog is not None:
+            self._wait_dialog.finish()
+            self._wait_dialog = None
+        if "error" in data:
+            self.statusBar().showMessage(f"Transcription failed: {data['error']}")
+            return
+        self._home_page.get_transcription_panel().set_transcription(data)
+        self.statusBar().showMessage("Transcript ready")
 
     def _on_play(self):
         if self._current_audio is not None:
@@ -135,7 +172,7 @@ class MainWindow(QMainWindow):
             return
 
         self.statusBar().showMessage("Analyzing audio...")
-        self._worker = AnalysisWorker(self._model_runner, self._current_audio)
+        self._worker = AnalysisWorker(self._model_runner, self._current_audio, self._current_language)
         self._worker.finished.connect(self._on_analysis_done)
         self._worker.start()
 
@@ -143,7 +180,7 @@ class MainWindow(QMainWindow):
         if "error" in results:
             self.statusBar().showMessage(f"Analysis failed: {results['error']}")
             return
-        self._analysis_page.set_results(results, self._current_audio)
+        self._analysis_page.set_results(results, self._current_audio, language=self._current_language)
         self._stack.setCurrentIndex(1)
         self.statusBar().showMessage("Analysis complete")
 
