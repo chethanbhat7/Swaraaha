@@ -259,6 +259,12 @@ class TeeLogger:
         self._stdout.flush()
         self.file.flush()
 
+    def isatty(self):
+        return self._stdout.isatty()
+
+    def fileno(self):
+        return self._stdout.fileno()
+
     def close(self):
         self.file.close()
         sys.stdout = self._stdout

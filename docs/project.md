@@ -70,20 +70,29 @@ fused into a single model or score.
 
 The model registry decouples model loading from model training.
 
-**Always use the registry API to access trained models.** Do not instantiate model classes directly or load checkpoints manually.
+**Always use the registry API to access trained models.** Do not instantiate model classes directly or load checkpoints manually. The API accepts audio as a file path, raw bytes, or numpy array and applies preprocessing automatically.
 
 ```python
 from model import Classifier, Localizer, ModelRegistry
 
-clf = Classifier()                    # all 5 classifiers + combiner
-clf = Classifier("prolongation")      # single classifier
-loc = Localizer("cnn")               # single localizer
-m = ModelRegistry()                   # everything at once
-m.run_all(audio_tensor)               # classify + localize in one call
+clf = Classifier()                        # all 5 classifiers (raw outputs + summary)
+result = clf.analyze("recording.wav")     # path, bytes, or numpy array
+# {prolongation: {...}, ..., summary: {detected: [...], primary: "..."}}
+
+clf = Classifier("prolongation")          # single classifier
+result = clf.analyze(audio)               # {label, confidence, prob_present, prob_not_present}
+
+result = clf.analyze_raw(audio)           # advanced: same + raw logits
+result = clf.analyze(audio, threshold=0.6)  # per-call threshold override
+
+loc = Localizer("cnn")                   # single localizer
+m = ModelRegistry()                       # everything at once
+m.run_all(audio_tensor)                   # classify + localize in one call
 ```
 
-- **`model/registry.json`** — lists available model checkpoint paths, grouped by task (classification, localization).
-- **`model/registry.py`** — Python API with `Classifier`, `Localizer`, and `ModelRegistry` classes. Models are lazy-loaded on first `predict()` call.
+- **`model/registry.json`** — lists available model checkpoint paths, grouped by task (classification, localization), plus per-class label `thresholds`.
+- **`model/registry.py`** — Python API with `Classifier`, `Localizer`, and `ModelRegistry` classes. Models are lazy-loaded on first call. `Classifier.analyze` handles audio normalization internally (load/resample → clean → pad to 10s).
+- The hybrid combiner (learned MLP) is not used by the API — all-5 `analyze()` returns raw per-classifier outputs plus a summary of detected classes.
 
 To change which checkpoint is active, update the path in `registry.json`. No code changes needed. Training does NOT write to the registry — model selection is manual.
 

@@ -4,21 +4,30 @@ Model Registry — loads trained models and exposes a clean predict API.
 Usage:
     from model.registry import Classifier, Localizer, ModelRegistry
 
-    # All classifiers (HybridClassifier)
+    # All classifiers
     clf = Classifier()
-    result = clf.predict(audio_tensor)           # {class_name: (label, confidence)}
+    result = clf.analyze("recording.wav")        # path
+    result = clf.analyze(audio_bytes)            # bytes
+    result = clf.analyze(np_array, sr=16000)     # numpy array
+    # result: {prolongation: {...}, ..., summary: {detected: [...], primary: ...}}
 
     # Single classifier
     clf = Classifier("prolongation")
-    result = clf.predict(audio_tensor)           # (label, confidence)
+    result = clf.analyze(audio)                  # {label, confidence, prob_present, prob_not_present}
 
-    # Localizer
+    # Advanced: adds raw logits
+    result = clf.analyze_raw(audio)
+
+    # Per-call threshold override
+    result = clf.analyze(audio, threshold=0.6)
+
+    # Localizer (unchanged)
     loc = Localizer("cnn")
-    regions = loc.predict(audio_tensor)          # [(start, end, confidence), ...]
+    regions = loc.predict(audio_tensor)
 
     # Everything at once
     m = ModelRegistry()
-    all_results = m.run_all(audio_tensor)        # classify + localize
+    all_results = m.run_all(audio_tensor)
 """
 
 import json
@@ -75,10 +84,90 @@ def _load_classifier(class_name: str, path: str):
     return instance
 
 
+def _preprocess_audio(
+    audio, sr: int = 16000, max_length_seconds: float = 10.0
+) -> "torch.Tensor":
+    """Normalize audio input (path / bytes / ndarray) into a model-ready tensor.
+
+    Returns a float32 tensor of shape [1, max_length_seconds * sr].
+    """
+    import io
+    import os
+
+    import numpy as np
+    import torch
+    import soundfile as sf
+
+    from model.data.preprocessing import (
+        clean_audio,
+        load_audio,
+        load_audio_from_array,
+        pad_to_length,
+    )
+
+    if isinstance(audio, (str, os.PathLike)):
+        if not os.path.isfile(audio):
+            raise FileNotFoundError(f"Audio file not found: {audio}")
+        audio_array, _ = load_audio(audio, sr=sr)
+    elif isinstance(audio, bytes):
+        from backend.services.audio_utils import convert_to_wav
+
+        wav_bytes = convert_to_wav(audio)
+        audio_array, file_sr = sf.read(io.BytesIO(wav_bytes), dtype="float32")
+        if audio_array.ndim > 1:
+            audio_array = audio_array.mean(axis=1)
+        if file_sr != sr:
+            import librosa
+
+            audio_array = librosa.resample(audio_array, orig_sr=file_sr, target_sr=sr)
+    elif isinstance(audio, np.ndarray):
+        audio_array, _ = load_audio_from_array(audio, sr=sr)
+    else:
+        raise TypeError(
+            f"Unsupported audio type: {type(audio).__name__}. "
+            "Expected str path, bytes, or numpy array."
+        )
+
+    audio_array = clean_audio(audio_array, sr=sr)
+    audio_array = pad_to_length(
+        audio_array, int(max_length_seconds * sr), axis=0, pad_value=0.0
+    )
+    tensor = torch.tensor(audio_array, dtype=torch.float32).unsqueeze(0)
+    return tensor
+
+
+def _classifier_output(clf, audio_tensor, threshold: float, include_logits: bool) -> Dict[str, float]:
+    """Run one classifier and build the output dict (label/confidence/probs[/logits])."""
+    import torch
+
+    clf._model.eval()
+    with torch.no_grad():
+        logits = clf.forward(audio_tensor)
+        probs = torch.softmax(logits, dim=-1)
+        prob_present = probs[0, 1].item()
+        prob_not_present = probs[0, 0].item()
+        label = 1 if prob_present >= threshold else 0
+        confidence = prob_present if label == 1 else prob_not_present
+
+    result: Dict[str, float] = {
+        "label": label,
+        "confidence": confidence,
+        "prob_present": prob_present,
+        "prob_not_present": prob_not_present,
+    }
+    if include_logits:
+        result["logits"] = {
+            "not_present": logits[0, 0].item(),
+            "present": logits[0, 1].item(),
+        }
+    return result
+
+
 class Classifier:
     def __init__(self, class_name: Optional[str] = None):
         self.class_name = class_name
         self._model = None
+        self._models: Dict[str, Any] = {}
 
     def _load(self) -> None:
         registry = _load_registry()
@@ -111,29 +200,21 @@ class Classifier:
                     f"Missing classification models in registry: {missing}"
                 )
 
-            from model.classification import DYSFLUENCY_CLASSES
-            from model.classification.hybrid import HybridClassifier, CombinerMLP
-
-            base_classifiers = []
-            for name in DYSFLUENCY_CLASSES:
-                path = _resolve_path(classification[name])
-                base_classifiers.append(_load_classifier(name, path))
-
-            self._model = HybridClassifier.__new__(HybridClassifier)
-            self._model.model_name = "facebook/wav2vec2-base"
-            self._model.base_classifiers = base_classifiers
-            self._model.combiner = CombinerMLP()
+            self._models = {}
+            for name, entry in classification.items():
+                path = _resolve_path(entry)
+                self._models[name] = _load_classifier(name, path)
 
     def predict(
         self, audio_tensor, threshold: float = 0.5
     ) -> Union[Dict[str, Tuple[int, float]], Tuple[int, float]]:
-        if self._model is None:
+        if self._model is None and not self._models:
             self._load()
 
         if self.class_name is not None:
             return self._model.predict(audio_tensor)
         else:
-            return self._model.predict(audio_tensor, threshold=threshold)
+            return self.predict_all(audio_tensor)
 
     def predict_all(
         self, audio_tensor
@@ -148,13 +229,76 @@ class Classifier:
             )
 
         results = {}
-        for clf in self._model.base_classifiers:
-            results[clf.class_name] = clf.predict(audio_tensor)
+        for name, clf in self._models.items():
+            results[name] = clf.predict(audio_tensor)
         return results
+
+    @staticmethod
+    def _default_thresholds() -> Dict[str, float]:
+        return {
+            "prolongation": 0.5,
+            "block": 0.5,
+            "soundrep": 0.5,
+            "wordrep": 0.5,
+            "interjection": 0.5,
+        }
+
+    def _resolve_thresholds(self, threshold: Optional[float]) -> Dict[str, float]:
+        registry = _load_registry()
+        configured = registry.get("thresholds", {})
+        defaults = self._default_thresholds()
+        thresholds = {
+            name: configured.get(name, defaults.get(name, 0.5))
+            for name in defaults
+        }
+        if threshold is not None:
+            if not 0.0 <= threshold <= 1.0:
+                raise ValueError(f"threshold must be in [0, 1], got {threshold}")
+            thresholds = {name: threshold for name in thresholds}
+        return thresholds
+
+    def _run_single(self, audio, threshold: Optional[float], include_logits: bool) -> Dict[str, Any]:
+        if self._model is None:
+            self._load()
+        tensor = _preprocess_audio(audio)
+        thresholds = self._resolve_thresholds(threshold)
+        thr = thresholds[self.class_name]
+        return _classifier_output(self._model, tensor, thr, include_logits)
+
+    def _run_all(self, audio, threshold: Optional[float], include_logits: bool) -> Dict[str, Any]:
+        if not self._models:
+            self._load()
+        tensor = _preprocess_audio(audio)
+        thresholds = self._resolve_thresholds(threshold)
+
+        results: Dict[str, Any] = {}
+        for name, clf in self._models.items():
+            results[name] = _classifier_output(clf, tensor, thresholds[name], include_logits)
+
+        detected = [name for name, out in results.items() if out["label"] == 1]
+        primary = max(results.items(), key=lambda kv: kv[1]["prob_present"])[0]
+        results["summary"] = {"detected": detected, "primary": primary}
+        return results
+
+    def analyze(
+        self, audio, threshold: Optional[float] = None
+    ) -> Union[Dict[str, Any], Dict[str, float]]:
+        """Simple analysis: label + confidence + probabilities per class."""
+        if self.class_name is not None:
+            return self._run_single(audio, threshold, include_logits=False)
+        return self._run_all(audio, threshold, include_logits=False)
+
+    def analyze_raw(
+        self, audio, threshold: Optional[float] = None
+    ) -> Union[Dict[str, Any], Dict[str, float]]:
+        """Advanced analysis: everything in analyze() plus raw logits."""
+        if self.class_name is not None:
+            return self._run_single(audio, threshold, include_logits=True)
+        return self._run_all(audio, threshold, include_logits=True)
 
     @property
     def is_loaded(self) -> bool:
-        return self._model is not None
+        return self._model is not None or bool(self._models)
 
 
 class Localizer:

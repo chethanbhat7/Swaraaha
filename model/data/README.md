@@ -233,7 +233,7 @@ After training, use the **model registry API** to load and run models. Do not im
 from model import Classifier
 
 clf = Classifier()  # loads all 5 trained classifiers from registry
-result = clf.predict(audio_tensor)
+result = clf.analyze("recording.wav")  # path, bytes, or numpy array — preprocessing is automatic
 ```
 
 See the [root README](../../README.md#accessing-trained-models) for full API details.

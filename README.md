@@ -47,25 +47,32 @@ Both `frontend/` + `backend/` (web) and `app/` (desktop) load from the shared `m
 
 ## Accessing Trained Models
 
-**Always use the model registry API** to load and run trained models. Do not instantiate model classes directly or load checkpoints manually.
+**Always use the model registry API** to load and run trained models. Do not instantiate model classes directly or load checkpoints manually. The API accepts audio as a file path, raw bytes, or a numpy array — preprocessing is applied automatically.
 
 ```python
 from model import Classifier, Localizer, ModelRegistry
 
-# All classifiers (HybridClassifier with combiner)
+# All classifiers (raw per-classifier outputs + summary)
 clf = Classifier()
-result = clf.predict(audio_tensor)           # {class_name: (label, confidence)}
+result = clf.analyze("recording.wav")        # path, bytes, or numpy array
+# {prolongation: {...}, ..., summary: {detected: [...], primary: "..."}}
 
 # Single classifier
 clf = Classifier("prolongation")
-result = clf.predict(audio_tensor)           # (label, confidence)
+result = clf.analyze(audio)                  # {label, confidence, prob_present, prob_not_present}
+
+# Advanced: adds raw logits per class
+result = clf.analyze_raw(audio)
+
+# Per-call threshold override (defaults come from model/registry.json)
+result = clf.analyze(audio, threshold=0.6)
 
 # Everything at once
 m = ModelRegistry()
 all_results = m.run_all(audio_tensor)        # classify + localize
 ```
 
-The registry (`model/registry.json`) maps task names to checkpoint paths. To swap which checkpoint is active, update the path in the JSON file. No code changes needed.
+The registry (`model/registry.json`) maps task names to checkpoint paths and per-class label thresholds. To swap which checkpoint is active, update the path in the JSON file. No code changes needed.
 
 **Do not** import `HybridClassifier`, `ProlongationClassifier`, etc. directly — use `Classifier()` instead. This ensures models load from the registry and stay in sync with which checkpoints are active.
 
