@@ -149,4 +149,58 @@ A detailed clinical-style report is generated and stored for future reference.
 
 In addition to inference, the training procedure for each classifier follows a structured approach. Initially, the backbone model is frozen for the first three epochs to stabilize learning. It is then unfrozen with a reduced learning rate (scaled by a factor of 0.1). Training is performed using Focal Loss with a gamma value of 2 to handle class imbalance, and optimization is carried out using the AdamW optimizer with a learning rate of 3 × 10⁻⁵. A warm-up phase of 500 steps is applied, followed by early stopping to prevent overfitting. The best-performing model is selected based on the highest F1-score and saved as the final checkpoint.
 
+== Design Considerations
+The system is designed with a focus on accuracy, scalability, interpretability, usability, maintainability, and performance.
+Key design goals and their corresponding implementation strategies are outlined below: \
+*Accuracy:*
+Achieved using Wav2Vec 2.0 embeddings combined with per-class fine-tuned binary classifiers.
+A focal loss function is used to handle hard examples and improve classification robustness.
+
+*Scalability:*
+The use of independent binary classifiers allows new dysfluency classes to be added without requiring architectural redesign, ensuring easy extensibility.
+
+*Interpretability:*
+Timestamp alignment enables word- and syllable-level outputs.
+Visual overlays on waveform and spectrogram provide intuitive understanding of detected dysfluencies.
+
+*Usability:*
+The system provides both a React-based web interface and a PySide6 desktop application, featuring dark mode and guided workflows for ease of use.
+
+*Maintainability:*
+A modular monorepo structure is adopted, along with a centralized model registry and fingerprint-based checkpoint naming for version control and reproducibility.
+
+*Performance:*
+Models are lazy-loaded and cached to reduce latency.
+Training leverages GPU acceleration with mixed precision and torch.compile for efficiency.
+
+*Class Imbalance Handling:*
+Focal loss is used alongside positive class weighting (pos_weight) in the localizer.
+Performance is monitored using per-class evaluation metrics.
+
+== Component Interaction
+The system components interact through clearly defined interfaces across different layers: \
+*Frontend #sym.arrow.l.r Backend:*
+Communication occurs via REST APIs exposed by FastAPI, including endpoints such as `/api/classify`, `/api/localize`, `/api/analyze`, and `/health`.
+
+*Backend Services:*
+Core services include audio processing utilities, classification, localization, and transcription modules.
+These services interact with a shared model registry (`model/registry.py`) to dynamically load models.
+
+*Desktop Components:*
+The desktop application includes modules such as ModelRunner, AudioHandler, and AudioTranscriber, currently structured for inference and real-time transcription.
+
+*Data Pipeline:*
+The data layer follows a structured workflow: `download → merge → prepare → train → evaluate`, ensuring reproducibility and consistency across experiments.
+
+== Chapter Summary
+This chapter presented the complete system design of the proposed framework, covering its architecture, data flow, modules, and processing algorithms.
+The design clearly separates key functional stages, including audio acquisition, preprocessing, classification and localization pipelines, transcription, alignment, visualization, and report generation.
+
+The modular and registry-driven architecture ensures flexibility, maintainability, and ease of integration of new models or features.
+By keeping classification and localization as independent pipelines, the system improves interpretability while maintaining high accuracy.
+Additionally, the design supports scalability for future extensions such as new dysfluency classes and multilingual capabilities.
+
+Overall, the system design provides a robust foundation for efficient and interpretable stutter detection and analysis.
+The next chapter focuses on the implementation details of the system.
+
 #pagebreak()
