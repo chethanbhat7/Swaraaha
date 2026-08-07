@@ -17,8 +17,6 @@ from app.ui.table_utils import MAX_HEIGHT_UNCAP, cap_table_height, populate_tran
 
 MAX_ROWS = 8
 
-MAX_ROWS = 8
-
 
 class CompactTranscript(QWidget):
     def __init__(self, parent=None):

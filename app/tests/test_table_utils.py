@@ -37,3 +37,28 @@ def test_cap_table_height_clamps_max_rows(qapp):
     row = table.rowHeight(0)
     cap_table_height(table, 0)
     assert table.maximumHeight() == header + 1 * row + 4
+
+
+def test_cap_table_height_sets_minimum_for_visible_rows(qapp):
+    table = QTableWidget(12, 3)
+    table.setHorizontalHeaderLabels(["A", "B", "C"])
+    table.show()
+    qapp.processEvents()
+    header = table.horizontalHeader().height() or 30
+    row = table.rowHeight(0)
+
+    cap_table_height(table, 8)
+
+    assert table.minimumHeight() == header + 8 * row + 4
+
+
+def test_cap_table_height_small_table_minimum_fits_rows(qapp):
+    table = QTableWidget(3, 3)
+    table.show()
+    qapp.processEvents()
+    header = table.horizontalHeader().height() or 30
+    row = table.rowHeight(0)
+
+    cap_table_height(table, 8)
+
+    assert table.minimumHeight() == header + 3 * row + 4
