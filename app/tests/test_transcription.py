@@ -124,7 +124,7 @@ def test_get_pipeline_tolerates_decoder_prompt_ids_failure(monkeypatch):
     assert pipe.model.generation_config.forced_decoder_ids is None
 
 
-def test_transcription_panel_table_capped(qapp, no_network):
+def test_transcription_panel_table_capped(qapp):
     panel = TranscriptionPanel()
     words = [
         {"word": f"w{i}", "start_sec": float(i), "end_sec": float(i) + 0.5, "confidence": 0.9,
@@ -136,6 +136,33 @@ def test_transcription_panel_table_capped(qapp, no_network):
     full = (panel._table.horizontalHeader().height() or 30) + 30 * panel._table.rowHeight(0)
     assert panel._table.maximumHeight() < full
     assert panel._table.maximumHeight() > (panel._table.horizontalHeader().height() or 30)
+
+
+def test_populate_transcript_table_styles_stutter_rows(qapp):
+    from PySide6.QtWidgets import QTableWidget
+
+    from app.ui.table_utils import populate_transcript_table
+
+    table = QTableWidget(0, 5)
+    table.setHorizontalHeaderLabels(["Word", "Start (s)", "End (s)", "Confidence", "Status"])
+    words = [
+        {"word": "ok", "start_sec": 0.0, "end_sec": 0.3, "confidence": 0.9,
+         "stutter": False, "stutter_type": None},
+        {"word": "stut", "start_sec": 0.3, "end_sec": 0.9, "confidence": 0.8,
+         "stutter": True, "stutter_type": "dysfluency"},
+    ]
+    populate_transcript_table(table, words)
+    assert table.rowCount() == 2
+    assert table.item(0, 0).text() == "ok"
+    assert table.item(1, 4).text() == "Stutter Detected"
+
+
+def test_transcribe_empty_audio_includes_duration_sec(no_network):
+    transcriber = AudioTranscriber()
+    res = transcriber.transcribe(np.array([], dtype=np.float32))
+    assert res["text"] == ""
+    assert res["words"] == []
+    assert res["duration_sec"] == 0.0
 
 
 def test_compact_transcript_table_capped(qapp):

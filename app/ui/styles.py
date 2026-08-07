@@ -63,6 +63,14 @@ def build_stylesheet():
         font-weight: 600;
         min-height: 36px;
     }}
+    QPushButton[cssClass="lang_btn_active"] {{
+        background-color: {COLORS['surface_variant']};
+        color: {COLORS['primary']};
+        border: 2px solid {COLORS['primary']}66;
+    }}
+    QPushButton[cssClass="lang_btn_active"]:hover {{
+        background-color: {COLORS['primary_container']};
+    }}
 
     /* === Tab Widget & Tab Bar === */
     QTabWidget::pane {{
@@ -252,6 +260,17 @@ def build_stylesheet():
         border-bottom: 2px solid {COLORS['outline']}33;
         padding: {SPACING['sm']}px {SPACING['md']}px;
         font-weight: 600;
+    }}
+
+    /* === Progress Bar (Wait Dialog Spinner) === */
+    QProgressBar {{
+        background-color: {COLORS['surface_variant']};
+        border: none;
+        border-radius: 4px;
+    }}
+    QProgressBar::chunk {{
+        background-color: {COLORS['primary']};
+        border-radius: 4px;
     }}
 
     /* === Scroll Bar === */

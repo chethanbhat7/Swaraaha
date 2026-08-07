@@ -27,4 +27,4 @@ def test_transcription_worker_emits_error(qapp):
     worker = TranscriptionWorker(_RaisingTranscriber(), np.zeros(1600, dtype=np.float32))
     worker.finished.connect(results.append)
     worker.run()
-    assert "error" in results[0]
+    assert results[0]["error"] == "boom"

@@ -108,8 +108,6 @@ class ResultsPanel(QWidget):
 
         if transcription:
             self._transcription_panel.set_transcription(transcription)
-        elif audio is not None:
-            self._transcription_panel.set_audio(audio, sample_rate, localizations=localizations, language=language)
 
     def clear_results(self):
         """Clear all results."""

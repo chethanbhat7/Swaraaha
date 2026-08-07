@@ -15,7 +15,7 @@ class LanguageDialog(QDialog):
 
     def __init__(self, current: str = "english", parent=None):
         super().__init__(parent)
-        self._selected = current
+        self._selected = current if current in LANGUAGES.values() else "english"
         self.setWindowTitle("Choose Language")
         self.setModal(True)
         self.setMinimumWidth(360)
@@ -31,8 +31,8 @@ class LanguageDialog(QDialog):
         self._buttons = {}
         for label, code in LANGUAGES.items():
             btn = QPushButton(label)
-            if code == current:
-                btn.setProperty("cssClass", "nav_btn_active")
+            if code == self._selected:
+                btn.setProperty("cssClass", "lang_btn_active")
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.clicked.connect(lambda _checked=False, c=code: self._choose(c))
             self._buttons[code] = btn

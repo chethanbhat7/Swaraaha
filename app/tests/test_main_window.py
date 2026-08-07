@@ -115,11 +115,21 @@ def test_stale_analysis_signal_does_not_clear_current_worker(qapp, app_name):
     stale = win._worker
     stale.wait(5000)
 
+    seen = []
+    original = win._on_analysis_done
+
+    def spy(results, worker):
+        seen.append(worker)
+        return original(results, worker)
+
+    win._on_analysis_done = spy
+
     fresh = AnalysisWorker(FakeRunner(), np.zeros(1600, dtype=np.float32), "english")
     win._worker = fresh
 
     qapp.processEvents()
 
+    assert stale in seen
     assert win._worker is fresh
     assert win._stack.currentIndex() == 0
 
