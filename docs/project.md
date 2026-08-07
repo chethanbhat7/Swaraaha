@@ -51,8 +51,7 @@ outputs are shown together rather than merged into one score:
 - **Five binary classifiers**, one per dysfluency class: `prolongation`,
   `block`, `soundrep`, `wordrep`, `interjection`.
 - Each classifier is based on **Wav2Vec 2.0** (`facebook/wav2vec2-base`), fine-tuned per class.
-- A **hybrid MLP combiner** (`CombinerMLP`) sits on top and combines the five
-  classifier outputs into a final multi-class prediction.
+- A **hybrid MLP combiner** (`CombinerMLP`) exists in `model/classification/hybrid.py` but is not used by the registry API — all-5 `analyze()` returns raw per-classifier outputs plus a detected-classes summary.
 - All models are loaded via the **model registry** (`model/registry.py` + `model/registry.json`).
 
 ### 4b. Localization pipeline — "where in the audio it happened"
@@ -61,7 +60,7 @@ outputs are shown together rather than merged into one score:
 - Both are loaded via the model registry when trained checkpoints are available.
 
 ### How the two pipelines relate
-They are **independent**: the hybrid classifier gives "this audio contains
+They are **independent**: the classifier pipeline gives "this audio contains
 X type of dysfluency," the localization model separately gives "at this
 point in the audio." Results are presented together to the user, not
 fused into a single model or score.
