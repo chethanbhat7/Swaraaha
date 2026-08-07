@@ -514,9 +514,10 @@ All 5 classifiers trained. Results (val F1):
 ### 8d. ~~Integrate trained weights into the app~~ ✅ Done
 
 Solved via the **model registry** (`model/registry.py` + `model/registry.json`).
-The registry loads individual classifier checkpoints and constructs a `HybridClassifier`
-with combiner. The backend service (`backend/services/classifier.py`) now uses `Classifier()`
-instead of bare `HybridClassifier()`.
+The backend service (`backend/services/classifier.py`) now uses `Classifier()` from the registry.
+`Classifier.analyze()` accepts raw audio (path/bytes/numpy), applies preprocessing automatically,
+and returns label/confidence/probabilities (plus logits via `analyze_raw`). The hybrid combiner
+is not used — all-5 output is raw per-classifier results plus a detected-classes summary.
 
 ### 8e. Bigger model or pretrained ASR features
 
