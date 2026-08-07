@@ -74,7 +74,7 @@ class ResultsPanel(QWidget):
         self._transcription_panel = TranscriptionPanel()
         layout.addWidget(self._transcription_panel)
 
-    def set_results(self, results: dict, audio: np.ndarray = None, sample_rate: int = 16000):
+    def set_results(self, results: dict, audio: np.ndarray = None, sample_rate: int = 16000, language: str = "english"):
         """Update the panel with analysis results."""
         classifications = results.get("classifications", {})
         localizations = results.get("localizations", [])
@@ -109,7 +109,7 @@ class ResultsPanel(QWidget):
         if transcription:
             self._transcription_panel.set_transcription(transcription)
         elif audio is not None:
-            self._transcription_panel.set_audio(audio, sample_rate, localizations=localizations)
+            self._transcription_panel.set_audio(audio, sample_rate, localizations=localizations, language=language)
 
     def clear_results(self):
         """Clear all results."""

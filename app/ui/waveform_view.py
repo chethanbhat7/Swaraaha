@@ -1,9 +1,9 @@
 """Custom QGraphicsView for rendering audio waveforms with dysfluency overlays."""
 
 import numpy as np
-from PySide6.QtWidgets import QGraphicsView, QGraphicsScene
-from PySide6.QtCore import Qt, QRectF
-from PySide6.QtGui import QPainter, QColor, QPen, QBrush, QPainterPath
+from PySide6.QtCore import QRectF, Qt, QTimer
+from PySide6.QtGui import QBrush, QColor, QPainter, QPainterPath, QPen
+from PySide6.QtWidgets import QGraphicsScene, QGraphicsView
 
 from app.ui.theme import COLORS
 
@@ -94,6 +94,10 @@ class WaveformView(QGraphicsView):
         self._scene.addLine(0, mid_y, view_width, mid_y, center_pen)
 
     def resizeEvent(self, event):
-        """Redraw when the view is resized."""
+        """Debounce redraws during resize drags."""
         super().resizeEvent(event)
-        self._draw()
+        if not hasattr(self, "_resize_timer") or self._resize_timer is None:
+            self._resize_timer = QTimer(self)
+            self._resize_timer.setSingleShot(True)
+            self._resize_timer.timeout.connect(self._draw)
+        self._resize_timer.start(50)
