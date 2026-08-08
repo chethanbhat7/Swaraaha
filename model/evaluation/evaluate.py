@@ -2,7 +2,7 @@
 """
 Unified evaluation script for Swaraaha models.
 
-Evaluates trained classifiers, the hybrid combiner, or localizers and
+Evaluates trained classifiers or localizers and
 produces per-model reports plus (optionally) an aggregate report.
 
 Usage:
@@ -16,12 +16,6 @@ Usage:
     # Evaluate all five classifiers (paths from the model registry):
     python -m model.evaluation.evaluate \
         --model_type classifier --all \
-        --data_dir data
-
-    # Evaluate the hybrid combiner (five base classifiers + MLP):
-    python -m model.evaluation.evaluate \
-        --model_type combiner \
-        --model_path model/weights/hybrid_combiner.pt \
         --data_dir data
 
     # Evaluate the localization model (CNN or Wav2Vec2):
@@ -46,7 +40,7 @@ import numpy as np
 def parse_args():
     parser = argparse.ArgumentParser(description="Evaluate trained Swaraaha models.")
     parser.add_argument("--model_type", type=str, required=True,
-                        choices=["classifier", "combiner", "localizer"],
+                        choices=["classifier", "localizer"],
                         help="Type of model to evaluate.")
     parser.add_argument("--class_name", type=str, default=None,
                         help="Dysfluency class (required for classifier type).")
@@ -217,6 +211,10 @@ def _finalize_classifier_report(args, class_name, model_path, y_true, y_scores,
     metrics["num_samples"] = num_samples
     metrics["threshold"] = args.threshold
 
+    from model.evaluation.loader import model_info_from_path
+
+    metrics["model"] = model_info_from_path(model_path)
+
     if args.sweep_thresholds:
         from model.evaluation.metrics import find_optimal_threshold
 
@@ -354,91 +352,6 @@ def evaluate_all_classifiers(args) -> Dict[str, Dict]:
 
 
 # ---------------------------------------------------------------------------
-# Hybrid combiner
-# ---------------------------------------------------------------------------
-
-def _run_combiner(eval_loader, model, device, threshold):
-    """Run the hybrid combiner over the loader, returning y_true/y_probs."""
-    import torch
-
-    all_true, all_probs = [], []
-    with torch.no_grad():
-        for audio, labels in eval_loader:
-            audio = audio.to(device)
-            probs = model.forward(audio).cpu().numpy()  # [B, 5] sigmoid outputs
-            all_probs.extend(probs)
-            all_true.extend(labels.numpy())
-    return np.array(all_true), np.array(all_probs)
-
-
-def evaluate_combiner(args) -> Dict:
-    """Evaluate a trained hybrid combiner (HybridClassifier) as multi-label."""
-    import torch
-
-    from model.classification import DYSFLUENCY_CLASSES
-    from model.evaluation import loader
-    from model.evaluation.metrics import (
-        compute_binary_metrics,
-        compute_multilabel_metrics,
-        print_binary_report,
-        save_report,
-    )
-
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    print("\n  Evaluating hybrid combiner")
-    print(f"  Model: {args.model_path}")
-    print(f"  Data: {args.data_dir}")
-
-    eval_dataset, eval_loader, val_idx = _build_classification_eval(args)
-    print(f"  Eval samples: {len(eval_dataset)}")
-
-    model = loader.load_combiner(args.model_path)
-    model.combiner.to(device)
-    model.combiner.eval()
-    for clf in model.base_classifiers:
-        clf._model.to(device)
-        clf._model.eval()
-
-    y_true, y_probs = _run_combiner(eval_loader, model, device, args.threshold)
-
-    y_pred = (y_probs >= args.threshold).astype(int)
-
-    multilabel = compute_multilabel_metrics(y_true, y_pred, class_names=DYSFLUENCY_CLASSES)
-    print("\n  Multi-label Report")
-    print("  " + "=" * 60)
-    for name, vals in multilabel["per_class"].items():
-        print(f"  {name:>15s}  P={vals['precision']:.3f}  R={vals['recall']:.3f}  "
-              f"F1={vals['f1']:.3f}  (n={vals['support']})")
-    print(f"  {'macro avg':>15s}  F1={multilabel['macro']['f1']:.3f}")
-    print(f"  Subset accuracy: {multilabel['subset_accuracy']:.3f}")
-    print(f"  Hamming loss:    {multilabel['hamming_loss']:.3f}")
-    print(f"  Samples accuracy: {multilabel['samples_accuracy']:.3f}")
-
-    per_class_binary = {}
-    for i, class_name in enumerate(DYSFLUENCY_CLASSES):
-        binary = compute_binary_metrics(y_true[:, i], y_probs[:, i], threshold=args.threshold)
-        per_class_binary[class_name] = binary
-        print_binary_report(binary, class_name)
-
-    metrics = {
-        "model_type": "combiner",
-        "model_path": args.model_path,
-        "num_samples": len(eval_dataset),
-        "threshold": args.threshold,
-        "multilabel": multilabel,
-        "per_class_binary": per_class_binary,
-    }
-
-    os.makedirs(args.output_dir, exist_ok=True)
-    report_path = os.path.join(args.output_dir, "combiner_report.json")
-    save_report(metrics, report_path)
-    print(f"\n  Report saved: {report_path}")
-
-    return metrics
-
-
-# ---------------------------------------------------------------------------
 # Localization
 # ---------------------------------------------------------------------------
 
@@ -485,6 +398,10 @@ def evaluate_localizer(args) -> Dict:
     metrics["num_samples"] = len(eval_dataset)
     metrics["threshold"] = args.threshold
 
+    from model.evaluation.loader import model_info_from_path
+
+    metrics["model"] = model_info_from_path(args.model_path)
+
     print_localization_report(metrics)
 
     os.makedirs(args.output_dir, exist_ok=True)
@@ -503,7 +420,5 @@ if __name__ == "__main__":
             evaluate_all_classifiers(args)
         else:
             evaluate_classifier(args)
-    elif args.model_type == "combiner":
-        evaluate_combiner(args)
     elif args.model_type == "localizer":
         evaluate_localizer(args)

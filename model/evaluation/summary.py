@@ -76,6 +76,8 @@ def build_classification_summary(
             if k in result:
                 per_class[name][k] = result[k]
         per_class[name]["threshold"] = result.get("threshold", 0.5)
+        if "model" in result:
+            per_class[name]["model"] = result["model"]
 
     return {
         "per_class": per_class,
@@ -153,12 +155,15 @@ def format_summary_markdown(summary: Dict[str, object]) -> str:
         lines.append("|---|---|---|---|---|---|---|")
         for name, metrics in classification.get("per_class", {}).items():
             f1 = metrics.get("f1")
+            model_cell = metrics.get("model", {}).get("fingerprint", "")
             lines.append(
                 f"| {name} | {metrics.get('precision', '—'):.3f} | "
                 f"{metrics.get('recall', '—'):.3f} | {_f1_str(f1)} | "
                 f"{metrics.get('auroc', '—')} | {metrics.get('auprc', '—')} | "
                 f"{metrics.get('support', '—')} |"
             )
+            if model_cell:
+                lines.append(f"| &nbsp; | model: `{model_cell}` | | | | | |")
         lines.append("")
         lines.append(
             f"**Macro-averaged F1 (all 5 classes): {classification.get('macro_f1', '—')}**"

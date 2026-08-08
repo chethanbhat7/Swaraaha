@@ -3,10 +3,9 @@
 Comprehensive evaluation runner for Swaraaha (Task 4.6: Full Evaluation).
 
 Evaluates every trained model referenced by the model registry — the five
-Wav2Vec2 binary classifiers, the hybrid combiner (if a checkpoint is
-available), and the registered localization models (CNN / Wav2Vec2) — and
-writes a single machine-readable JSON report plus a human-readable Markdown
-summary to ``model/evaluation/reports/``.
+Wav2Vec2 binary classifiers and the registered localization models
+(CNN / Wav2Vec2) — and writes a single machine-readable JSON report plus a
+human-readable Markdown summary to ``model/evaluation/reports/``.
 
 The summary reports per-class F1 and macro-averaged F1 for classification,
 frame-level and event-level metrics for localization, and flags every class
@@ -18,9 +17,6 @@ checkpoints and data live.
 
 Usage:
     python -m model.evaluation.full_evaluate --data_dir data
-    python -m model.evaluation.full_evaluate \
-        --data_dir data --combiner_path model/weights/hybrid_combiner.pt \
-        --threshold 0.5 --sweep_thresholds
 """
 
 import argparse
@@ -43,8 +39,6 @@ def parse_args():
                         help="Where per-model reports and the summary are written.")
     parser.add_argument("--registry", type=str, default=None,
                         help="Path to registry.json (default: model/registry.json).")
-    parser.add_argument("--combiner_path", type=str, default=None,
-                        help="Path to a trained HybridClassifier checkpoint (optional).")
     parser.add_argument("--localizer_type", type=str, default=None,
                         choices=["cnn", "wav2vec2"],
                         help="Which localizer type(s) to evaluate. Default: all registered.")
@@ -136,28 +130,6 @@ def main() -> int:
         per_class_results, threshold=args.flag_f1
     )
 
-    # --- Hybrid combiner ----------------------------------------------------
-    combiner_result: Dict = {}
-    combiner_path = args.combiner_path
-    if combiner_path is not None and not os.path.isfile(combiner_path):
-        missing.append(f"combiner — checkpoint not found ({combiner_path})")
-        combiner_path = None
-    if combiner_path is not None:
-        if not data_ok:
-            missing.append("combiner — data directory not available")
-        else:
-            print("\n  --- Evaluating hybrid combiner ---")
-            ea = _eval_args(args, model_path=combiner_path)
-            try:
-                combiner_result = evaluate.evaluate_combiner(ea)
-                combiner_result["status"] = "evaluated"
-            except Exception as e:  # noqa: BLE001
-                print(f"  FAILED combiner: {e}")
-                combiner_result = {"status": "error", "error": str(e)}
-                missing.append(f"combiner — evaluation error: {e}")
-    else:
-        missing.append("combiner — no checkpoint provided (use --combiner_path)")
-
     # --- Localization --------------------------------------------------------
     localizer_results: Dict[str, Dict] = {}
     if not data_ok:
@@ -195,8 +167,6 @@ def main() -> int:
             "flag_threshold": args.flag_f1,
         },
         "classification": classification_summary,
-        "combiner": {"status": combiner_result.get("status", "not_evaluated")}
-        if combiner_result else {"status": "not_evaluated"},
         "localization": localization_summary,
         "missing": sorted(set(missing)),
     }
