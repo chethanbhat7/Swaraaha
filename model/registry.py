@@ -92,42 +92,15 @@ def _preprocess_audio(
 
     Returns a float32 tensor of shape [1, max_length_seconds * sr].
     """
-    import io
-    import os
-
-    import numpy as np
-    import soundfile as sf
     import torch
 
     from model.data.preprocessing import (
         clean_audio,
-        convert_to_wav,
-        load_audio,
-        load_audio_from_array,
+        load_audio_input,
         pad_to_length,
     )
 
-    if isinstance(audio, (str, os.PathLike)):
-        if not os.path.isfile(audio):
-            raise FileNotFoundError(f"Audio file not found: {audio}")
-        audio_array, _ = load_audio(audio, sr=sr)
-    elif isinstance(audio, bytes):
-        wav_bytes = convert_to_wav(audio)
-        audio_array, file_sr = sf.read(io.BytesIO(wav_bytes), dtype="float32")
-        if audio_array.ndim > 1:
-            audio_array = audio_array.mean(axis=1)
-        if file_sr != sr:
-            import librosa
-
-            audio_array = librosa.resample(audio_array, orig_sr=file_sr, target_sr=sr)
-    elif isinstance(audio, np.ndarray):
-        audio_array, _ = load_audio_from_array(audio, sr=sr)
-    else:
-        raise TypeError(
-            f"Unsupported audio type: {type(audio).__name__}. "
-            "Expected str path, bytes, or numpy array."
-        )
-
+    audio_array = load_audio_input(audio, sr=sr)
     audio_array = clean_audio(audio_array, sr=sr)
     audio_array = pad_to_length(
         audio_array, int(max_length_seconds * sr), axis=0, pad_value=0.0
