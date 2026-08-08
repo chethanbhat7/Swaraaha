@@ -21,13 +21,19 @@ Usage:
     # Per-call threshold override
     result = clf.analyze(audio, threshold=0.6)
 
-    # Localizer (unchanged)
-    loc = Localizer("cnn")
-    regions = loc.predict(audio_tensor)
+    # Localizer (regions always; words/syllables when text is provided)
+    loc = Localizer()                            # type comes from registry.json
+    result = loc.analyze("recording.wav", text="the cat sat", language="en")
+    # result: {regions: [...], words: [...], syllables: [...]}
 
-    # Everything at once
+    # Transcription (Whisper, word-level timestamps + stutter flagging)
+    tr = Transcriber()
+    result = tr.transcribe("recording.wav")
+
+    # Everything at once — raw audio in, all results out
     m = ModelRegistry()
-    all_results = m.run_all(audio_tensor)
+    all_results = m.run_all("recording.wav", text="the cat sat")
+    # all_results: {classification: {...}, localization: {...}, transcription: {...}}
 """
 
 import json
@@ -35,6 +41,7 @@ import os
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from model.fingerprint import model_name_from_path
+from model.transcription import Transcriber
 
 _REGISTRY_PATH = os.path.join(os.path.dirname(__file__), "registry.json")
 
@@ -455,25 +462,57 @@ class ModelRegistry:
     def __init__(self):
         self.classifier = Classifier()
         self.localizer = Localizer()
+        self.transcriber = Transcriber()
 
     def run_all(
-        self, audio_tensor, classify_threshold: float = 0.5, localize_threshold: float = 0.3
+        self,
+        audio,
+        classify_threshold: float = 0.5,
+        localize_threshold: float = 0.3,
+        language: str = "english",
+        text: Optional[str] = None,
     ) -> Dict[str, Any]:
+        """Run classification, localization, and transcription on raw audio.
+
+        Args:
+            audio: File path, raw bytes, or 1-D numpy array.
+            classify_threshold: Label threshold for classifiers.
+            localize_threshold: Detection threshold for the localizer.
+            language: Whisper language name (english/kannada/hindi).
+            text: Optional transcript for word/syllable-level localization.
+
+        Returns:
+            {"classification": ..., "localization": ..., "transcription": ...}
+            Sub-results become {"error": ...} if a model is unavailable.
+        """
+        from model.transcription import WHISPER_LANG_CODES
+
         results = {}
 
         try:
-            results["classification"] = self.classifier.predict(
-                audio_tensor, threshold=classify_threshold
+            results["classification"] = self.classifier.analyze(
+                audio, threshold=classify_threshold
             )
         except FileNotFoundError as e:
             results["classification"] = {"error": str(e)}
 
         try:
-            results["localization"] = self.localizer.predict(
-                audio_tensor, threshold=localize_threshold
+            iso = WHISPER_LANG_CODES.get(language.lower(), "en")
+            results["localization"] = self.localizer.analyze(
+                audio,
+                text=text,
+                language=iso,
+                threshold=localize_threshold,
             )
         except FileNotFoundError as e:
             results["localization"] = {"error": str(e)}
+
+        try:
+            results["transcription"] = self.transcriber.transcribe(
+                audio, language=language
+            )
+        except Exception as e:
+            results["transcription"] = {"error": str(e)}
 
         return results
 
