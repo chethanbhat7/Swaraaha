@@ -160,7 +160,7 @@ def test_format_summary_markdown():
                      "flag_threshold": 0.7},
         "classification": classification,
         "localization": localization,
-        "missing": ["combiner — no checkpoint provided"],
+        "missing": ["localization.cnn — checkpoint not found"],
     })
 
     assert doc.startswith("# Swaraaha — Full Model Evaluation Summary")
@@ -170,4 +170,18 @@ def test_format_summary_markdown():
     assert "| prolongation" in doc
     assert "soundrep" in doc and "0.000" in doc
     assert "## Models / data not evaluated" in doc
-    assert "combiner — no checkpoint provided" in doc
+    assert "localization.cnn — checkpoint not found" in doc
+
+
+def test_build_classification_summary_passes_through_model_info():
+    results = {
+        "prolongation": {
+            "precision": 0.8, "recall": 0.7, "f1": 0.75, "support": 100,
+            "model": {"fingerprint": "prolongation_e20_b16_...", "lr": 3e-05,
+                      "model_name": "facebook/wav2vec2-base"},
+        }
+    }
+    summary_result = summary.build_classification_summary(results)
+    entry = summary_result["per_class"]["prolongation"]
+    assert entry["model"]["fingerprint"] == "prolongation_e20_b16_..."
+    assert entry["model"]["lr"] == 3e-05

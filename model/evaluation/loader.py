@@ -11,7 +11,6 @@ model registry:
       contains a ``model_state_dict`` key. Keys may carry a ``_orig_mod.``
       prefix when the model was wrapped with ``torch.compile``; the prefix is
       stripped before loading.
-- Hybrid combiner: saved by ``HybridClassifier.save`` (its own format).
 - Localizers
     * own format: saved by ``CNNSpectrogramLocalizer.save`` /
       ``Wav2Vec2Localizer.save``.
@@ -64,21 +63,6 @@ def load_classifier(class_name: str, model_path: str):
     instance.class_name = class_name
     instance.class_idx = DYSFLUENCY_CLASSES.index(class_name)
     return instance
-
-
-def load_combiner(model_path: str):
-    """
-    Load a trained ``HybridClassifier`` (five base classifiers + CombinerMLP).
-
-    Args:
-        model_path: Path to the ``.pt`` checkpoint saved by ``HybridClassifier.save``.
-
-    Returns:
-        A ``HybridClassifier`` instance with weights loaded.
-    """
-    from model.classification.hybrid import HybridClassifier
-
-    return HybridClassifier.from_pretrained(model_path)
 
 
 def load_localizer(localizer_type: str, model_path: str):
@@ -155,3 +139,34 @@ def registry_paths(registry_path: Optional[str] = None) -> Dict[str, Dict[str, s
         "localization": resolve(registry.get("localization", {})),
         "thresholds": registry.get("thresholds", {}),
     }
+
+
+def model_info_from_path(model_path: str) -> Dict:
+    """
+    Extract the model fingerprint and parsed hyperparameters from a
+    fingerprint-encoded checkpoint path.
+
+    Args:
+        model_path: Path to a checkpoint file.
+
+    Returns:
+        Dict with a "fingerprint" string, the HF "model_name" and every parsed
+        hyperparameter (epochs, batch_size, lr, ...). For paths without a
+        fingerprint (e.g. localizer_best.pt), returns {"filename": basename}.
+    """
+    import os
+
+    from model.fingerprint import parse_fingerprint_from_path
+
+    try:
+        params = parse_fingerprint_from_path(model_path)
+    except ValueError:
+        return {"filename": os.path.basename(model_path)}
+
+    info = {"fingerprint": os.path.basename(model_path)}
+    for suffix in ("_best.pt", "_final.pt", "_checkpoint.pt", "_log.csv", ".pt"):
+        if info["fingerprint"].endswith(suffix):
+            info["fingerprint"] = info["fingerprint"][: -len(suffix)]
+            break
+    info.update(params)
+    return info
