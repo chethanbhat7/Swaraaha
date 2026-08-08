@@ -2,7 +2,8 @@
 """
 Unified evaluation script for Swaraaha models.
 
-Evaluates trained classifiers or localizers and produces a comprehensive report.
+Evaluates trained classifiers, the hybrid combiner, or localizers and
+produces per-model reports plus (optionally) an aggregate report.
 
 Usage:
     # Evaluate a single classifier:
@@ -12,56 +13,189 @@ Usage:
         --model_path model/weights/prolongation_best.pt \
         --data_dir data
 
-    # Evaluate the localization model:
+    # Evaluate all five classifiers (paths from the model registry):
+    python -m model.evaluation.evaluate \
+        --model_type classifier --all \
+        --data_dir data
+
+    # Evaluate the hybrid combiner (five base classifiers + MLP):
+    python -m model.evaluation.evaluate \
+        --model_type combiner \
+        --model_path model/weights/hybrid_combiner.pt \
+        --data_dir data
+
+    # Evaluate the localization model (CNN or Wav2Vec2):
     python -m model.evaluation.evaluate \
         --model_type localizer \
         --model_path model/weights/localizer_best.pt \
-        --data_dir data
+        --data_dir data --localizer_type cnn
 
-    # Evaluate all classifiers:
-    for cls in prolongation block soundrep wordrep interjection; do
-        python -m model.evaluation.evaluate \
-            --model_type classifier --class_name $cls \
-            --model_path model/weights/${cls}_best.pt --data_dir data
-    done
+    # Comprehensive run over every registered model:
+    python -m model.evaluation.full_evaluate --data_dir data
 """
 
 import argparse
 import json
 import os
 import sys
-from typing import Dict, Optional
+from typing import Dict
 
 import numpy as np
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Evaluate trained Swaraaha models.")
-    parser.add_argument("--model_type", type=str, required=True, choices=["classifier", "localizer"],
+    parser.add_argument("--model_type", type=str, required=True,
+                        choices=["classifier", "combiner", "localizer"],
                         help="Type of model to evaluate.")
     parser.add_argument("--class_name", type=str, default=None,
                         help="Dysfluency class (required for classifier type).")
-    parser.add_argument("--model_path", type=str, required=True, help="Path to trained model checkpoint.")
-    parser.add_argument("--data_dir", type=str, default="data", help="Root data directory.")
-    parser.add_argument("--output_dir", type=str, default="model/evaluation/reports", help="Report output directory.")
-    parser.add_argument("--batch_size", type=int, default=8, help="Batch size for evaluation.")
-    parser.add_argument("--max_length_seconds", type=float, default=10.0, help="Max audio length.")
-    parser.add_argument("--threshold", type=float, default=0.5, help="Classification/detection threshold.")
-    parser.add_argument("--save_misclassified", action="store_true", help="Save misclassified sample paths.")
+    parser.add_argument("--all", action="store_true",
+                        help="Evaluate all five classifiers using paths from the registry.")
+    parser.add_argument("--model_path", type=str, default=None,
+                        help="Path to trained model checkpoint.")
+    parser.add_argument("--data_dir", type=str, default="data",
+                        help="Root data directory.")
+    parser.add_argument("--output_dir", type=str, default="model/evaluation/reports",
+                        help="Report output directory.")
+    parser.add_argument("--registry", type=str, default=None,
+                        help="Path to registry.json (default: model/registry.json).")
+    parser.add_argument("--batch_size", type=int, default=8,
+                        help="Batch size for evaluation.")
+    parser.add_argument("--max_length_seconds", type=float, default=10.0,
+                        help="Max audio length.")
+    parser.add_argument("--threshold", type=float, default=0.5,
+                        help="Classification/detection threshold.")
+    parser.add_argument("--localizer_type", type=str, default="cnn",
+                        choices=["cnn", "wav2vec2"],
+                        help="Localizer model type.")
+    parser.add_argument("--save_misclassified", action="store_true",
+                        help="Save misclassified sample paths.")
     parser.add_argument("--sweep_thresholds", action="store_true",
                         help="Run threshold sweep and report optimal thresholds.")
     parser.add_argument("--n_mels", type=int, default=128, help="Mel bins (for localizer).")
-    parser.add_argument("--hop_length", type=int, default=512, help="Hop length (for localizer).")
+    parser.add_argument("--hop_length", type=int, default=512,
+                        help="Hop length (for localizer).")
     return parser.parse_args()
 
 
-def evaluate_classifier(args) -> Dict:
-    """Evaluate a trained binary classifier."""
-    import torch
+# ---------------------------------------------------------------------------
+# Shared helpers
+# ---------------------------------------------------------------------------
+
+def _build_classification_eval(args):
+    """Build the classification eval dataset/loader (20% stratified split)."""
     from torch.utils.data import DataLoader
 
-    from model.classification import DYSFLUENCY_CLASSES
     from model.data.dataset import ClassificationDataset
+    from model.training.train_classifier import SubsetDataset, stratified_split
+
+    dataset = ClassificationDataset(
+        data_dir=args.data_dir, sr=16000, max_length_seconds=args.max_length_seconds,
+    )
+    if len(dataset) == 0:
+        raise RuntimeError(f"No samples found in {args.data_dir}. "
+                           "Prepare the dataset first (see model/data/setup.py).")
+
+    _, val_idx = stratified_split(dataset, val_ratio=0.2, seed=42)
+    eval_dataset = SubsetDataset(dataset, val_idx)
+    eval_loader = DataLoader(eval_dataset, batch_size=args.batch_size, shuffle=False)
+    return eval_dataset, eval_loader, val_idx
+
+
+def _build_localization_eval(args):
+    """Build the localization eval dataset/loader (20% split)."""
+    from torch.utils.data import DataLoader
+
+    if args.localizer_type == "cnn":
+        from model.data.dataset import LocalizationDataset
+        from model.training.train_localizer import SubsetDataset, split_dataset
+
+        dataset = LocalizationDataset(
+            data_dir=args.data_dir, sr=16000, n_mels=args.n_mels,
+            hop_length=args.hop_length, max_length_seconds=args.max_length_seconds,
+        )
+    else:
+        from model.localization.wav2vec2_dataset import Wav2Vec2LocalizationDataset
+        from model.training.train_classifier import SubsetDataset, stratified_split
+
+        dataset = Wav2Vec2LocalizationDataset(
+            data_dir=args.data_dir, sr=16000, max_length_seconds=args.max_length_seconds,
+        )
+        # Reuse stratified split; localization split helper shares the same shape.
+        def split_dataset(ds, val_ratio=0.2, seed=42):
+            return stratified_split(ds, val_ratio, seed)
+
+    if len(dataset) == 0:
+        raise RuntimeError(f"No samples found in {args.data_dir}. "
+                           "Prepare the dataset first (see model/data/setup.py).")
+
+    _, val_idx = split_dataset(dataset, val_ratio=0.2, seed=42)
+    eval_dataset = SubsetDataset(dataset, val_idx)
+    eval_loader = DataLoader(eval_dataset, batch_size=args.batch_size, shuffle=False)
+    return eval_dataset, eval_loader, val_idx
+
+
+def _move_model(model, device):
+    """Move a model wrapper (and its internal nn.Module) to device and set eval mode."""
+    if hasattr(model, "_model") and model._model is not None:
+        model._model.to(device)
+        model._model.eval()
+    elif hasattr(model, "model"):
+        model.model.to(device)
+        model.model.eval()
+    return model
+
+
+def _run_binary_classifier(eval_loader, model, class_idx, device, threshold,
+                           save_misclassified=False, val_idx=None, eval_dataset=None):
+    """Run one binary classifier over the loader, returning y_true/y_scores."""
+    import torch
+
+    all_true, all_scores = [], []
+    misclassified = []
+
+    with torch.no_grad():
+        for batch_idx, (audio, labels) in enumerate(eval_loader):
+            audio = audio.to(device)
+            binary_labels = labels[:, class_idx].cpu().numpy()
+
+            logits = model.forward(audio)
+            probs = torch.softmax(logits, dim=-1).cpu().numpy()
+            scores = probs[:, 1]
+            preds = (scores >= threshold).astype(int)
+
+            all_scores.extend(scores.tolist())
+            all_true.extend(binary_labels.tolist())
+
+            if save_misclassified:
+                for i, (p, t) in enumerate(zip(preds, binary_labels)):
+                    if p != t and val_idx is not None:
+                        sample_idx = val_idx[batch_idx * eval_loader.batch_size + i]
+                        info = eval_dataset.dataset.samples[sample_idx]
+                        misclassified.append({
+                            "path": info["audio_path"],
+                            "predicted": int(p),
+                            "true": int(t),
+                        })
+
+    return np.array(all_true), np.array(all_scores), misclassified
+
+
+def _save_misclassified(args, misclassified, class_name):
+    if misclassified:
+        path = os.path.join(args.output_dir, f"{class_name}_misclassified.json")
+        with open(path, "w") as f:
+            json.dump(misclassified, f, indent=2)
+        print(f"  Misclassified samples saved: {path} ({len(misclassified)} samples)")
+
+
+# ---------------------------------------------------------------------------
+# Classification
+# ---------------------------------------------------------------------------
+
+def _finalize_classifier_report(args, class_name, model_path, y_true, y_scores,
+                                num_samples) -> Dict:
     from model.evaluation.metrics import (
         compute_binary_metrics,
         compute_classification_metrics,
@@ -71,8 +205,67 @@ def evaluate_classifier(args) -> Dict:
         save_confusion_matrix_plot,
         save_report,
     )
-    from model.training.train_classifier import SubsetDataset, stratified_split
-    from model.training.utils import load_checkpoint
+
+    binary_metrics = compute_binary_metrics(y_true, y_scores, threshold=args.threshold)
+    print_binary_report(binary_metrics, class_name)
+
+    metrics = compute_classification_metrics(y_true, (y_scores >= args.threshold).astype(int),
+                                             class_names=["not_present", "present"])
+    metrics["binary"] = binary_metrics
+    metrics["class_name"] = class_name
+    metrics["model_path"] = model_path
+    metrics["num_samples"] = num_samples
+    metrics["threshold"] = args.threshold
+
+    if args.sweep_thresholds:
+        from model.evaluation.metrics import find_optimal_threshold
+
+        print("\n  --- Threshold Sweep ---")
+        sweep_results = []
+        for t in np.arange(0.1, 0.91, 0.05):
+            m = compute_binary_metrics(y_true, y_scores, threshold=t)
+            sweep_results.append(m)
+            print(f"  t={t:.2f}  F1={m['f1']:.3f}  P={m['precision']:.3f}  "
+                  f"R={m['recall']:.3f}  Spec={m['specificity']:.3f}")
+        best_f1_t, best_f1_val = find_optimal_threshold(y_true, y_scores, metric="f1")
+        best_spec_t, best_spec_val = find_optimal_threshold(y_true, y_scores, metric="specificity")
+        best_youden_t, best_youden_val = find_optimal_threshold(y_true, y_scores, metric="youden")
+        print("\n  Optimal thresholds:")
+        print(f"    Best F1:          t={best_f1_t:.2f}  (F1={best_f1_val:.3f})")
+        print(f"    Best Specificity: t={best_spec_t:.2f}  (Spec={best_spec_val:.3f})")
+        print(f"    Best Youden's J:  t={best_youden_t:.2f}  (J={best_youden_val:.3f})")
+        metrics["threshold_sweep"] = {
+            "best_f1": {"threshold": best_f1_t, "f1": best_f1_val},
+            "best_specificity": {"threshold": best_spec_t, "specificity": best_spec_val},
+            "best_youden": {"threshold": best_youden_t, "youden": best_youden_val},
+        }
+
+    cm = confusion_matrix(y_true, (y_scores >= args.threshold).astype(int), num_classes=2)
+    print_classification_report(metrics)
+    print("\n  Confusion Matrix (not_present / present):")
+    print("                    pred_neg  pred_pos")
+    print(f"  true_neg          {cm[0, 0]:>6d}    {cm[0, 1]:>6d}")
+    print(f"  true_pos          {cm[1, 0]:>6d}    {cm[1, 1]:>6d}")
+
+    os.makedirs(args.output_dir, exist_ok=True)
+    report_path = os.path.join(args.output_dir, f"{class_name}_report.json")
+    save_report(metrics, report_path)
+    print(f"  Report saved: {report_path}")
+
+    cm_path = os.path.join(args.output_dir, f"{class_name}_confusion_matrix.png")
+    save_confusion_matrix_plot(cm, ["Not Present", "Present"], cm_path,
+                               title=f"{class_name} Confusion Matrix")
+    print(f"  Confusion matrix saved: {cm_path}")
+
+    return metrics
+
+
+def evaluate_classifier(args) -> Dict:
+    """Evaluate a single trained binary classifier."""
+    import torch
+
+    from model.classification import DYSFLUENCY_CLASSES
+    from model.evaluation import loader
 
     if args.class_name is None:
         print("ERROR: --class_name is required for classifier evaluation.")
@@ -85,213 +278,217 @@ def evaluate_classifier(args) -> Dict:
     print(f"  Model: {args.model_path}")
     print(f"  Data: {args.data_dir}")
 
-    # Load dataset
-    dataset = ClassificationDataset(
-        data_dir=args.data_dir, sr=16000, max_length_seconds=args.max_length_seconds,
-    )
-    print(f"  Total samples: {len(dataset)}")
-
-    if len(dataset) == 0:
-        print("  ERROR: No samples found.")
-        sys.exit(1)
-
-    # Use full dataset for evaluation (or could use a held-out test set)
-    _, val_idx = stratified_split(dataset, val_ratio=0.2, seed=42)
-    eval_dataset = SubsetDataset(dataset, val_idx)
+    eval_dataset, eval_loader, val_idx = _build_classification_eval(args)
     print(f"  Eval samples: {len(eval_dataset)}")
 
-    eval_loader = DataLoader(eval_dataset, batch_size=args.batch_size, shuffle=False)
+    model = loader.load_classifier(args.class_name, args.model_path)
+    _move_model(model, device)
 
-    # Load model
-    from model.classification import get_classifier_class
-    ClassifierCls = get_classifier_class(args.class_name)
+    y_true, y_scores, misclassified = _run_binary_classifier(
+        eval_loader, model, class_idx, device, args.threshold,
+        save_misclassified=args.save_misclassified, val_idx=val_idx,
+        eval_dataset=eval_dataset,
+    )
 
-    model = ClassifierCls()
-    load_checkpoint(args.model_path, model=model)
-    model.model.to(device)
-    model.model.eval()
-
-    # Run inference
-    all_preds, all_labels, all_scores = [], [], []
-    misclassified = []
-
-    with torch.no_grad():
-        for batch_idx, (audio, labels) in enumerate(eval_loader):
-            audio = audio.to(device)
-            binary_labels = labels[:, class_idx]
-
-            logits = model.forward(audio)
-            probs = torch.softmax(logits, dim=-1).cpu().numpy()
-            preds = (probs[:, 1] >= args.threshold).astype(int)
-
-            all_scores.extend(probs[:, 1].tolist())
-            all_preds.extend(preds.tolist())
-            all_labels.extend(binary_labels.numpy().tolist())
-
-            if args.save_misclassified:
-                for i, (pred, true) in enumerate(zip(preds, binary_labels.numpy())):
-                    if pred != true:
-                        sample_idx = val_idx[batch_idx * args.batch_size + i]
-                        info = eval_dataset.dataset.samples[sample_idx]
-                        misclassified.append({
-                            "path": info["audio_path"],
-                            "predicted": int(pred),
-                            "true": int(true),
-                        })
-
-    y_true = np.array(all_labels)
-    y_pred = np.array(all_preds)
-    y_scores = np.array(all_scores)
-
-    # Compute enhanced binary metrics (AUROC, AUPRC, specificity)
-    binary_metrics = compute_binary_metrics(y_true, y_scores, threshold=args.threshold)
-    print_binary_report(binary_metrics, args.class_name)
-
-    # Also compute basic classification metrics
-    metrics = compute_classification_metrics(y_true, y_pred, class_names=["not_present", "present"])
-
-    # Merge binary metrics into report
-    metrics["binary"] = binary_metrics
-
-    # Add class info
-    metrics["class_name"] = args.class_name
-    metrics["model_path"] = args.model_path
-    metrics["num_samples"] = len(eval_dataset)
-    metrics["threshold"] = args.threshold
-
-    # Threshold sweep
-    if args.sweep_thresholds:
-        print("\n  --- Threshold Sweep ---")
-        sweep_results = []
-        for t in np.arange(0.1, 0.91, 0.05):
-            m = compute_binary_metrics(y_true, y_scores, threshold=t)
-            sweep_results.append(m)
-            print(f"  t={t:.2f}  F1={m['f1']:.3f}  P={m['precision']:.3f}  "
-                  f"R={m['recall']:.3f}  Spec={m['specificity']:.3f}")
-
-        # Find optimal thresholds
-        from model.evaluation.metrics import find_optimal_threshold
-        best_f1_t, best_f1_val = find_optimal_threshold(y_true, y_scores, metric="f1")
-        best_spec_t, best_spec_val = find_optimal_threshold(y_true, y_scores, metric="specificity")
-        best_youden_t, best_youden_val = find_optimal_threshold(y_true, y_scores, metric="youden")
-
-        print(f"\n  Optimal thresholds:")
-        print(f"    Best F1:         t={best_f1_t:.2f}  (F1={best_f1_val:.3f})")
-        print(f"    Best Specificity: t={best_spec_t:.2f}  (Spec={best_spec_val:.3f})")
-        print(f"    Best Youden's J:  t={best_youden_t:.2f}  (J={best_youden_val:.3f})")
-
-        metrics["threshold_sweep"] = {
-            "best_f1": {"threshold": best_f1_t, "f1": best_f1_val},
-            "best_specificity": {"threshold": best_spec_t, "specificity": best_spec_val},
-            "best_youden": {"threshold": best_youden_t, "youden": best_youden_val},
-        }
-
-    # Confusion matrix
-    cm = confusion_matrix(y_true, y_pred, num_classes=2)
-
-    # Print report
-    print_classification_report(metrics)
-    print(f"\n  Confusion Matrix (not_present=pred, present=pred):")
-    print(f"                    pred_neg  pred_pos")
-    print(f"  true_neg          {cm[0,0]:>6d}    {cm[0,1]:>6d}")
-    print(f"  true_pos          {cm[1,0]:>6d}    {cm[1,1]:>6d}")
-
-    # Save report
-    os.makedirs(args.output_dir, exist_ok=True)
-    report_path = os.path.join(args.output_dir, f"{args.class_name}_report.json")
-    save_report(metrics, report_path)
-    print(f"\n  Report saved: {report_path}")
-
-    # Save confusion matrix plot
-    cm_path = os.path.join(args.output_dir, f"{args.class_name}_confusion_matrix.png")
-    save_confusion_matrix_plot(cm, ["Not Present", "Present"], cm_path, title=f"{args.class_name} Confusion Matrix")
-    print(f"  Confusion matrix saved: {cm_path}")
-
-    # Save misclassified
-    if args.save_misclassified and misclassified:
-        mc_path = os.path.join(args.output_dir, f"{args.class_name}_misclassified.json")
-        with open(mc_path, "w") as f:
-            json.dump(misclassified, f, indent=2)
-        print(f"  Misclassified samples saved: {mc_path} ({len(misclassified)} samples)")
+    metrics = _finalize_classifier_report(args, args.class_name, args.model_path,
+                                          y_true, y_scores, len(eval_dataset))
+    if args.save_misclassified:
+        _save_misclassified(args, misclassified, args.class_name)
 
     return metrics
 
 
-def evaluate_localizer(args) -> Dict:
-    """Evaluate a trained localization model."""
-    import torch
-    from torch.utils.data import DataLoader
+def evaluate_all_classifiers(args) -> Dict[str, Dict]:
+    """Evaluate all five classifiers using model paths from the registry."""
+    from model.classification import DYSFLUENCY_CLASSES
+    from model.evaluation import loader
+    from model.evaluation.metrics import save_report
+    from model.evaluation.summary import build_classification_summary
 
-    from model.data.dataset import LocalizationDataset
+    paths = loader.registry_paths(args.registry)["classification"]
+    results: Dict[str, Dict] = {}
+
+    print("\n" + "=" * 60)
+    print("  EVALUATING ALL FIVE CLASSIFIERS")
+    print("=" * 60)
+
+    for class_name in DYSFLUENCY_CLASSES:
+        path = paths.get(class_name)
+        if path is None or not os.path.isfile(path):
+            print(f"\n  SKIPPING {class_name}: checkpoint not found "
+                  f"({path or 'no registry entry'})")
+            results[class_name] = {
+                "status": "missing_weights",
+                "class_name": class_name,
+                "model_path": path,
+            }
+            continue
+
+        args.class_name = class_name
+        args.model_path = path
+        try:
+            results[class_name] = evaluate_classifier(args)
+            results[class_name]["status"] = "evaluated"
+        except Exception as e:  # noqa: BLE001
+            print(f"\n  FAILED {class_name}: {e}")
+            results[class_name] = {"status": "error", "error": str(e), "class_name": class_name}
+
+    summary = build_classification_summary(results)
+
+    print("\n" + "=" * 60)
+    print("  AGGREGATE CLASSIFICATION SUMMARY")
+    print("=" * 60)
+    for name, metrics in summary["per_class"].items():
+        print(f"  {name:>15s}  F1={metrics['f1']:.3f}  AUROC={metrics.get('auroc', '—')}  "
+              f"support={metrics['support']}")
+    print(f"  {'macro avg':>15s}  F1={summary['macro_f1']}")
+    if summary["flagged"]:
+        print(f"  WARNING — classes below F1 {summary['flag_threshold']}: "
+              f"{', '.join(i['class'] for i in summary['flagged'])}")
+
+    aggregate_path = os.path.join(args.output_dir, "all_classifiers_report.json")
+    save_report({"per_class_results": results, "summary": summary}, aggregate_path)
+    print(f"\n  Aggregate report saved: {aggregate_path}")
+
+    return results
+
+
+# ---------------------------------------------------------------------------
+# Hybrid combiner
+# ---------------------------------------------------------------------------
+
+def _run_combiner(eval_loader, model, device, threshold):
+    """Run the hybrid combiner over the loader, returning y_true/y_probs."""
+    import torch
+
+    all_true, all_probs = [], []
+    with torch.no_grad():
+        for audio, labels in eval_loader:
+            audio = audio.to(device)
+            probs = model.forward(audio).cpu().numpy()  # [B, 5] sigmoid outputs
+            all_probs.extend(probs)
+            all_true.extend(labels.numpy())
+    return np.array(all_true), np.array(all_probs)
+
+
+def evaluate_combiner(args) -> Dict:
+    """Evaluate a trained hybrid combiner (HybridClassifier) as multi-label."""
+    import torch
+
+    from model.classification import DYSFLUENCY_CLASSES
+    from model.evaluation import loader
+    from model.evaluation.metrics import (
+        compute_binary_metrics,
+        compute_multilabel_metrics,
+        print_binary_report,
+        save_report,
+    )
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    print("\n  Evaluating hybrid combiner")
+    print(f"  Model: {args.model_path}")
+    print(f"  Data: {args.data_dir}")
+
+    eval_dataset, eval_loader, val_idx = _build_classification_eval(args)
+    print(f"  Eval samples: {len(eval_dataset)}")
+
+    model = loader.load_combiner(args.model_path)
+    model.combiner.to(device)
+    model.combiner.eval()
+    for clf in model.base_classifiers:
+        clf._model.to(device)
+        clf._model.eval()
+
+    y_true, y_probs = _run_combiner(eval_loader, model, device, args.threshold)
+
+    y_pred = (y_probs >= args.threshold).astype(int)
+
+    multilabel = compute_multilabel_metrics(y_true, y_pred, class_names=DYSFLUENCY_CLASSES)
+    print("\n  Multi-label Report")
+    print("  " + "=" * 60)
+    for name, vals in multilabel["per_class"].items():
+        print(f"  {name:>15s}  P={vals['precision']:.3f}  R={vals['recall']:.3f}  "
+              f"F1={vals['f1']:.3f}  (n={vals['support']})")
+    print(f"  {'macro avg':>15s}  F1={multilabel['macro']['f1']:.3f}")
+    print(f"  Subset accuracy: {multilabel['subset_accuracy']:.3f}")
+    print(f"  Hamming loss:    {multilabel['hamming_loss']:.3f}")
+    print(f"  Samples accuracy: {multilabel['samples_accuracy']:.3f}")
+
+    per_class_binary = {}
+    for i, class_name in enumerate(DYSFLUENCY_CLASSES):
+        binary = compute_binary_metrics(y_true[:, i], y_probs[:, i], threshold=args.threshold)
+        per_class_binary[class_name] = binary
+        print_binary_report(binary, class_name)
+
+    metrics = {
+        "model_type": "combiner",
+        "model_path": args.model_path,
+        "num_samples": len(eval_dataset),
+        "threshold": args.threshold,
+        "multilabel": multilabel,
+        "per_class_binary": per_class_binary,
+    }
+
+    os.makedirs(args.output_dir, exist_ok=True)
+    report_path = os.path.join(args.output_dir, "combiner_report.json")
+    save_report(metrics, report_path)
+    print(f"\n  Report saved: {report_path}")
+
+    return metrics
+
+
+# ---------------------------------------------------------------------------
+# Localization
+# ---------------------------------------------------------------------------
+
+def evaluate_localizer(args) -> Dict:
+    """Evaluate a trained localization model (CNN or Wav2Vec2)."""
+    import torch
+
+    from model.evaluation import loader
     from model.evaluation.metrics import (
         compute_localization_metrics,
         print_localization_report,
         save_report,
     )
-    from model.training.train_localizer import SubsetDataset, split_dataset
-    from model.training.utils import load_checkpoint
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    print(f"\n  Evaluating localization model")
+    print(f"\n  Evaluating localization model ({args.localizer_type})")
     print(f"  Model: {args.model_path}")
     print(f"  Data: {args.data_dir}")
 
-    # Load dataset
-    dataset = LocalizationDataset(
-        data_dir=args.data_dir, sr=16000, n_mels=args.n_mels,
-        hop_length=args.hop_length, max_length_seconds=args.max_length_seconds,
-    )
-    print(f"  Total samples: {len(dataset)}")
-
-    if len(dataset) == 0:
-        print("  ERROR: No samples found.")
-        sys.exit(1)
-
-    _, val_idx = split_dataset(dataset, val_ratio=0.2, seed=42)
-    eval_dataset = SubsetDataset(dataset, val_idx)
+    eval_dataset, eval_loader, val_idx = _build_localization_eval(args)
     print(f"  Eval samples: {len(eval_dataset)}")
 
-    eval_loader = DataLoader(eval_dataset, batch_size=args.batch_size, shuffle=False)
+    model = loader.load_localizer(args.localizer_type, args.model_path)
+    _move_model(model, device)
 
-    # Load model
-    from model.localization.cnn_spectrogram import CNNSpectrogramLocalizer
-    model = CNNSpectrogramLocalizer(n_mels=args.n_mels)
-
-    load_checkpoint(args.model_path, model=model)
-    model.model.to(device)
-    model.model.eval()
-
-    # Run inference
     all_true, all_pred = [], []
-
     with torch.no_grad():
-        for spectrograms, frame_labels in eval_loader:
-            spectrograms = spectrograms.to(device)
-            logits = model.forward(spectrograms).squeeze(1)
+        for inputs, frame_labels in eval_loader:
+            inputs = inputs.to(device)
+            logits = model.forward(inputs).squeeze(1)  # (B, T)
             probs = torch.sigmoid(logits).cpu().numpy()
-
             all_true.extend(frame_labels.numpy())
             all_pred.extend(probs)
 
     y_true = np.concatenate(all_true)
     y_pred = np.concatenate(all_pred)
 
-    # Compute metrics
     metrics = compute_localization_metrics(
-        y_true, y_pred, threshold=args.threshold,
-        sr=16000, hop_length=args.hop_length,
+        y_true, y_pred, threshold=args.threshold, sr=16000, hop_length=args.hop_length,
     )
+    metrics["model_type"] = args.localizer_type
     metrics["model_path"] = args.model_path
     metrics["num_samples"] = len(eval_dataset)
     metrics["threshold"] = args.threshold
 
-    # Print report
     print_localization_report(metrics)
 
-    # Save report
     os.makedirs(args.output_dir, exist_ok=True)
-    report_path = os.path.join(args.output_dir, "localizer_report.json")
+    report_path = os.path.join(args.output_dir, f"{args.localizer_type}_localizer_report.json")
     save_report(metrics, report_path)
     print(f"\n  Report saved: {report_path}")
 
@@ -302,6 +499,11 @@ if __name__ == "__main__":
     args = parse_args()
 
     if args.model_type == "classifier":
-        evaluate_classifier(args)
+        if args.all:
+            evaluate_all_classifiers(args)
+        else:
+            evaluate_classifier(args)
+    elif args.model_type == "combiner":
+        evaluate_combiner(args)
     elif args.model_type == "localizer":
         evaluate_localizer(args)
