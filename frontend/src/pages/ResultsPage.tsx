@@ -511,9 +511,9 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
     const pPhone = sessionStorage.getItem('patient_phone')
 
     // Initial state population
-    setFilename(name || 'patient_recording.wav')
-    setFilesize(size || '18 MB')
-    setDuration(dur || '02:14')
+    setFilename(name || '')
+    setFilesize(size || '')
+    setDuration(dur || '00:00')
     setPatientName(pName || 'N/A')
     setPatientPhone(pPhone || 'N/A')
 
