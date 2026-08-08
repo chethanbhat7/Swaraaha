@@ -71,7 +71,7 @@ The model registry decouples model loading from model training.
 **Always use the registry API to access trained models.** Do not instantiate model classes directly or load checkpoints manually. The API accepts audio as a file path, raw bytes, or numpy array and applies preprocessing automatically.
 
 ```python
-from model import Classifier, Localizer, ModelRegistry
+from model import Classifier, Localizer, Transcriber, ModelRegistry
 
 clf = Classifier()                        # all 5 classifiers (raw outputs + summary)
 result = clf.analyze("recording.wav")     # path, bytes, or numpy array
@@ -83,13 +83,20 @@ result = clf.analyze(audio)               # {label, confidence, prob_present, pr
 result = clf.analyze_raw(audio)           # advanced: same + raw logits
 result = clf.analyze(audio, threshold=0.6)  # per-call threshold override
 
-loc = Localizer("cnn")                   # single localizer
+loc = Localizer()                          # type(s) come from registry.json
+loc.analyze("recording.wav")                          # regions only
+loc.analyze("recording.wav", text="the cat sat", language="en")  # + words + syllables
+
+tr = Transcriber()                        # Whisper, word-level timestamps
+tr.transcribe("recording.wav")            # {text, words, duration_sec}
+
 m = ModelRegistry()                       # everything at once
-m.run_all(audio_tensor)                   # classify + localize in one call
+m.run_all("recording.wav", text="the cat sat")   # classify + localize + transcribe
 ```
 
 - **`model/registry.json`** — lists available model checkpoint paths, grouped by task (classification, localization), plus per-class label `thresholds`.
-- **`model/registry.py`** — Python API with `Classifier`, `Localizer`, and `ModelRegistry` classes. Models are lazy-loaded on first call. `Classifier.analyze` handles audio normalization internally (load/resample → clean → pad to 10s). `Localizer` supports `"cnn"` and `"wav2vec2"` types once trained checkpoints are registered.
+- **`model/registry.py`** — Python API with `Classifier`, `Localizer`, and `ModelRegistry` classes. Models are lazy-loaded on first call. `Classifier.analyze` handles audio normalization internally (load/resample → clean → pad to 10s). `Localizer` supports `"cnn"` and `"wav2vec2"` types once trained checkpoints are registered; `Localizer.analyze` auto-preprocesses per type (CNN → mel spectrogram, wav2vec2 → waveform) and returns `regions` always plus `words`/`syllables` when `text` is provided (CTC forced alignment + language adapters for en/kn/hi).
+- **`model/transcription.py`** — `Transcriber`, a single Whisper-based transcription API (english/kannada/hindi) with word-level timestamps and stutter flagging (wordrep/soundrep/dysfluency overlay). Both frontends should migrate to this one implementation.
 - All-5 `analyze()` returns raw per-classifier outputs plus a summary of detected classes (no learned combiner).
 
 To change which checkpoint is active, update the path in `registry.json`. No code changes needed. Training does NOT write to the registry — model selection is manual.
@@ -139,7 +146,9 @@ All 5 classifiers have been trained. Results (val F1):
 - [x] Data pipeline — download, merge, prepare (3 datasets: Boli, SEP-28K, UCLASS)
 - [x] Training pipeline — all 5 classifiers trained, checkpoint resume, audio cache
 - [x] Model registry — JSON + Python API for loading trained models
+- [x] Unified transcription API — `model/transcription.py` (Whisper, word-level timestamps)
 - [x] PySide6 desktop app — scaffolding complete
-- [ ] Localizer training — no trained checkpoints yet
+- [ ] Localizer training — no trained checkpoints yet (`registry.json` `localization` empty)
+- [ ] Migrate `app/` + `backend/` consumers to `model/transcription.py` + `Localizer.analyze`
 - [ ] Threshold tuning — sweep val set for optimal F1
 - [ ] Warm restart LR schedule — extend training beyond 20 epochs
