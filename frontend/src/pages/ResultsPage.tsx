@@ -616,40 +616,38 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
   const classes = Object.keys(results.classification).filter(
     c => results.classification[c] && typeof results.classification[c].confidence === 'number'
   )
-  const presentCount = classes.filter(c => results.classification[c].label === 1).length
-  const maxConfidence = classes.length > 0 
-    ? Math.max(...classes.map(c => results.classification[c].confidence)) 
-    : 0
+  const localizationCoverage = results.localization.regions.reduce(
+    (sum, r) => sum + Math.max(0, r.end - r.start),
+    0
+  )
 
-  // Determine Severity Level
-  let severity = "Fluent"
-  let severityColor = "text-emerald-500 bg-emerald-500/10 border-emerald-500/20"
-  let stutterIndex = "0.0%"
-
-  if (presentCount >= 4 || maxConfidence > 0.85) {
-    severity = "Severe"
-    severityColor = "text-error-red bg-error-red/10 border-error-red/20"
-    stutterIndex = "24.5%"
-  } else if (presentCount >= 2 || maxConfidence > 0.6) {
-    severity = "Moderate"
-    severityColor = "text-warning-amber bg-warning-amber/10 border-warning-amber/20"
-    stutterIndex = "11.2%"
-  } else if (presentCount > 0 || maxConfidence > 0.25) {
-    severity = "Mild"
-    severityColor = "text-teal-500 bg-teal-500/10 border-teal-500/20"
-    stutterIndex = "4.8%"
-  }
-
-  // Helper to parse duration string to seconds
+  // Helper to parse duration string (MM:SS or HH:MM:SS) to seconds
   const getDurationInSeconds = (durStr: string) => {
-    const parts = durStr.split(':')
-    if (parts.length === 2) {
-      return parseInt(parts[0]) * 60 + parseInt(parts[1])
+    const parts = durStr.split(':').map(Number)
+    if (parts.every(n => Number.isFinite(n))) {
+      return parts.reduce((total, p) => total * 60 + p, 0)
     }
-    return 134 // default 02:14
+    return 0
   }
 
   const durationSec = getDurationInSeconds(duration)
+
+  // Determine Severity Level from localized dysfluency coverage
+  const stutterIndexValue = durationSec > 0 ? (localizationCoverage / durationSec) * 100 : 0
+  const stutterIndex = `${stutterIndexValue.toFixed(1)}%`
+
+  let severity = "Fluent"
+  let severityColor = "text-emerald-500 bg-emerald-500/10 border-emerald-500/20"
+  if (stutterIndexValue >= 15) {
+    severity = "Severe"
+    severityColor = "text-error-red bg-error-red/10 border-error-red/20"
+  } else if (stutterIndexValue >= 5) {
+    severity = "Moderate"
+    severityColor = "text-warning-amber bg-warning-amber/10 border-warning-amber/20"
+  } else if (stutterIndexValue >= 2) {
+    severity = "Mild"
+    severityColor = "text-teal-500 bg-teal-500/10 border-teal-500/20"
+  }
 
   // Print clinical report
   const handlePrint = () => {
@@ -703,7 +701,7 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
               {severity} Dysfluency
             </span>
             <p className="text-xs text-text-secondary mt-2">
-              Based on stuttering frequency and speech localization patterns.
+              Based on speech localization regions.
             </p>
           </div>
         </div>
@@ -717,7 +715,7 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
           <div className="mt-4">
             <h3 className="text-2xl font-bold tracking-tight text-text-primary">{stutterIndex}</h3>
             <p className="text-xs text-text-secondary mt-1">
-              Percentage of clinical words or syllables classified with dysfluency.
+              Percentage of audio duration covered by localized dysfluency events.
             </p>
           </div>
         </div>
