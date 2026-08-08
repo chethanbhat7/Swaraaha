@@ -35,7 +35,7 @@ This involves converting the input into a standardized 16 kHz mono WAV format us
 After preprocessing, the system processes the audio through three parallel pipelines.
 The first pipeline focuses on classification.
 In this stage, Wav2Vec 2.0 is used to extract meaningful speech representations, which are then passed through five independent binary classifiers.
-The outputs of these classifiers are combined using a hybrid Multi-Layer Perceptron (MLP) model to produce probability scores for each dysfluency type.
+The outputs of these classifiers are aggregated into a multi-label result that reports the presence probability of each dysfluency type and summarizes the detected classes and the primary dysfluency.
 
 The second pipeline handles transcription.
 The Whisper Automatic Speech Recognition (ASR) model is used to generate a timestamped transcript of the audio.
@@ -75,7 +75,9 @@ This module prepares the audio for further analysis. It includes resampling, rem
 In this stage, meaningful representations of the audio are generated. Wav2Vec 2.0 is used to produce contextual embeddings, while mel-spectrograms (with 128 mel bands, hop length of 512, and FFT size of 2048) are computed for spectral analysis.
 
 *Classification Module:*
-The classification module consists of five parallel Wav2Vec2-based binary classifiers, each responsible for detecting a specific type of dysfluency. These classifiers use a two-logit output with softmax activation. Their outputs are combined using a Multi-Layer Perceptron (MLP) combiner, which follows a 5–32–5 architecture with ReLU activation and dropout of 0.3, producing final probability scores.
+The classification module consists of five parallel Wav2Vec2-based binary classifiers, each responsible for detecting a specific type of dysfluency.
+Each classifier uses a two-logit output with softmax activation and yields the presence probability of its dysfluency type.
+The per-classifier outputs are aggregated into a multi-label result that reports each class probability and summarizes the detected classes and the primary dysfluency.
 
 *Localization Module:*
 This module identifies the temporal regions of dysfluencies within the audio. It uses two approaches: a CNN-based spectrogram localizer with multiple convolutional layers operating at approximately 32 ms frame resolution, and a Wav2Vec2-based localizer that works at around 20 ms resolution.
@@ -134,7 +136,7 @@ The processed audio is adjusted to a fixed length of 160,000 samples by padding 
 *Step 5: Parallel Processing:*
 The system processes the audio simultaneously through three parallel branches:
 + *Classification:* Wav2Vec 2.0 embeddings are generated and passed through five binary classifiers.
-  The outputs are combined using an MLP-based combiner to produce final probability scores for each dysfluency type.
+  The outputs are aggregated into a multi-label result with a probability score for each dysfluency type.
 + *Transcription:* The Whisper model generates a timestamped transcript of the speech.
 + *Localization:* A spectrogram-based CNN or a Wav2Vec2-based model identifies frame-level dysfluency regions within the audio.
 

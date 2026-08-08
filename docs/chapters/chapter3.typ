@@ -17,7 +17,7 @@ The overall workflow of the system is a processing pipeline from start to end.
 The first step is the recording or the upload of an audio sample, which is preprocessed with different techniques for the analysis.
 For feature extraction, we leverage Wav2Vec 2.0 embeddings which captures rich acoustic and contextual information of the speech signal.
 The features are then passed through five parallel binary classifiers, each responsible for detecting a specific type of dysfluency.
-The outputs of these classifiers are then fed into a Multi-Layer Perceptron (MLP) combiner to generate the final classification results.
+The per-classifier outputs are aggregated into a multi-label result that reports the presence probability of every dysfluency type along with a summary of the detected classes.
 
 The system utilizes the Whisper model to convert speech to text and temporal segmentation to generate the transcriptions and the timestamp information.
 We apply Connectionist Temporal Classification (CTC) based time alignment to accurately align detected dysfluencies to their corresponding places in the audio.
@@ -64,8 +64,8 @@ The system shall generate high-level speech representations using Wav2Vec 2.0 em
 *FR5 - Dysfluency Detection:*
 The system shall detect five types of dysfluencies—prolongation, block, sound repetition, word repetition, and interjection—using five parallel binary classification models.
 
-*FR6 - Output Combination:*
-The system shall combine the outputs of individual classifiers using a hybrid Multi-Layer Perceptron (MLP) model to produce final predictions.
+*FR6 - Multi-Label Aggregation:*
+The system shall aggregate the outputs of the five individual classifiers into a multi-label result that reports the probability of each dysfluency type and summarizes the detected classes and the primary dysfluency.
 
 *FR7 - Speech Transcription:*
 The system shall generate a timestamped transcript of the input audio using the Whisper model, supporting multiple languages such as English, Kannada, and Hindi.
@@ -188,7 +188,7 @@ The input audio is then validated and converted into a standard format using FFm
 
 Following this, preprocessing is applied to clean and normalize the audio.
 The processed audio is then passed through multiple stages: classification, transcription, localization, and alignment.
-The classification stage uses five Wav2Vec2-based models along with a combiner to identify dysfluency types.
+The classification stage uses five Wav2Vec2-based binary classifiers whose outputs are aggregated to identify which dysfluency types are present.
 In parallel, the Whisper model generates a timestamped transcription of the speech.
 
 Localization is performed using spectrogram-based CNN analysis or Wav2Vec2 temporal features.
@@ -209,7 +209,7 @@ The data flow within the system begins with the input audio, which is first conv
 The audio is then processed through a cleaning stage that removes DC offset, applies peak normalization, and trims silence.
 
 The cleaned audio is routed through three parallel processing paths.
-In the first path, Wav2Vec2 embeddings are generated and passed through five binary classifiers, followed by a combiner model that produces probability scores for each dysfluency type.
+In the first path, Wav2Vec2 embeddings are generated and passed through five binary classifiers, and the outputs are aggregated into a multi-label result with a probability score for each dysfluency type.
 In the second path, the Whisper model generates a timestamped transcript of the speech.
 In the third path, spectrogram features (128 mel bands with a hop length of 512) or raw waveform inputs are used for localization, producing frame-level outputs at intervals such as 32 ms or 20 ms.
 
