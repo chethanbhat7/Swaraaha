@@ -12,6 +12,19 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 
 
+def _trapezoid(y: np.ndarray, x: np.ndarray) -> float:
+    """
+    Integrate ``y`` over ``x`` with the trapezoidal rule.
+
+    numpy < 2.0 exposes ``np.trapz``; numpy >= 2.0 renamed it to
+    ``np.trapezoid`` (and removed the old alias). This helper keeps the
+    metrics working across both.
+    """
+    if hasattr(np, "trapezoid"):
+        return float(np.trapezoid(y, x))
+    return float(np.trapz(y, x))
+
+
 # ---------------------------------------------------------------------------
 # Classification Metrics
 # ---------------------------------------------------------------------------
@@ -213,7 +226,7 @@ def _compute_auroc(y_true: np.ndarray, y_scores: np.ndarray) -> float:
         tpr_list.append(tp / n_pos)
         fpr_list.append(fp / n_neg)
 
-    return abs(float(np.trapz(tpr_list, fpr_list)))
+    return abs(_trapezoid(tpr_list, fpr_list))
 
 
 def _compute_auprc(y_true: np.ndarray, y_scores: np.ndarray) -> float:
@@ -241,7 +254,7 @@ def _compute_auprc(y_true: np.ndarray, y_scores: np.ndarray) -> float:
         prec_list.append(tp / (tp + fp))
         rec_list.append(tp / n_pos)
 
-    return abs(float(np.trapz(prec_list, rec_list)))
+    return abs(_trapezoid(prec_list, rec_list))
 
 
 def find_optimal_threshold(
