@@ -400,9 +400,6 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
   const [filename, setFilename] = useState('')
   const [filesize, setFilesize] = useState('')
   const [duration, setDuration] = useState('')
-  const [patientName, setPatientName] = useState('')
-  const [patientPhone, setPatientPhone] = useState('')
-  const [showPrintModal, setShowPrintModal] = useState(false)
   const [reportDate, setReportDate] = useState('')
   const showReport = true
 
@@ -507,15 +504,11 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
     const name = sessionStorage.getItem('filename')
     const size = sessionStorage.getItem('filesize')
     const dur = sessionStorage.getItem('duration')
-    const pName = sessionStorage.getItem('patient_name')
-    const pPhone = sessionStorage.getItem('patient_phone')
 
     // Initial state population
     setFilename(name || '')
     setFilesize(size || '')
     setDuration(dur || '00:00')
-    setPatientName(pName || 'N/A')
-    setPatientPhone(pPhone || 'N/A')
 
 
     // Set today's date
@@ -651,7 +644,7 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
 
   // Print clinical report
   const handlePrint = () => {
-    setShowPrintModal(true)
+    window.print()
   }
 
   return (
@@ -868,49 +861,13 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
       )}
 
 
-      {/* PRINT CLINICAL PDF REPORT (Formal medical document format) */}
+      {/* PRINT CLINICAL PDF REPORT (Stuttering classes only) */}
       {showReport && (
         <div
           ref={reportRef}
           className="bg-white text-gray-900 border border-gray-300 p-12 space-y-8 max-w-4xl mx-auto rounded-xl shadow-md hidden print:block print:border-none print:shadow-none print:p-0"
           style={{ fontFamily: 'Georgia, serif' }}
         >
-          {/* Report Title & Date */}
-          <div className="border-b-2 border-teal-600 pb-4">
-            <h1 className="text-xl font-bold tracking-tight text-gray-900 uppercase">
-              Swaraaha Stutter Analysis Report
-            </h1>
-            <p className="text-xs text-gray-500 mt-1">{reportDate}</p>
-          </div>
-
-          {/* Patient Details & Audio Metadata */}
-          <div className="bg-gray-50 p-4 border border-gray-200 rounded-lg grid grid-cols-2 gap-4 text-xs">
-            <div>
-              <span className="block text-[10px] uppercase font-bold text-gray-500">Patient Name</span>
-              <span className="font-semibold text-gray-900">{patientName}</span>
-            </div>
-            <div>
-              <span className="block text-[10px] uppercase font-bold text-gray-500">Phone Number</span>
-              <span className="text-gray-900">{patientPhone}</span>
-            </div>
-            <div>
-              <span className="block text-[10px] uppercase font-bold text-gray-500">Audio Filename</span>
-              <span className="font-mono text-gray-900">{filename}</span>
-            </div>
-            <div>
-              <span className="block text-[10px] uppercase font-bold text-gray-500">File Size</span>
-              <span className="text-gray-900">{filesize}</span>
-            </div>
-            <div>
-              <span className="block text-[10px] uppercase font-bold text-gray-500">Audio Clip Duration</span>
-              <span className="font-mono text-gray-900">{duration}</span>
-            </div>
-            <div>
-              <span className="block text-[10px] uppercase font-bold text-gray-500">Dysfluency Index</span>
-              <span className="font-bold text-teal-700">{stutterIndex} ({severity} Dysfluency)</span>
-            </div>
-          </div>
-
           {/* Stuttering Classes Table */}
           <div className="space-y-3">
             <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider border-b border-gray-200 pb-1.5">
@@ -950,66 +907,7 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
         </div>
       )}
       {/* PRINT DETAILS MODAL (Hidden in Print) */}
-      {showPrintModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 animate-fade-in print:hidden">
-          <div className="bg-bg-card border border-border-color rounded-2xl p-6 w-full max-w-sm shadow-xl space-y-4 m-4" style={{ borderRadius: '16px' }}>
-            <div>
-              <h3 className="text-sm font-bold text-text-primary">Clinical Report Details</h3>
-              <p className="text-[10px] text-text-secondary mt-0.5">Please provide patient information to include in the generated report.</p>
-            </div>
-            
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <label className="text-[9px] uppercase font-bold text-text-secondary">Patient Name</label>
-                <input
-                  type="text"
-                  placeholder="e.g. John Doe"
-                  value={patientName === 'N/A' ? '' : patientName}
-                  onChange={(e) => setPatientName(e.target.value)}
-                  className="w-full px-3 py-2 text-xs bg-bg-sidebar border border-border-color rounded-lg focus:outline-none focus:border-accent-teal focus:ring-1 focus:ring-accent-teal"
-                  style={{ borderRadius: '8px' }}
-                  autoFocus
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[9px] uppercase font-bold text-text-secondary">Phone Number</label>
-                <input
-                  type="text"
-                  placeholder="e.g. +91 9876543210"
-                  value={patientPhone === 'N/A' ? '' : patientPhone}
-                  onChange={(e) => setPatientPhone(e.target.value)}
-                  className="w-full px-3 py-2 text-xs bg-bg-sidebar border border-border-color rounded-lg focus:outline-none focus:border-accent-teal focus:ring-1 focus:ring-accent-teal"
-                  style={{ borderRadius: '8px' }}
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 pt-2">
-              <button
-                onClick={() => setShowPrintModal(false)}
-                className="flex-1 py-2 bg-hover-color/50 hover:bg-hover-color text-text-primary text-xs font-semibold rounded-lg border border-border-color transition cursor-pointer"
-                style={{ borderRadius: '8px' }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  setShowPrintModal(false)
-                  // Wait a brief tick for the modal to close and visual focus to settle before opening window.print()
-                  setTimeout(() => {
-                    window.print()
-                  }, 100)
-                }}
-                className="flex-1 py-2 bg-accent-teal hover:bg-teal-600 text-white text-xs font-bold rounded-lg shadow-sm transition cursor-pointer"
-                style={{ borderRadius: '8px' }}
-              >
-                Print Report
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
+      {/* removed: modal collected patient details that are no longer shown in the report */}
     </div>
   )
 }
