@@ -171,6 +171,7 @@ export default function UploadPage({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
   const recordingTimerRef = useRef<number | null>(null)
+  const recordingTimeRef = useRef(0)
   const audioContextRef = useRef<AudioContext | null>(null)
   const analyserRef = useRef<AnalyserNode | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -307,8 +308,8 @@ export default function UploadPage({
         setFile(recordedFile)
         setAnalyzedFile(recordedFile)
 
-        const mins = Math.floor(recordingTime / 60).toString().padStart(2, '0')
-        const secs = (recordingTime % 60).toString().padStart(2, '0')
+        const mins = Math.floor(recordingTimeRef.current / 60).toString().padStart(2, '0')
+        const secs = (recordingTimeRef.current % 60).toString().padStart(2, '0')
         setFileDuration(`${mins}:${secs}`)
       }
 
@@ -316,9 +317,11 @@ export default function UploadPage({
       setIsRecording(true)
       setIsPaused(false)
       setRecordingTime(0)
+      recordingTimeRef.current = 0
 
       // Recording timer update
       recordingTimerRef.current = window.setInterval(() => {
+        recordingTimeRef.current += 1
         setRecordingTime(t => t + 1)
       }, 1000)
 
@@ -343,6 +346,7 @@ export default function UploadPage({
         mediaRecorderRef.current.resume()
         setIsPaused(false)
         recordingTimerRef.current = window.setInterval(() => {
+          recordingTimeRef.current += 1
           setRecordingTime(t => t + 1)
         }, 1000)
         drawWaveform()
