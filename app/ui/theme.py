@@ -1,7 +1,8 @@
 """Design tokens and QSS generation for Material 3 Expressive theme."""
 
 import os
-from PySide6.QtGui import QFontDatabase, QFont
+
+from PySide6.QtGui import QFont, QFontDatabase
 
 LIGHT_COLORS = {
     "primary": "#6750A4",

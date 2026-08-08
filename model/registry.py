@@ -66,8 +66,9 @@ def _load_classifier(class_name: str, path: str):
         from model.classification import get_classifier_class
         return get_classifier_class(class_name).from_pretrained(path)
 
-    from model.classification import BaseWav2VecClassifier, DYSFLUENCY_CLASSES
     from transformers import Wav2Vec2ForSequenceClassification
+
+    from model.classification import DYSFLUENCY_CLASSES, BaseWav2VecClassifier
 
     model_name = model_name_from_path(path)
     model = Wav2Vec2ForSequenceClassification.from_pretrained(model_name, num_labels=2)
@@ -95,11 +96,12 @@ def _preprocess_audio(
     import os
 
     import numpy as np
-    import torch
     import soundfile as sf
+    import torch
 
     from model.data.preprocessing import (
         clean_audio,
+        convert_to_wav,
         load_audio,
         load_audio_from_array,
         pad_to_length,
@@ -110,8 +112,6 @@ def _preprocess_audio(
             raise FileNotFoundError(f"Audio file not found: {audio}")
         audio_array, _ = load_audio(audio, sr=sr)
     elif isinstance(audio, bytes):
-        from backend.services.audio_utils import convert_to_wav
-
         wav_bytes = convert_to_wav(audio)
         audio_array, file_sr = sf.read(io.BytesIO(wav_bytes), dtype="float32")
         if audio_array.ndim > 1:

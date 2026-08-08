@@ -4,6 +4,7 @@ Converts speech audio into timestamped transcript text and aligns detected dysfl
 Supports English, Kannada, and Hindi via per-language Whisper-tiny pipelines.
 """
 
+import re
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
@@ -19,6 +20,43 @@ WHISPER_MODELS = {
 WHISPER_LANG_CODES = {"english": "en", "kannada": "kn", "hindi": "hi"}
 
 _pipelines = {}
+
+
+def _is_repeated_fragment(word: str) -> bool:
+    """Detect syllable/letter repetitions inside a single token.
+
+    Catches hyphenated repeats ("s-s", "ba-ba", "s-s-s") and stretched
+    single characters ("sss", "b-b-b") that ASR emits for sound repetitions.
+    """
+    if not word:
+        return False
+    if "-" in word:
+        parts = [p for p in word.split("-") if p]
+        if len(parts) >= 2 and len(set(parts)) == 1:
+            return True
+    return bool(re.search(r"(.)\1{2,}", word))
+
+
+def _flag_repetitions(words: List[Dict[str, Any]]) -> None:
+    """Mark word/syllable repetitions in a word list as stutter events.
+
+    Consecutive identical words are flagged as 'wordrep'; repeated syllable
+    fragments (e.g. "s-s", "sss") as 'soundrep'. Called before localization
+    overlay so repetition types are kept for words already flagged.
+    """
+    for i, w in enumerate(words):
+        if w.get("stutter"):
+            continue
+        current = (w.get("word") or "").strip().lower()
+        if not current:
+            continue
+        previous = (words[i - 1].get("word") or "").strip().lower() if i > 0 else ""
+        if current == previous and current != "":
+            w["stutter"] = True
+            w["stutter_type"] = "wordrep"
+        elif _is_repeated_fragment(current):
+            w["stutter"] = True
+            w["stutter_type"] = "soundrep"
 
 
 def get_pipeline(language: str = "english"):
@@ -93,8 +131,13 @@ class AudioTranscriber:
         if not transcript_text and not word_list:
             transcript_text, word_list = self._fallback_transcribe(audio, duration_sec, passage_text)
 
+        # Flag word/syllable repetitions before applying localization overlay
+        _flag_repetitions(word_list)
+
         if localizations and word_list:
             for w in word_list:
+                if w.get("stutter"):
+                    continue
                 w_start = w["start_sec"]
                 w_end = w["end_sec"]
                 for (st_start, st_end, _conf) in localizations:

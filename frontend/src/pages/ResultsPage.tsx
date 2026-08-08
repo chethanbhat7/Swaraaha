@@ -613,7 +613,9 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
   if (!results) return null
 
   // Calculate Speech Metrics
-  const classes = Object.keys(results.classification)
+  const classes = Object.keys(results.classification).filter(
+    c => results.classification[c] && typeof results.classification[c].confidence === 'number'
+  )
   const presentCount = classes.filter(c => results.classification[c].label === 1).length
   const maxConfidence = classes.length > 0 
     ? Math.max(...classes.map(c => results.classification[c].confidence)) 

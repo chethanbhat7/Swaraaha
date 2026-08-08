@@ -1,11 +1,12 @@
 """Swaraaha Desktop Application — Entry Point."""
 
 import sys
+
 from PySide6.QtWidgets import QApplication
 
 from app.ui.main_window import MainWindow
-from app.ui.theme import load_fonts
 from app.ui.styles import build_stylesheet
+from app.ui.theme import load_fonts
 
 
 def main():

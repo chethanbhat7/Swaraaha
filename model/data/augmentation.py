@@ -129,7 +129,9 @@ class AugmentedDataset:
         # Apply waveform augmentation to numpy arrays
         if isinstance(audio, np.ndarray):
             audio = self.augmentor(audio, self.sample_rate)
-        elif isinstance(audio, torch.Tensor):
+        elif type(audio).__module__.startswith("torch"):
+            import torch
+
             audio = audio.cpu().numpy()
             audio = self.augmentor(audio, self.sample_rate)
             audio = torch.from_numpy(audio)

@@ -1,6 +1,7 @@
 """PDF text extraction using pdfplumber. Pure logic, no Qt imports."""
 
 import os
+
 import pdfplumber
 
 

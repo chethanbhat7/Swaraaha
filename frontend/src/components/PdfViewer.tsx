@@ -182,13 +182,6 @@ export default function PdfViewer({
     })
   }
 
-  // Revoke Object URLs on unmount to prevent resource memory leaks
-  useEffect(() => {
-    return () => {
-      customPdfs.forEach(pdf => URL.revokeObjectURL(pdf.url))
-    }
-  }, [])
-
   const handleDownload = () => {
     if (activeDocType === 'custom' && customPdfs[currentCustomPdfIndex]) {
       const activePdf = customPdfs[currentCustomPdfIndex]
