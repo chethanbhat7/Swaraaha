@@ -56,7 +56,9 @@ outputs are shown together rather than merged into one score:
 ### 4b. Localization pipeline — "where in the audio it happened"
 - **CNN spectrogram model** — runs convolutional kernels over mel-spectrograms to detect dysfluency regions.
 - **Wav2Vec2 temporal attention model** — uses Wav2Vec2 backbone + attention head for frame-level prediction from raw audio.
-- Both are loaded via the model registry when trained checkpoints are available. **No localizer checkpoints exist yet** (`registry.json` `localization` is empty) — this is future work.
+- Both are loaded via the model registry when trained checkpoints are available. **No localizer checkpoints exist yet** (`registry.json` `localization` is empty) — **the localizer is under training**.
+
+> **Localizer models are under training.** Do NOT hand-roll localization/preprocessing, skip the registry API, or "mock" a localizer to make things work meanwhile. Consume `Localizer()` / `ModelRegistry.run_all()` and handle the `{"error": ...}` result when unavailable. When checkpoints land they will be wired through `registry.json` automatically — no consumer changes needed.
 
 ### How the two pipelines relate
 They are **independent**: the classifier pipeline gives "this audio contains
@@ -102,6 +104,8 @@ m.run_all("recording.wav", text="the cat sat")   # classify + localize + transcr
 To change which checkpoint is active, update the path in `registry.json`. No code changes needed. Training does NOT write to the registry — model selection is manual.
 
 **Do not** import `ProlongationClassifier`, etc. directly — use `Classifier()` instead. This ensures models load from the registry and stay in sync with which checkpoints are active.
+
+**Localizer checkpoints do not exist yet** — `Localizer()` / `ModelRegistry.run_all()` currently return `{"localization": {"error": ...}}` (or raise `FileNotFoundError`) until a localizer is trained and registered. Do not bypass the API with manual preprocessing or ad-hoc model loading; wait for the trained model so everything flows through the registry.
 
 ## 6. Training
 
