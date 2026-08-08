@@ -51,6 +51,7 @@ class MainWindow(QMainWindow):
         self._audio_handler = AudioHandler()
         self._model_runner = ModelRunner()
         self._current_audio = None
+        self._current_filename = ""
         self._worker = None
         self._current_language = "english"
         self._transcription_worker = None
@@ -94,6 +95,7 @@ class MainWindow(QMainWindow):
         try:
             audio = self._audio_handler.load_audio(path)
             self._current_audio = audio
+            self._current_filename = os.path.basename(path)
             self._home_page.get_audio_controls().set_audio_loaded()
             self._home_page.get_transcription_panel().clear()
             self._home_page.set_transcript_visible(True)
@@ -112,6 +114,7 @@ class MainWindow(QMainWindow):
         audio = self._audio_handler.stop_recording()
         if len(audio) > 0:
             self._current_audio = audio
+            self._current_filename = "recording.wav"
             self._home_page.get_audio_controls().set_recording(False)
             self._home_page.get_audio_controls().set_audio_loaded()
             self._home_page.get_transcription_panel().clear()
@@ -189,7 +192,12 @@ class MainWindow(QMainWindow):
         if "error" in results:
             self.statusBar().showMessage(f"Analysis failed: {results['error']}")
             return
-        self._analysis_page.set_results(results, self._current_audio, language=self._current_language)
+        self._analysis_page.set_results(
+            results,
+            self._current_audio,
+            filename=self._current_filename,
+            language=self._current_language,
+        )
         self._stack.setCurrentIndex(1)
         self.statusBar().showMessage("Analysis complete")
 
