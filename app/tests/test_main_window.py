@@ -248,3 +248,41 @@ def test_on_load_prompts_then_loads(qapp, app_name, tmp_path, monkeypatch):
     win._on_load()
     assert win._current_language == "kannada"
     assert win._current_audio is not None
+
+
+def test_load_path_sets_current_filename(qapp, app_name, tmp_path, monkeypatch):
+    path = tmp_path / "clip.wav"
+    _make_wav(path)
+    win = MainWindow()
+    _no_background_transcription(win, monkeypatch)
+    win._load_path(str(path))
+    assert win._current_filename == "clip.wav"
+
+
+def test_on_stop_sets_current_filename(qapp, app_name, monkeypatch):
+    win = MainWindow()
+    _no_background_transcription(win, monkeypatch)
+    win._audio_handler.stop_recording = lambda: np.zeros(1600, dtype=np.float32)
+    win._on_stop()
+    assert win._current_filename == "recording.wav"
+
+
+def test_on_analysis_done_passes_filename(qapp, app_name):
+    win = MainWindow()
+
+    class FakeWorker:
+        def deleteLater(self):
+            pass
+
+    win._current_filename = "clip.wav"
+    win._worker = FakeWorker()
+
+    seen = {}
+
+    def spy(results, audio=None, sample_rate=16000, language="english", filename=""):
+        seen["filename"] = filename
+
+    win._analysis_page.set_results = spy
+    results = {"classifications": {}, "localizations": [], "transcription": {}}
+    win._on_analysis_done(results, win._worker)
+    assert seen.get("filename") == "clip.wav"

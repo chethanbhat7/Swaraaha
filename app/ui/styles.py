@@ -166,7 +166,7 @@ def build_stylesheet():
 
     /* === Record Button === */
     QPushButton[cssClass="record"] {{
-        background-color: #2E7D32;
+        background-color: #8E24AA;
         border-radius: {RADIUS['lg']}px;
         padding: {SPACING['md']}px {SPACING['xl']}px;
         font-size: 16px;
@@ -174,10 +174,10 @@ def build_stylesheet():
         min-height: 48px;
     }}
     QPushButton[cssClass="record"]:hover {{
-        background-color: #2E7D32DD;
+        background-color: #8E24AADD;
     }}
     QPushButton[cssClass="record"]:pressed {{
-        background-color: #2E7D32BB;
+        background-color: #8E24AABB;
     }}
 
     /* === Panels === */
