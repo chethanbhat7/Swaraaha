@@ -136,6 +136,57 @@ def _classifier_output(clf, audio_tensor, threshold: float, include_logits: bool
     return result
 
 
+def _align_words_syllables(
+    audio_array, text: str, language_code: str = "en", sr: int = 16000
+):
+    """Align transcript text to audio → word timestamps, then syllabify.
+
+    Uses CTC forced alignment when available, falling back to the simple
+    energy-based aligner. Returns ([word dicts], [syllable dicts]).
+    """
+    from model.localization.language_adapter import LanguageAdapterRegistry
+
+    try:
+        from model.localization.ctc_alignment import CTCTimeAligner
+
+        aligner = CTCTimeAligner()
+    except Exception:
+        from model.localization.ctc_alignment import SimpleForcedAligner
+
+        aligner = SimpleForcedAligner()
+
+    try:
+        word_timestamps = aligner.align(audio_array, text, sr=sr)
+        word_list = [
+            {
+                "word": wt.word,
+                "start": wt.start_sec,
+                "end": wt.end_sec,
+                "confidence": round(wt.confidence, 4),
+            }
+            for wt in word_timestamps
+        ]
+
+        registry = LanguageAdapterRegistry()
+        adapter = registry.get(language_code)
+        syllable_timestamps = adapter.adapt(word_timestamps, text)
+        syllable_list = [
+            {
+                "syllable": s.syllable,
+                "start": s.start_sec,
+                "end": s.end_sec,
+                "word": s.word,
+                "index": s.syllable_index,
+                "total": s.total_syllables,
+            }
+            for s in syllable_timestamps
+        ]
+        return word_list, syllable_list
+    except Exception as e:
+        print(f"Alignment/syllabification failed: {e}")
+        return [], []
+
+
 class Classifier:
     def __init__(self, class_name: Optional[str] = None):
         self.class_name = class_name
@@ -328,6 +379,72 @@ class Localizer:
             for name, model in self._models.items():
                 results[name] = model.predict(audio_tensor, threshold=threshold)
             return results
+
+    def analyze(
+        self,
+        audio,
+        text: Optional[str] = None,
+        language: str = "en",
+        threshold: float = 0.3,
+        max_length_seconds: float = 10.0,
+    ) -> Union[Dict[str, Any], Dict[str, Dict[str, Any]]]:
+        """Analyze raw audio → dysfluency regions (+ words/syllables if text).
+
+        Args:
+            audio: File path, raw bytes, or 1-D numpy array.
+            text: Optional transcript for word/syllable-level alignment.
+            language: ISO language code for syllabification (en, kn, hi).
+            threshold: Detection threshold for regions.
+            max_length_seconds: Max audio length to process.
+
+        Returns:
+            Single-type: {regions, [words], [syllables]}.
+            All-types: {type: {...}} keyed by localizer type.
+        """
+        if not self._models:
+            self._load()
+
+        from model.data.preprocessing import generate_mel_spectrogram, load_audio_input
+
+        audio_array = load_audio_input(audio, sr=16000)
+
+        types = [self.model_type] if self.model_type else list(self._models.keys())
+        results: Dict[str, Any] = {}
+
+        for lt in types:
+            model = self._models[lt]
+            if lt == "cnn":
+                spec = generate_mel_spectrogram(audio_array, sr=16000)
+                regions = model.predict(spec, sr=16000, threshold=threshold)
+            elif lt == "wav2vec2":
+                regions = model.predict(
+                    audio_array,
+                    sr=16000,
+                    threshold=threshold,
+                    max_length_seconds=max_length_seconds,
+                )
+            else:
+                raise ValueError(f"Unknown localizer type: {lt}")
+
+            entry: Dict[str, Any] = {
+                "regions": [
+                    {"start": round(s, 3), "end": round(e, 3), "confidence": round(c, 4)}
+                    for s, e, c in regions
+                ]
+            }
+
+            if text:
+                words, syllables = _align_words_syllables(
+                    audio_array, text, language, sr=16000
+                )
+                entry["words"] = words
+                entry["syllables"] = syllables
+
+            results[lt] = entry
+
+        if self.model_type is not None:
+            return results[self.model_type]
+        return results
 
     @property
     def is_loaded(self) -> bool:
