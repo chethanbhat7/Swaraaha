@@ -51,13 +51,12 @@ outputs are shown together rather than merged into one score:
 - **Five binary classifiers**, one per dysfluency class: `prolongation`,
   `block`, `soundrep`, `wordrep`, `interjection`.
 - Each classifier is based on **Wav2Vec 2.0** (`facebook/wav2vec2-base`), fine-tuned per class.
-- A **hybrid MLP combiner** (`CombinerMLP`) exists in `model/classification/hybrid.py` but is not used by the registry API — all-5 `analyze()` returns raw per-classifier outputs plus a detected-classes summary.
 - All models are loaded via the **model registry** (`model/registry.py` + `model/registry.json`).
 
 ### 4b. Localization pipeline — "where in the audio it happened"
 - **CNN spectrogram model** — runs convolutional kernels over mel-spectrograms to detect dysfluency regions.
 - **Wav2Vec2 temporal attention model** — uses Wav2Vec2 backbone + attention head for frame-level prediction from raw audio.
-- Both are loaded via the model registry when trained checkpoints are available.
+- Both are loaded via the model registry when trained checkpoints are available. **No localizer checkpoints exist yet** (`registry.json` `localization` is empty) — this is future work.
 
 ### How the two pipelines relate
 They are **independent**: the classifier pipeline gives "this audio contains
@@ -90,12 +89,12 @@ m.run_all(audio_tensor)                   # classify + localize in one call
 ```
 
 - **`model/registry.json`** — lists available model checkpoint paths, grouped by task (classification, localization), plus per-class label `thresholds`.
-- **`model/registry.py`** — Python API with `Classifier`, `Localizer`, and `ModelRegistry` classes. Models are lazy-loaded on first call. `Classifier.analyze` handles audio normalization internally (load/resample → clean → pad to 10s).
-- The hybrid combiner (learned MLP) is not used by the API — all-5 `analyze()` returns raw per-classifier outputs plus a summary of detected classes.
+- **`model/registry.py`** — Python API with `Classifier`, `Localizer`, and `ModelRegistry` classes. Models are lazy-loaded on first call. `Classifier.analyze` handles audio normalization internally (load/resample → clean → pad to 10s). `Localizer` supports `"cnn"` and `"wav2vec2"` types once trained checkpoints are registered.
+- All-5 `analyze()` returns raw per-classifier outputs plus a summary of detected classes (no learned combiner).
 
 To change which checkpoint is active, update the path in `registry.json`. No code changes needed. Training does NOT write to the registry — model selection is manual.
 
-**Do not** import `HybridClassifier`, `ProlongationClassifier`, etc. directly — use `Classifier()` instead. This ensures models load from the registry and stay in sync with which checkpoints are active.
+**Do not** import `ProlongationClassifier`, etc. directly — use `Classifier()` instead. This ensures models load from the registry and stay in sync with which checkpoints are active.
 
 ## 6. Training
 
@@ -132,7 +131,6 @@ All 5 classifiers have been trained. Results (val F1):
 ## 8. Current state
 
 - [x] Wav2Vec 2.0 per-class binary classifiers — `model/classification/`
-- [x] Hybrid combiner model (MLP) — `model/classification/hybrid.py`
 - [x] CNN spectrogram localization — `model/localization/cnn_spectrogram.py`
 - [x] Wav2Vec2 temporal attention localization — `model/localization/wav2vec2_localizer.py`
 - [x] Web app (frontend/backend) — React + FastAPI

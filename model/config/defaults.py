@@ -35,7 +35,3 @@ DEFAULT_DATA_DIR = "data"
 
 # Inference
 DEFAULT_THRESHOLD = 0.5
-
-# Hybrid Combiner
-COMBINER_HIDDEN_DIM = 32
-COMBINER_DROPOUT = 0.3
