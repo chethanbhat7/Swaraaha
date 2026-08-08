@@ -2,7 +2,7 @@
 
 import os
 
-from PySide6.QtCore import QDir, QSettings, Signal, Qt
+from PySide6.QtCore import QSettings, Qt, Signal
 from PySide6.QtWidgets import (
     QFileDialog,
     QFileSystemModel,

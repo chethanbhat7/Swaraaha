@@ -2,15 +2,20 @@
 
 import os
 import shutil
-from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFileDialog,
-    QScrollArea, QFrame,
-)
-from PySide6.QtCore import Signal, Qt
-from PySide6.QtGui import QPixmap, QImage
 
 import pypdfium2 as pdfium
-
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QImage, QPixmap
+from PySide6.QtWidgets import (
+    QFileDialog,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QScrollArea,
+    QVBoxLayout,
+    QWidget,
+)
 
 PASSAGES_DIR = os.path.join(os.path.dirname(__file__), "..", "assets", "passages")
 

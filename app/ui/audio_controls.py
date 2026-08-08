@@ -1,9 +1,13 @@
 """Audio control buttons: Record, Stop, Load, Play, Analyze."""
 
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
 )
-from PySide6.QtCore import Signal, Qt
 
 
 class AudioControls(QWidget):

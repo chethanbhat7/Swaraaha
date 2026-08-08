@@ -24,6 +24,8 @@ venv/
 
 # Model weights (large files)
 model/weights/
+swaraaha-models.zip
+*.zip
 
 # Raw data and processed data (large, not committed)
 RawData/

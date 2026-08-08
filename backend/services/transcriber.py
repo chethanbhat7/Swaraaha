@@ -1,7 +1,7 @@
 """Service layer for speech transcription and language detection using Whisper."""
 
 import io
-from typing import Optional
+
 import numpy as np
 import soundfile as sf
 
@@ -48,6 +48,33 @@ def get_pipeline(language: str = "english"):
         _pipelines[lang_lower] = pipe
         
     return _pipelines[lang_lower]
+
+
+def _collapse_runs(items, clean, max_run=3):
+    """Drop items that repeat consecutively more than max_run times.
+
+    Real stutters repeat a word or syllable 2-3 times; longer identical runs
+    are almost always Whisper hallucination loops. Keeps the first `max_run`
+    occurrences of a run, drops the rest.
+    """
+    result = []
+    prev_clean = None
+    run = 0
+    for item in items:
+        c = clean(item)
+        if c != "" and c == prev_clean:
+            run += 1
+            if run > max_run:
+                continue
+        else:
+            prev_clean = c
+            run = 1
+        result.append(item)
+    return result
+
+
+def _clean(token: str) -> str:
+    return token.lower().strip(".,?!;:-_\"'()[]{} ")
 
 
 def transcribe_audio_bytes(audio_bytes: bytes, language: str = "english") -> dict:
@@ -109,51 +136,32 @@ def transcribe_audio_bytes(audio_bytes: bytes, language: str = "english") -> dic
         if selected_lang_str not in ALLOWED_LANGUAGES:
             selected_lang_str = "English"
 
-        # Deduplicate consecutive repeated chunks (Whisper looping hallucinations)
+        # Collapse consecutive repeated chunks, keeping genuine repetitions
+        # (up to 3) while dropping Whisper hallucination loops.
+        chunks = _collapse_runs(chunks, lambda c: _clean(c.get("text", "")), max_run=3)
         formatted_chunks = []
-        prev_chunk_clean = None
 
         for chunk in chunks:
             timestamp = chunk.get("timestamp")
             start = timestamp[0] if timestamp else 0.0
             end = timestamp[1] if timestamp else 0.0
-            
+
             if start is None:
                 start = 0.0
             if end is None:
                 end = 0.0
 
-            chunk_text = chunk.get("text", "").strip()
-            # Standardize for duplicate comparison
-            chunk_text_clean = chunk_text.lower().strip(".,?!;:-_\"'()[]{} ")
-
-            if chunk_text_clean == prev_chunk_clean and chunk_text_clean != "":
-                # Drop consecutive repetitions entirely to prevent hallucination looping
-                continue
-            
-            prev_chunk_clean = chunk_text_clean
-
             formatted_chunks.append({
-                "text": chunk_text,
+                "text": chunk.get("text", "").strip(),
                 "start": round(start, 2),
                 "end": round(end, 2),
                 "language": selected_lang_str
             })
 
-        # Deduplicate individual consecutive words in the final text string to be safe
-        words = text.split()
-        deduped_words = []
-        prev_word_clean = None
-        
-        for w in words:
-            w_clean = w.lower().strip(".,?!;:-_\"'()[]{} ")
-            if w_clean == prev_word_clean and w_clean != "":
-                continue
-            else:
-                deduped_words.append(w)
-                prev_word_clean = w_clean
-
-        deduped_text = " ".join(deduped_words)
+        # Deduplicate individual consecutive words in the final text string,
+        # keeping genuine stuttered repetitions (up to 3).
+        words = _collapse_runs(text.split(), _clean, max_run=3)
+        deduped_text = " ".join(words)
 
         return {
             "text": deduped_text,

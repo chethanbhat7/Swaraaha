@@ -1,9 +1,10 @@
 """Audio recording and playback using sounddevice. Pure logic, no Qt imports."""
 
+import threading
+
 import numpy as np
 import sounddevice as sd
 import soundfile as sf
-import threading
 
 
 class AudioHandler:
@@ -35,7 +36,11 @@ class AudioHandler:
         self._stream.start()
 
     def stop_recording(self) -> np.ndarray:
-        """Stop recording and return the captured audio as a numpy array."""
+        """Stop recording and return the captured audio as a numpy array.
+
+        Leading/trailing silence is trimmed so the audio starts at the
+        actual speech onset.
+        """
         if not self._recording:
             return np.array([], dtype=np.float32)
         self._recording = False
@@ -44,8 +49,52 @@ class AudioHandler:
             self._stream.close()
             self._stream = None
         if self._frames:
-            return np.concatenate(self._frames, axis=0).flatten()
+            audio = np.concatenate(self._frames, axis=0).flatten()
+            return self.trim_audio(audio)
         return np.array([], dtype=np.float32)
+
+    def trim_audio(
+        self,
+        audio: np.ndarray,
+        top_db: int = 25,
+        min_duration: float = 0.1,
+        margin_ms: float = 50.0,
+    ) -> np.ndarray:
+        """Trim leading and trailing silence from recorded audio.
+
+        Only audio from the actual start of speech to its end is kept,
+        with a small margin around the speech boundaries. If the capture
+        contains no real speech (nothing above the silence threshold for
+        at least ``min_duration`` seconds), the original audio is returned
+        unchanged so the recording is not destroyed.
+        """
+        if audio is None or len(audio) == 0:
+            return audio
+        try:
+            import librosa
+
+            frame_length = 512
+            hop_length = 256
+            rms = librosa.feature.rms(
+                y=audio, frame_length=frame_length, hop_length=hop_length
+            )[0]
+            max_rms = float(np.max(rms))
+            if max_rms <= 0:
+                return audio
+            threshold = max_rms * (10.0 ** (-top_db / 20.0))
+            voiced = np.flatnonzero(rms >= threshold)
+            if voiced.size == 0:
+                return audio
+
+            margin = int(margin_ms * self.sample_rate / 1000)
+            start = max(0, int(voiced[0] * hop_length) - margin)
+            end = min(len(audio), int((voiced[-1] + 1) * hop_length) + margin)
+            trimmed = audio[start:end]
+        except Exception:
+            return audio
+        if len(trimmed) < int(min_duration * self.sample_rate):
+            return audio
+        return trimmed
 
     def play_audio(self, audio: np.ndarray):
         """Play audio through speakers in a background thread."""

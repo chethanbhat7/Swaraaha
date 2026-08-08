@@ -255,7 +255,7 @@ export default function UploadPage({
         audioCtx.close()
       }, () => {
         // Fallback if decoding fails
-        setFileDuration('02:14')
+        setFileDuration('00:00')
         audioCtx.close()
       })
     }

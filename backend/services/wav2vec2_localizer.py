@@ -5,9 +5,9 @@ from typing import Optional
 
 import numpy as np
 
-from model.localization.wav2vec2_localizer import Wav2Vec2Localizer
 from model.localization.ctc_alignment import CTCTimeAligner, SimpleForcedAligner
 from model.localization.language_adapter import LanguageAdapterRegistry
+from model.localization.wav2vec2_localizer import Wav2Vec2Localizer
 
 _model: Optional[Wav2Vec2Localizer] = None
 _aligner = None
