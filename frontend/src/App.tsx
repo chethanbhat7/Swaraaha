@@ -302,7 +302,7 @@ function AboutPage() {
           </div>
           <div>
             <span className="block text-text-primary font-bold">Model Engine</span>
-            <span>Wav2Vec2 + Hybrid Transformer</span>
+            <span>Wav2Vec 2.0 Classifiers</span>
           </div>
         </div>
       </div>

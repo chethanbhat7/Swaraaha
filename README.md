@@ -13,8 +13,8 @@ Swaraaha/
 ├── frontend/          # React + Vite + TypeScript web UI
 ├── backend/           # FastAPI API server
 ├── model/             # ML models, training, evaluation (shared)
-│   ├── classification/  # Wav2Vec 2.0 binary classifiers + hybrid combiner
-│   ├── localization/    # CNN spectrogram + Wav2Vec2 localization
+│   ├── classification/  # Wav2Vec 2.0 binary classifiers (one per dysfluency type)
+│   ├── localization/    # CNN spectrogram + Wav2Vec2 localization (yet to be trained)
 │   ├── training/        # Training pipelines
 │   ├── evaluation/      # Metrics and evaluation scripts
 │   ├── data/            # Dataset loading, preprocessing, augmentation
@@ -29,8 +29,8 @@ Swaraaha/
 
 **Two pipelines, independent of each other:**
 
-1. **Classification** — five Wav2Vec 2.0 binary classifiers (one per dysfluency type) combined via a hybrid MLP model. Answers *what kind* of stutter.
-2. **Localization** — CNN over spectrogram images or Wav2Vec2 temporal attention to pinpoint *where* in the audio a dysfluency occurs.
+1. **Classification** — five Wav2Vec 2.0 binary classifiers (one per dysfluency type), each answering *is this type present*. Answers *what kind* of stutter.
+2. **Localization** — CNN over spectrogram images or Wav2Vec2 temporal attention to pinpoint *where* in the audio a dysfluency occurs. (Localizer models are not trained yet — see `registry.json`.)
 
 Both `frontend/` + `backend/` (web) and `app/` (desktop) load from the shared `model/` directory via the model registry.
 
@@ -74,7 +74,7 @@ all_results = m.run_all(audio_tensor)        # classify + localize
 
 The registry (`model/registry.json`) maps task names to checkpoint paths and per-class label thresholds. To swap which checkpoint is active, update the path in the JSON file. No code changes needed.
 
-**Do not** import `HybridClassifier`, `ProlongationClassifier`, etc. directly — use `Classifier()` instead. This ensures models load from the registry and stay in sync with which checkpoints are active.
+**Do not** import `ProlongationClassifier`, etc. directly — use `Classifier()` instead. This ensures models load from the registry and stay in sync with which checkpoints are active.
 
 ## Dataset Setup
 
@@ -108,6 +108,24 @@ python -m model.training.train
 ```
 
 See [`model/training/README.md`](model/training/README.md) for all flags, resume, and tuning options.
+
+## Evaluating Trained Models
+
+Use the evaluation scripts in `model/evaluation/` to benchmark trained checkpoints against the val split — metrics, confusion matrices, threshold sweeps, and JSON/PNG reports.
+
+```bash
+# Evaluate a single classifier
+python -m model.evaluation.evaluate \
+    --model_type classifier --class_name prolongation \
+    --model_path model/weights/prolongation_..._best.pt --data_dir data
+
+# Threshold sweep + save misclassified samples
+python -m model.evaluation.evaluate --model_type classifier \
+    --class_name block --model_path model/weights/block_..._best.pt \
+    --data_dir data --sweep_thresholds --save_misclassified
+```
+
+See [`model/evaluation/README.md`](model/evaluation/README.md) for full documentation.
 
 ## Running the Web App
 

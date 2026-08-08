@@ -274,7 +274,7 @@ def _resume_checkpoint_path(args) -> str:
     return os.path.join(args.output_dir, f"{fingerprint(args)}_checkpoint.pt")
 
 
-def _save_resume_state(model, optimizer, scheduler, epoch, best_f1, history, args, backbone_frozen):
+def _save_resume_state(model, optimizer, scheduler, epoch, best_f1, history, args, backbone_frozen, completed=False):
     import torch
     path = _resume_checkpoint_path(args)
     ckpt = {
@@ -286,6 +286,7 @@ def _save_resume_state(model, optimizer, scheduler, epoch, best_f1, history, arg
         "history": history,
         "args": {k: getattr(args, k) for k in RESUME_KEYS},
         "backbone_frozen": backbone_frozen,
+        "completed": completed,
     }
     torch.save(ckpt, path)
 
@@ -440,6 +441,13 @@ def train(args) -> Dict:
     # ---- Checkpoint resume ----
     resume_ckpt = _try_load_resume(args, device)
 
+    if resume_ckpt is not None and resume_ckpt.get("completed"):
+        print(f"\n  Training already complete (epoch {resume_ckpt['epoch']}/{args.epochs}, "
+              f"best F1: {resume_ckpt['best_f1']:.4f})")
+        print("  Skipping — delete the *_checkpoint.pt file or pass --clean to retrain.")
+        tee.close()
+        return resume_ckpt.get("history")
+
     if resume_ckpt is not None:
         model.model.load_state_dict(resume_ckpt["model_state_dict"])
         start_epoch = resume_ckpt["epoch"] + 1
@@ -478,11 +486,10 @@ def train(args) -> Dict:
 
     optim_steps_per_epoch = (len(train_loader) + args.gradient_accumulation_steps - 1) // args.gradient_accumulation_steps
     total_optim_steps = optim_steps_per_epoch * args.epochs
-    if backbone_frozen:
-        scheduler = get_warmup_linear_schedule(optimizer, args.warmup_steps, total_optim_steps)
-    else:
-        remaining_optim_steps = optim_steps_per_epoch * (args.epochs - start_epoch + 1)
-        scheduler = get_warmup_linear_schedule(optimizer, 0, remaining_optim_steps)
+    # Always build the scheduler with the FULL original schedule. On resume,
+    # load_state_dict restores the saved position (last_epoch); rebuilding with
+    # only the remaining steps would make LR clamp to 0.
+    scheduler = get_warmup_linear_schedule(optimizer, args.warmup_steps, total_optim_steps)
 
     if resume_ckpt is not None:
         optimizer.load_state_dict(resume_ckpt["optimizer_state_dict"])
@@ -564,6 +571,9 @@ def train(args) -> Dict:
         if early_stopping.step(val_f1):
             print(f"\n  Early stopping at epoch {epoch} (no improvement for {args.patience} epochs)")
             break
+
+    # Mark training as complete so future runs skip this model
+    _save_resume_state(model, optimizer, scheduler, epoch, best_f1, history, args, backbone_frozen, completed=True)
 
     # Save final model
     final_path = os.path.join(args.output_dir, f"{fp}_final.pt")
