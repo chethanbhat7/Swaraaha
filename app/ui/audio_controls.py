@@ -9,6 +9,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from app.ui.theme import COLORS
+
 
 class AudioControls(QWidget):
     record_clicked = Signal()
@@ -27,7 +29,7 @@ class AudioControls(QWidget):
         layout.setSpacing(16)
 
         self._status_label = QLabel("Ready")
-        self._status_label.setStyleSheet("font-size: 12px; color: #79747E;")
+        self._status_label.setStyleSheet(f"font-size: 12px; color: {COLORS['outline']};")
         self._status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self._status_label)
 
