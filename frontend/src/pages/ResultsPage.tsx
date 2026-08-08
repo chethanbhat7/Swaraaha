@@ -870,38 +870,20 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
 
       {/* PRINT CLINICAL PDF REPORT (Formal medical document format) */}
       {showReport && (
-        <div 
+        <div
           ref={reportRef}
           className="bg-white text-gray-900 border border-gray-300 p-12 space-y-8 max-w-4xl mx-auto rounded-xl shadow-md hidden print:block print:border-none print:shadow-none print:p-0"
           style={{ fontFamily: 'Georgia, serif' }}
         >
-          {/* Clinic Letterhead */}
-          <div className="flex items-start justify-between border-b-2 border-teal-600 pb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-teal-600 rounded-lg flex items-center justify-center text-white">
-                <Activity size={28} />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold tracking-tight text-gray-900">SWARAAHA MEDICAL</h2>
-                <p className="text-[10px] font-bold text-teal-600 uppercase tracking-widest">Clinical Speech & Hearing Center</p>
-              </div>
-            </div>
-            <div className="text-right text-[10px] text-gray-400 space-y-0.5">
-              <p>Clinical Diagnostic Services</p>
-              <p>Secure Medical ID: SWR-REPORT-920</p>
-              <p>{reportDate}</p>
-            </div>
-          </div>
-
-          {/* Report Title */}
-          <div className="text-center space-y-1">
+          {/* Report Title & Date */}
+          <div className="border-b-2 border-teal-600 pb-4">
             <h1 className="text-xl font-bold tracking-tight text-gray-900 uppercase">
-              Clinical Speech Assessment Report
+              Swaraaha Stutter Analysis Report
             </h1>
-            <p className="text-xs text-gray-500 italic">Generated via Swaraaha Speech Dysfluency Detection AI Engine</p>
+            <p className="text-xs text-gray-500 mt-1">{reportDate}</p>
           </div>
 
-          {/* Patient Details Grid */}
+          {/* Patient Details & Audio Metadata */}
           <div className="bg-gray-50 p-4 border border-gray-200 rounded-lg grid grid-cols-2 gap-4 text-xs">
             <div>
               <span className="block text-[10px] uppercase font-bold text-gray-500">Patient Name</span>
@@ -916,29 +898,29 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
               <span className="font-mono text-gray-900">{filename}</span>
             </div>
             <div>
-              <span className="block text-[10px] uppercase font-bold text-gray-500">Assessment Date</span>
-              <span className="text-gray-900">{reportDate}</span>
+              <span className="block text-[10px] uppercase font-bold text-gray-500">File Size</span>
+              <span className="text-gray-900">{filesize}</span>
             </div>
             <div>
               <span className="block text-[10px] uppercase font-bold text-gray-500">Audio Clip Duration</span>
               <span className="font-mono text-gray-900">{duration}</span>
             </div>
             <div>
-              <span className="block text-[10px] uppercase font-bold text-gray-500">Overall Diagnostic Index</span>
+              <span className="block text-[10px] uppercase font-bold text-gray-500">Dysfluency Index</span>
               <span className="font-bold text-teal-700">{stutterIndex} ({severity} Dysfluency)</span>
             </div>
           </div>
 
-          {/* Diagnostic Classifications Table */}
+          {/* Stuttering Classes Table */}
           <div className="space-y-3">
             <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider border-b border-gray-200 pb-1.5">
-              1. Speech Stuttering Classifications
+              Stuttering Classes
             </h3>
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-gray-300 text-gray-500 text-[10px] font-bold uppercase">
                   <th className="py-2">Dysfluency Category</th>
-                  <th className="py-2">Clincial Present Label</th>
+                  <th className="py-2">Clinical Present Label</th>
                   <th className="py-2 text-right">Model Confidence Score</th>
                 </tr>
               </thead>
@@ -951,8 +933,8 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
                       <td className="py-2.5 font-medium">{displayName}</td>
                       <td className="py-2.5">
                         <span className={`px-2 py-0.5 text-[9px] font-bold border rounded-full uppercase ${
-                          r.label 
-                            ? 'bg-red-50 border-red-100 text-red-700' 
+                          r.label
+                            ? 'bg-red-50 border-red-100 text-red-700'
                             : 'bg-gray-50 border-gray-100 text-gray-400'
                         }`}>
                           {r.label ? 'Detected' : 'Not Detected'}
@@ -964,70 +946,6 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
                 })}
               </tbody>
             </table>
-          </div>
-
-          {/* Localized Timestamps Table */}
-          {results.localization.regions.length > 0 && (
-            <div className="space-y-3 page-break-before">
-              <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider border-b border-gray-200 pb-1.5">
-                2. Localized Dysfluency Timestamps
-              </h3>
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="border-b border-gray-300 text-gray-500 text-[10px] font-bold uppercase">
-                    <th className="py-2">Event index</th>
-                    <th className="py-2">Start Time</th>
-                    <th className="py-2">End Time</th>
-                    <th className="py-2">Duration</th>
-                    <th className="py-2 text-right">Confidence</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {results.localization.regions.map((r, i) => (
-                    <tr key={i}>
-                      <td className="py-2 text-gray-400 font-mono">Event #{i + 1}</td>
-                      <td className="py-2 font-mono">{r.start.toFixed(2)}s</td>
-                      <td className="py-2 font-mono">{r.end.toFixed(2)}s</td>
-                      <td className="py-2 font-mono">{(r.end - r.start).toFixed(2)}s</td>
-                      <td className="py-2 text-right font-mono text-gray-500">{(r.confidence * 100).toFixed(0)}%</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* Recommendations Block */}
-          <div className="space-y-2 border-t border-gray-200 pt-6">
-            <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider">
-              {results.localization.regions.length > 0 ? "3." : "2."} Clinical Guidance & Recommendations
-            </h3>
-            <p className="text-xs text-gray-600 leading-relaxed text-justify">
-              This speech sample was evaluated using standardized reading passages. 
-              {severity === "Severe" || severity === "Moderate" ? (
-                " Based on the detected dysfluencies, the subject exhibits moderate-to-severe stuttering events. It is recommended to perform detailed diagnostic speech testing, review stuttering severity instrument patterns (SSI-4), and design appropriate fluency shaping or stuttering modification therapeutic exercises."
-              ) : (
-                " The subject demonstrates fluent speech qualities or minor dysfluencies. Periodic check-ins and normal follow-ups are suggested."
-              )}
-            </p>
-          </div>
-
-          {/* Signatures */}
-          <div className="pt-12 grid grid-cols-2 gap-12 text-xs">
-            <div className="space-y-4">
-              <div className="h-0.5 bg-gray-300 w-full" />
-              <div className="text-gray-500">
-                <span className="block font-bold text-gray-900">Therapist/SLP Signature</span>
-                <span className="block">Speech-Language Pathologist</span>
-              </div>
-            </div>
-            <div className="space-y-4 text-right">
-              <div className="h-0.5 bg-gray-300 w-full" />
-              <div className="text-gray-500">
-                <span className="block font-bold text-gray-900">Swaraaha Assessment Engine</span>
-                <span>Verified Diagnostic Output</span>
-              </div>
-            </div>
           </div>
         </div>
       )}
