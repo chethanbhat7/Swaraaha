@@ -142,8 +142,8 @@ def build_stylesheet():
     /* === Secondary Button (e.g., Back) === */
     QPushButton[cssClass="secondary"] {{
         background-color: transparent;
-        color: {COLORS['primary']};
-        border: 2px solid {COLORS['outline']}44;
+        color: {COLORS['secondary']};
+        border: 2px solid {COLORS['secondary']}66;
         border-radius: {RADIUS['lg']}px;
         padding: {SPACING['sm']}px {SPACING['md']}px;
         font-size: 14px;
@@ -151,6 +151,28 @@ def build_stylesheet():
     }}
     QPushButton[cssClass="secondary"]:hover {{
         background-color: {COLORS['primary_container']};
+        color: {COLORS['secondary']};
+    }}
+
+    /* === Theme Toggle Button (floating moon/sun) === */
+    QPushButton[cssClass="theme_btn"] {{
+        background-color: {COLORS['surface_variant']};
+        color: {COLORS['primary']};
+        border: 1px solid {COLORS['outline']}66;
+        border-radius: 22px;
+        font-size: 18px;
+        padding: 0px;
+        min-width: 44px;
+        max-width: 44px;
+        min-height: 44px;
+        max-height: 44px;
+    }}
+    QPushButton[cssClass="theme_btn"]:hover {{
+        background-color: {COLORS['primary_container']};
+        border-color: {COLORS['primary']};
+    }}
+    QPushButton[cssClass="theme_btn"]:pressed {{
+        background-color: {COLORS['primary_container']}CC;
     }}
 
     /* === Zoom Button === */
@@ -178,7 +200,7 @@ def build_stylesheet():
 
     /* === Record Button === */
     QPushButton[cssClass="record"] {{
-        background-color: #8E24AA;
+        background-color: {COLORS['record']};
         border-radius: {RADIUS['lg']}px;
         padding: {SPACING['md']}px {SPACING['xl']}px;
         font-size: 16px;
@@ -186,10 +208,10 @@ def build_stylesheet():
         min-height: 48px;
     }}
     QPushButton[cssClass="record"]:hover {{
-        background-color: #8E24AADD;
+        background-color: {COLORS['record']}DD;
     }}
     QPushButton[cssClass="record"]:pressed {{
-        background-color: #8E24AABB;
+        background-color: {COLORS['record']}BB;
     }}
 
     /* === Panels === */
@@ -343,6 +365,33 @@ def build_stylesheet():
         min-height: 30px;
     }}
     QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+        height: 0;
+    }}
+
+    /* === Table Scroll Bars (inset from border to avoid clashing with page scrollbar) === */
+    QTableWidget QScrollBar:vertical {{
+        background: transparent;
+        width: 8px;
+        margin: 2px 6px 2px 0;
+    }}
+    QTableWidget QScrollBar::handle:vertical {{
+        background: {COLORS['outline']}44;
+        border-radius: 4px;
+        min-height: 30px;
+    }}
+    QTableWidget QScrollBar:horizontal {{
+        background: transparent;
+        height: 8px;
+        margin: 0 2px 6px 2px;
+    }}
+    QTableWidget QScrollBar::handle:horizontal {{
+        background: {COLORS['outline']}44;
+        border-radius: 4px;
+        min-width: 30px;
+    }}
+    QTableWidget QScrollBar::add-line:vertical, QTableWidget QScrollBar::sub-line:vertical,
+    QTableWidget QScrollBar::add-line:horizontal, QTableWidget QScrollBar::sub-line:horizontal {{
+        width: 0;
         height: 0;
     }}
     """

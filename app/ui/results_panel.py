@@ -103,7 +103,7 @@ class ResultsPanel(QWidget):
             self._waveform.set_audio(audio, sample_rate)
             overlays = []
             for start_sec, end_sec, conf in localizations:
-                overlays.append((start_sec, end_sec, "#6A1B9A"))
+                overlays.append((start_sec, end_sec, COLORS["primary"]))
             self._waveform.set_overlays(overlays)
 
         if transcription:
