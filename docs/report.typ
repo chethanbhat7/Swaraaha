@@ -74,6 +74,9 @@
 #counter(heading).update(0)
 
 // --- Front matter ---
+#include "frontmatter/titlepage.typ"
+#include "frontmatter/certificate.typ"
+#include "frontmatter/declaration.typ"
 #include "frontmatter/acknowledgement.typ"
 #include "frontmatter/abstract.typ"
 #include "frontmatter/toc.typ"
@@ -96,7 +99,7 @@
   // Footer definition
   footer: context [
     #set text(9pt)
-    #header_footer_line()
+    #footer_line()
     #v(-0.8em)
     Department of Artificial Intelligence & Machine Learning, V. C. E. T, Puttur. #h(1fr) Page #counter(page).display()
   ]

@@ -65,5 +65,11 @@
 #let header_footer_line() = {
   line(length: 100%, stroke: 3pt + rgb("#5F1E1E"))
   v(-0.85em)
-  line(length: 100%, stroke: 0.3pt + rgb("#5F1E1E"))
+  line(length: 100%, stroke: 0.75pt + rgb("#5F1E1E"))
+}
+
+#let footer_line() = {
+  line(length: 100%, stroke: 0.75pt + rgb("#5F1E1E"))
+  v(-0.85em)
+  line(length: 100%, stroke: 3pt + rgb("#5F1E1E"))
 }
