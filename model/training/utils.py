@@ -7,6 +7,7 @@ Checkpointing, logging, learning rate schedulers, and helper functions.
 import csv
 import json
 import os
+import sys
 from typing import Dict, List, Optional
 
 import torch
@@ -220,3 +221,76 @@ def format_duration(seconds: float) -> str:
     if hours > 0:
         return f"{hours:02d}:{minutes:02d}:{secs:02d}"
     return f"{minutes:02d}:{secs:02d}"
+
+
+class TeeLogger:
+    """Write to both stdout and a file."""
+
+    def __init__(self, path):
+        self.file = open(path, "w")
+        self._stdout = sys.stdout
+
+    def write(self, text):
+        self._stdout.write(text)
+        self.file.write(text)
+        self.file.flush()
+
+    def flush(self):
+        self._stdout.flush()
+        self.file.flush()
+
+    def isatty(self):
+        return self._stdout.isatty()
+
+    def fileno(self):
+        return self._stdout.fileno()
+
+    def close(self):
+        self.file.close()
+        sys.stdout = self._stdout
+
+
+def resume_checkpoint_path(args, fp: str) -> str:
+    """Path to the resume checkpoint for a fingerprint string."""
+    return os.path.join(args.output_dir, f"{fp}_checkpoint.pt")
+
+
+def save_resume_state(model, optimizer, scheduler, epoch, best_f1, history, args, fp,
+                      resume_keys=None, backbone_frozen=False, completed=False):
+    """Persist a resume checkpoint keyed by a fingerprint string."""
+    path = resume_checkpoint_path(args, fp)
+    if resume_keys is None:
+        from model.fingerprint import RESUME_KEYS
+        resume_keys = RESUME_KEYS
+    ckpt = {
+        "epoch": epoch,
+        "model_state_dict": model.model.state_dict(),
+        "optimizer_state_dict": optimizer.state_dict(),
+        "scheduler_state_dict": scheduler.state_dict() if scheduler else None,
+        "best_f1": best_f1,
+        "history": history,
+        "args": {k: getattr(args, k) for k in resume_keys if hasattr(args, k)},
+        "backbone_frozen": backbone_frozen,
+        "completed": completed,
+        "fp": fp,
+    }
+    torch.save(ckpt, path)
+
+
+def try_load_resume(args, device, fp: str):
+    """Load a resume checkpoint, or None if --clean or the file is missing."""
+    path = resume_checkpoint_path(args, fp)
+    if getattr(args, "clean", False) or not os.path.isfile(path):
+        return None
+    return torch.load(path, map_location=device, weights_only=False)
+
+
+def maybe_skip_completed(resume_ckpt, epochs: int):
+    """Print the skip message and return saved history if training already
+    completed; otherwise return None."""
+    if resume_ckpt is not None and resume_ckpt.get("completed"):
+        print(f"\n  Training already complete (epoch {resume_ckpt['epoch']}/{epochs}, "
+              f"best F1: {resume_ckpt.get('best_f1', 0.0):.4f})")
+        print("  Skipping — delete the *_checkpoint.pt file or pass --clean to retrain.")
+        return resume_ckpt.get("history")
+    return None
