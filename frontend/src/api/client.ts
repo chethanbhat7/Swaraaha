@@ -57,3 +57,29 @@ export async function analyzeAudio(file: File, language: string = 'english'): Pr
   const res = await fetch(`${API_BASE}/analyze`, { method: 'POST', body: form })
   return parseOrThrow(res)
 }
+
+export interface ReportData {
+  patient: {
+    name: string;
+    phone: string;
+  };
+  audio: {
+    filename: string;
+    size: string;
+    duration: string;
+  };
+  date: string;
+  classification: ClassificationResults;
+}
+
+export async function downloadReport(data: ReportData): Promise<Blob> {
+  const res = await fetch(`${API_BASE}/report`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) {
+    throw new Error(`Request failed with status ${res.status}`)
+  }
+  return res.blob()
+}
