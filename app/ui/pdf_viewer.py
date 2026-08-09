@@ -16,7 +16,6 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-
 from app.ui.theme import COLORS
 
 PASSAGES_DIR = os.path.join(os.path.dirname(__file__), "..", "assets", "passages")

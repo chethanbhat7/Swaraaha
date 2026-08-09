@@ -2,7 +2,6 @@ import { useNavigate } from 'react-router-dom'
 import { useEffect, useState, useRef } from 'react'
 import { 
   ArrowLeft, 
-  Printer, 
   Volume2, 
   ShieldCheck, 
   CheckCircle2, 
@@ -11,7 +10,7 @@ import {
   Pause,
   Download
 } from 'lucide-react'
-import { TranscriptionData, analyzeAudio, classifyAudio } from '../api/client'
+import { TranscriptionData, analyzeAudio, classifyAudio, downloadReport } from '../api/client'
 import { storeAudioFile } from '../utils/db'
 
 interface AnalysisResults {
@@ -403,6 +402,8 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
   const [patientName, setPatientName] = useState('')
   const [patientPhone, setPatientPhone] = useState('')
   const [showPrintModal, setShowPrintModal] = useState(false)
+  const [isDownloading, setIsDownloading] = useState(false)
+  const [downloadError, setDownloadError] = useState<string | null>(null)
   const [reportDate, setReportDate] = useState('')
   const showReport = true
 
@@ -411,8 +412,6 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
   const [loadingStep, setLoadingStep] = useState("Initializing analysis...")
   const [loadingProgress, setLoadingProgress] = useState(5)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
-  
-  const reportRef = useRef<HTMLDivElement>(null)
 
   const performAnalysis = async (file: File) => {
     setIsLoading(true)
@@ -634,7 +633,6 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
 
   // Determine Severity Level from localized dysfluency coverage
   const stutterIndexValue = durationSec > 0 ? (localizationCoverage / durationSec) * 100 : 0
-  const stutterIndex = `${stutterIndexValue.toFixed(1)}%`
 
   let severity = "Fluent"
   let severityColor = "text-emerald-500 bg-emerald-500/10 border-emerald-500/20"
@@ -652,6 +650,33 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
   // Print clinical report
   const handlePrint = () => {
     setShowPrintModal(true)
+  }
+
+  const handleDownload = async () => {
+    if (!results) return
+    setIsDownloading(true)
+    setDownloadError(null)
+    try {
+      const blob = await downloadReport({
+        patient: { name: patientName, phone: patientPhone },
+        audio: { filename, size: filesize, duration },
+        date: reportDate,
+        classification: results.classification,
+      })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `swaraaha-report-${reportDate.replace(/[^a-zA-Z0-9]+/g, '-')}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      setShowPrintModal(false)
+    } catch {
+      setDownloadError('Failed to generate the PDF report. Please try again.')
+    } finally {
+      setIsDownloading(false)
+    }
   }
 
   return (
@@ -673,8 +698,8 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
               onClick={handlePrint}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-accent-teal hover:bg-teal-600 text-white text-xs font-semibold rounded-lg shadow-xs transition cursor-pointer"
             >
-              <Printer size={14} />
-              <span>Print Clinical Report</span>
+              <Download size={14} />
+              <span>Download PDF Report</span>
             </button>
           )}
         </div>
@@ -688,7 +713,7 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
       )}
 
       {/* CLINICAL SUMMARY CARDS (Adaptive Grid Layout) */}
-      <div className="grid gap-6 md:grid-cols-3 print:hidden">
+      <div className="grid gap-6 md:grid-cols-2 print:hidden">
         
         {/* Severity Card */}
         <div className="p-5 bg-bg-card border border-border-color rounded-xl flex flex-col justify-between shadow-xs" style={{ borderRadius: '16px' }}>
@@ -702,20 +727,6 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
             </span>
             <p className="text-xs text-text-secondary mt-2">
               Based on speech localization regions.
-            </p>
-          </div>
-        </div>
-
-        {/* Index Metric Card */}
-        <div className="p-5 bg-bg-card border border-border-color rounded-xl flex flex-col justify-between shadow-xs" style={{ borderRadius: '16px' }}>
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Dysfluency Index</span>
-            <Activity className="text-accent-teal" size={16} />
-          </div>
-          <div className="mt-4">
-            <h3 className="text-2xl font-bold tracking-tight text-text-primary">{stutterIndex}</h3>
-            <p className="text-xs text-text-secondary mt-1">
-              Percentage of audio duration covered by localized dysfluency events.
             </p>
           </div>
         </div>
@@ -868,87 +879,6 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
       )}
 
 
-      {/* PRINT CLINICAL PDF REPORT (Formal medical document format) */}
-      {showReport && (
-        <div
-          ref={reportRef}
-          className="bg-white text-gray-900 border border-gray-300 p-12 space-y-8 max-w-4xl mx-auto rounded-xl shadow-md hidden print:block print:border-none print:shadow-none print:p-0"
-          style={{ fontFamily: 'Georgia, serif' }}
-        >
-          {/* Report Title & Date */}
-          <div className="border-b-2 border-teal-600 pb-4">
-            <h1 className="text-xl font-bold tracking-tight text-gray-900 uppercase">
-              Swaraaha Stutter Analysis Report
-            </h1>
-            <p className="text-xs text-gray-500 mt-1">{reportDate}</p>
-          </div>
-
-          {/* Patient Details & Audio Metadata */}
-          <div className="bg-gray-50 p-4 border border-gray-200 rounded-lg grid grid-cols-2 gap-4 text-xs">
-            <div>
-              <span className="block text-[10px] uppercase font-bold text-gray-500">Patient Name</span>
-              <span className="font-semibold text-gray-900">{patientName}</span>
-            </div>
-            <div>
-              <span className="block text-[10px] uppercase font-bold text-gray-500">Phone Number</span>
-              <span className="text-gray-900">{patientPhone}</span>
-            </div>
-            <div>
-              <span className="block text-[10px] uppercase font-bold text-gray-500">Audio Filename</span>
-              <span className="font-mono text-gray-900">{filename}</span>
-            </div>
-            <div>
-              <span className="block text-[10px] uppercase font-bold text-gray-500">File Size</span>
-              <span className="text-gray-900">{filesize}</span>
-            </div>
-            <div>
-              <span className="block text-[10px] uppercase font-bold text-gray-500">Audio Clip Duration</span>
-              <span className="font-mono text-gray-900">{duration}</span>
-            </div>
-            <div>
-              <span className="block text-[10px] uppercase font-bold text-gray-500">Dysfluency Index</span>
-              <span className="font-bold text-teal-700">{stutterIndex} ({severity} Dysfluency)</span>
-            </div>
-          </div>
-
-          {/* Stuttering Classes Table */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider border-b border-gray-200 pb-1.5">
-              Stuttering Classes
-            </h3>
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-gray-300 text-gray-500 text-[10px] font-bold uppercase">
-                  <th className="py-2">Dysfluency Category</th>
-                  <th className="py-2">Clinical Present Label</th>
-                  <th className="py-2 text-right">Model Confidence Score</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {classes.map((name) => {
-                  const r = results.classification[name]
-                  const displayName = CLASS_DISPLAY_NAMES[name] || name
-                  return (
-                    <tr key={name}>
-                      <td className="py-2.5 font-medium">{displayName}</td>
-                      <td className="py-2.5">
-                        <span className={`px-2 py-0.5 text-[9px] font-bold border rounded-full uppercase ${
-                          r.label
-                            ? 'bg-red-50 border-red-100 text-red-700'
-                            : 'bg-gray-50 border-gray-100 text-gray-400'
-                        }`}>
-                          {r.label ? 'Detected' : 'Not Detected'}
-                        </span>
-                      </td>
-                      <td className="py-2.5 text-right font-mono text-gray-500">{(r.confidence * 100).toFixed(1)}%</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
       {/* PRINT DETAILS MODAL (Hidden in Print) */}
       {showPrintModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 animate-fade-in print:hidden">
@@ -971,41 +901,40 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
                   autoFocus
                 />
               </div>
-              <div className="space-y-1">
-                <label className="text-[9px] uppercase font-bold text-text-secondary">Phone Number</label>
-                <input
-                  type="text"
-                  placeholder="e.g. +91 9876543210"
-                  value={patientPhone === 'N/A' ? '' : patientPhone}
-                  onChange={(e) => setPatientPhone(e.target.value)}
-                  className="w-full px-3 py-2 text-xs bg-bg-sidebar border border-border-color rounded-lg focus:outline-none focus:border-accent-teal focus:ring-1 focus:ring-accent-teal"
-                  style={{ borderRadius: '8px' }}
-                />
-              </div>
+            <div className="space-y-1">
+              <label className="text-[9px] uppercase font-bold text-text-secondary">Phone Number</label>
+              <input
+                type="text"
+                placeholder="e.g. +91 9876543210"
+                value={patientPhone === 'N/A' ? '' : patientPhone}
+                onChange={(e) => setPatientPhone(e.target.value)}
+                className="w-full px-3 py-2 text-xs bg-bg-sidebar border border-border-color rounded-lg focus:outline-none focus:border-accent-teal focus:ring-1 focus:ring-accent-teal"
+                style={{ borderRadius: '8px' }}
+              />
             </div>
+          </div>
 
-            <div className="flex items-center gap-3 pt-2">
-              <button
-                onClick={() => setShowPrintModal(false)}
-                className="flex-1 py-2 bg-hover-color/50 hover:bg-hover-color text-text-primary text-xs font-semibold rounded-lg border border-border-color transition cursor-pointer"
-                style={{ borderRadius: '8px' }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  setShowPrintModal(false)
-                  // Wait a brief tick for the modal to close and visual focus to settle before opening window.print()
-                  setTimeout(() => {
-                    window.print()
-                  }, 100)
-                }}
-                className="flex-1 py-2 bg-accent-teal hover:bg-teal-600 text-white text-xs font-bold rounded-lg shadow-sm transition cursor-pointer"
-                style={{ borderRadius: '8px' }}
-              >
-                Print Report
-              </button>
-            </div>
+          {downloadError && (
+            <p className="text-[10px] text-red-500 font-semibold">{downloadError}</p>
+          )}
+
+          <div className="flex items-center gap-3 pt-2">
+            <button
+              onClick={() => setShowPrintModal(false)}
+              className="flex-1 py-2 bg-hover-color/50 hover:bg-hover-color text-text-primary text-xs font-semibold rounded-lg border border-border-color transition cursor-pointer"
+              style={{ borderRadius: '8px' }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDownload}
+              disabled={isDownloading}
+              className="flex-1 py-2 bg-accent-teal hover:bg-teal-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold rounded-lg shadow-sm transition cursor-pointer"
+              style={{ borderRadius: '8px' }}
+            >
+              {isDownloading ? 'Generating...' : 'Download PDF'}
+            </button>
+          </div>
           </div>
         </div>
       )}
