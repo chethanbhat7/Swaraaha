@@ -3,13 +3,12 @@
 import os
 
 import numpy as np
-from PySide6.QtCore import QThread, Signal
-from PySide6.QtGui import QAction
+from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtWidgets import (
     QFileDialog,
     QMainWindow,
+    QPushButton,
     QStackedWidget,
-    QToolBar,
     QVBoxLayout,
     QWidget,
 )
@@ -62,15 +61,12 @@ class MainWindow(QMainWindow):
         self._setup_ui()
 
     def _setup_ui(self):
-        self._theme_action = QAction("Toggle Dark Mode", self)
-        self._theme_action.setCheckable(True)
-        self._theme_action.setChecked(is_dark_mode())
-        self._theme_action.triggered.connect(self._toggle_theme)
-
-        self._theme_toolbar = QToolBar("Theme")
-        self._theme_toolbar.setMovable(False)
-        self._theme_toolbar.addAction(self._theme_action)
-        self.addToolBar(self._theme_toolbar)
+        self._theme_btn = QPushButton(self)
+        self._theme_btn.setProperty("cssClass", "theme_btn")
+        self._theme_btn.setFixedSize(44, 44)
+        self._theme_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._theme_btn.clicked.connect(self._toggle_theme)
+        self._update_theme_button()
 
         central = QWidget()
         self.setCentralWidget(central)
@@ -96,6 +92,7 @@ class MainWindow(QMainWindow):
         self._analysis_page.back_clicked.connect(self._go_home)
 
         self.setAcceptDrops(True)
+        self._reposition_theme_button()
 
     def _on_file_selected(self, path: str):
         self._load_path(path)
@@ -214,9 +211,34 @@ class MainWindow(QMainWindow):
         self._stack.setCurrentIndex(0)
         self.statusBar().showMessage("Ready")
 
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, "_theme_btn"):
+            self._reposition_theme_button()
+
+    def _reposition_theme_button(self):
+        margin = 24
+        cw = self.centralWidget()
+        if cw is None:
+            return
+        x = cw.x() + cw.width() - self._theme_btn.width() - margin
+        y = cw.y() + cw.height() - self._theme_btn.height() - margin
+        self._theme_btn.setGeometry(x, y, self._theme_btn.width(), self._theme_btn.height())
+        self._theme_btn.raise_()
+
+    def _update_theme_button(self):
+        if is_dark_mode():
+            self._theme_btn.setText("☀️")
+            self._theme_btn.setToolTip("Switch to Light Mode")
+        else:
+            self._theme_btn.setText("🌙")
+            self._theme_btn.setToolTip("Switch to Dark Mode")
+
     def _toggle_theme(self):
-        set_theme(self._theme_action.isChecked())
+        set_theme(not is_dark_mode())
         self.setStyleSheet(build_stylesheet())
+        self._update_theme_button()
+        self._reposition_theme_button()
 
     def dragEnterEvent(self, event):
         if self._first_audio_path(event.mimeData()) is not None:
