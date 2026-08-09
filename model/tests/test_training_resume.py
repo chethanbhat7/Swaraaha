@@ -106,6 +106,26 @@ def test_generate_mel_spectrogram_short_audio_no_warning():
     assert spec.shape[0] == 128
 
 
+def test_align_frame_labels_truncates_to_model_output():
+    from model.training.utils import align_frame_labels
+
+    labels = torch.ones(4, 500)
+    logits = torch.zeros(4, 499)
+    aligned = align_frame_labels(labels, logits)
+    assert aligned.shape == (4, 499)
+    assert aligned[0, 0].item() == 1.0
+
+
+def test_align_frame_labels_pads_when_labels_short():
+    from model.training.utils import align_frame_labels
+
+    labels = torch.ones(2, 498)
+    logits = torch.zeros(2, 499)
+    aligned = align_frame_labels(labels, logits)
+    assert aligned.shape == (2, 499)
+    assert aligned[0, -1].item() == 0.0
+
+
 def test_find_latest_localizer(tmp_path):
     from model.training.utils import find_latest_localizer
 

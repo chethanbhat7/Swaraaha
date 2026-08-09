@@ -28,6 +28,8 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 
+from model.training.utils import align_frame_labels
+
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -128,6 +130,7 @@ def train_one_epoch(model, dataloader, optimizer, criterion, device, scheduler=N
 
         optimizer.zero_grad()
         logits = model.forward(waveforms).squeeze(1)  # (B, T)
+        frame_labels = align_frame_labels(frame_labels, logits)
         loss = criterion(logits, frame_labels)
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.model.parameters(), max_norm=1.0)
@@ -163,6 +166,7 @@ def evaluate_model(model, dataloader, device, threshold: float = 0.5):
             frame_labels = frame_labels.float().to(device)
 
             logits = model.forward(waveforms).squeeze(1)
+            frame_labels = align_frame_labels(frame_labels, logits)
             loss = criterion(logits, frame_labels)
 
             probs = torch.sigmoid(logits).cpu().numpy()

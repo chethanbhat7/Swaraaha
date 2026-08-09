@@ -296,6 +296,21 @@ def maybe_skip_completed(resume_ckpt, epochs: int):
     return None
 
 
+def align_frame_labels(frame_labels, logits):
+    """Truncate or pad frame labels to match the model's output frame count.
+
+    Wav2Vec2's conv feature extractor can emit one fewer frame than the
+    dataset's label count (e.g. 499 vs 500 for 160000 samples), which breaks
+    the BCE loss shape check. Align labels to the model output before use.
+    """
+    n = logits.shape[-1]
+    if frame_labels.shape[-1] == n:
+        return frame_labels
+    if frame_labels.shape[-1] > n:
+        return frame_labels[..., :n]
+    return torch.nn.functional.pad(frame_labels, (0, n - frame_labels.shape[-1]))
+
+
 def find_latest_localizer(output_dir: str, pipeline: str) -> Optional[str]:
     """Return the most recently modified {pipeline} best-checkpoint path, or None."""
     import glob

@@ -383,6 +383,8 @@ def evaluate_localizer(args) -> Dict:
         for inputs, frame_labels in eval_loader:
             inputs = inputs.to(device)
             logits = model.forward(inputs).squeeze(1)  # (B, T)
+            from model.training.utils import align_frame_labels
+            frame_labels = align_frame_labels(frame_labels, logits)
             probs = torch.sigmoid(logits).cpu().numpy()
             all_true.extend(frame_labels.numpy())
             all_pred.extend(probs)
