@@ -24,7 +24,7 @@ def test_stylesheet_has_theme_button_rule():
 def test_theme_button_rule_renders_a_circle():
     sheet = build_stylesheet()
     block = sheet.split('QPushButton[cssClass="theme_btn"]')[1].split("}}")[0]
-    assert "border-radius: 999px" in block
+    assert "border-radius: 22px" in block
     assert "padding: 0px" in block
 
 
