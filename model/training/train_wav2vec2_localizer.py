@@ -116,12 +116,13 @@ def collate_wav2vec2(batch):
 def train_one_epoch(model, dataloader, optimizer, criterion, device, scheduler=None):
     """Train for one epoch. Returns average loss."""
     import torch
+    from tqdm import tqdm
 
     model.model.train()
     total_loss = 0.0
     num_batches = 0
 
-    for waveforms, frame_labels in dataloader:
+    for waveforms, frame_labels in tqdm(dataloader, desc="  Train", leave=False):
         waveforms = waveforms.to(device)
         frame_labels = frame_labels.float().to(device)
 
@@ -148,6 +149,7 @@ def evaluate_model(model, dataloader, device, threshold: float = 0.5):
         frame_f1, avg_loss, all_true, all_pred_probs
     """
     import torch
+    from tqdm import tqdm
 
     model.model.eval()
     all_true, all_pred = [], []
@@ -156,7 +158,7 @@ def evaluate_model(model, dataloader, device, threshold: float = 0.5):
     criterion = torch.nn.BCEWithLogitsLoss()
 
     with torch.no_grad():
-        for waveforms, frame_labels in dataloader:
+        for waveforms, frame_labels in tqdm(dataloader, desc="  Val", leave=False):
             waveforms = waveforms.to(device)
             frame_labels = frame_labels.float().to(device)
 

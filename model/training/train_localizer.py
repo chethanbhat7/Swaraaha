@@ -92,12 +92,13 @@ def create_frame_loss_weights(frame_labels: np.ndarray, pos_weight: float = 5.0)
 def train_one_epoch(model, dataloader, optimizer, criterion, device):
     """Train for one epoch. Returns average loss."""
     import torch
+    from tqdm import tqdm
 
     model.model.train()
     total_loss = 0.0
     num_batches = 0
 
-    for spectrograms, frame_labels in dataloader:
+    for spectrograms, frame_labels in tqdm(dataloader, desc="  Train", leave=False):
         spectrograms = spectrograms.to(device)  # [B, 1, n_mels, T]
         frame_labels = frame_labels.float().to(device)  # [B, T]
 
@@ -122,6 +123,7 @@ def evaluate_localizer(model, dataloader, device, threshold: float = 0.5):
         frame_f1, mean_iou, avg_loss, all_true, all_pred_probs
     """
     import torch
+    from tqdm import tqdm
 
     model.model.eval()
     all_true, all_pred = [], []
@@ -131,7 +133,7 @@ def evaluate_localizer(model, dataloader, device, threshold: float = 0.5):
     criterion = torch.nn.BCEWithLogitsLoss()
 
     with torch.no_grad():
-        for spectrograms, frame_labels in dataloader:
+        for spectrograms, frame_labels in tqdm(dataloader, desc="  Val", leave=False):
             spectrograms = spectrograms.to(device)
             frame_labels = frame_labels.float().to(device)
 
