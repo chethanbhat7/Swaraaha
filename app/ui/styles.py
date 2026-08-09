@@ -159,8 +159,9 @@ def build_stylesheet():
         background-color: {COLORS['surface_variant']};
         color: {COLORS['primary']};
         border: 1px solid {COLORS['outline']}66;
-        border-radius: 22px;
+        border-radius: 999px;
         font-size: 18px;
+        padding: 0px;
         min-width: 44px;
         max-width: 44px;
         min-height: 44px;
