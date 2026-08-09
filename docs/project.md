@@ -117,6 +117,7 @@ prolongation_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml10_s42_train_w2v2bas
 
 Key features:
 - **Checkpoint-based resume** — interrupted training resumes from the last epoch
+- **Localizer resume** — the `loc`/`wav2vec` pipelines get the same treatment: fingerprint-named artifacts (`{fp}_checkpoint.pt`, `{fp}_best.pt`, `{fp}_final.pt`, `{fp}_log.csv`, `training_curves/{fp}_curves.png`), finished runs skipped, `--clean` to retrain
 - **Audio preprocessing cache** — preprocessed audio cached to `data/cache/` for fast re-runs
 - **Focal loss** — handles class imbalance without explicit class weights
 - **Backbone freezing** — head-only training for first N epochs, then unfreeze with 10× lower LR

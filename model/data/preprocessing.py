@@ -184,6 +184,14 @@ def generate_mel_spectrogram(
     if fmax is None:
         fmax = sr / 2.0
 
+    # Signals shorter than the FFT window (e.g. silence-trimmed audio) would
+    # trigger librosa warnings. Pad to n_fft so the window always fits and
+    # frequency resolution stays consistent across the dataset.
+    n = len(audio)
+    if 0 < n < n_fft:
+        pad = n_fft - n
+        audio = np.pad(audio, (pad // 2, pad - pad // 2), mode="constant")
+
     mel_spec = librosa.feature.melspectrogram(
         y=audio,
         sr=sr,

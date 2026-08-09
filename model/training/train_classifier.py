@@ -243,64 +243,6 @@ def evaluate_classifier(model, dataloader, device) -> Tuple[float, float, float,
     return accuracy, f1, avg_loss, all_labels, all_preds
 
 
-class TeeLogger:
-    """Write to both stdout and a file."""
-
-    def __init__(self, path):
-        self.file = open(path, "w")
-        self._stdout = sys.stdout
-
-    def write(self, text):
-        self._stdout.write(text)
-        self.file.write(text)
-        self.file.flush()
-
-    def flush(self):
-        self._stdout.flush()
-        self.file.flush()
-
-    def isatty(self):
-        return self._stdout.isatty()
-
-    def fileno(self):
-        return self._stdout.fileno()
-
-    def close(self):
-        self.file.close()
-        sys.stdout = self._stdout
-
-
-def _resume_checkpoint_path(args) -> str:
-    return os.path.join(args.output_dir, f"{fingerprint(args)}_checkpoint.pt")
-
-
-def _save_resume_state(model, optimizer, scheduler, epoch, best_f1, history, args, backbone_frozen, completed=False):
-    import torch
-    path = _resume_checkpoint_path(args)
-    ckpt = {
-        "epoch": epoch,
-        "model_state_dict": model.model.state_dict(),
-        "optimizer_state_dict": optimizer.state_dict(),
-        "scheduler_state_dict": scheduler.state_dict() if scheduler else None,
-        "best_f1": best_f1,
-        "history": history,
-        "args": {k: getattr(args, k) for k in RESUME_KEYS},
-        "backbone_frozen": backbone_frozen,
-        "completed": completed,
-    }
-    torch.save(ckpt, path)
-
-
-def _try_load_resume(args, device):
-    path = _resume_checkpoint_path(args)
-    if args.clean or not os.path.isfile(path):
-        return None
-
-    import torch
-    ckpt = torch.load(path, map_location=device, weights_only=False)
-    return ckpt
-
-
 def train(args) -> Dict:
     """Main training function. Returns training history."""
     import torch
@@ -312,8 +254,12 @@ def train(args) -> Dict:
         CSVLogger,
         EarlyStopping,
         FocalLoss,
+        TeeLogger,
         get_warmup_linear_schedule,
+        maybe_skip_completed,
         save_checkpoint,
+        save_resume_state,
+        try_load_resume,
     )
 
     set_seed(args.seed)
@@ -439,14 +385,12 @@ def train(args) -> Dict:
         print(f"  Head parameters: {sum(p.numel() for p in head_params):,}")
 
     # ---- Checkpoint resume ----
-    resume_ckpt = _try_load_resume(args, device)
+    resume_ckpt = try_load_resume(args, device, fp)
 
-    if resume_ckpt is not None and resume_ckpt.get("completed"):
-        print(f"\n  Training already complete (epoch {resume_ckpt['epoch']}/{args.epochs}, "
-              f"best F1: {resume_ckpt['best_f1']:.4f})")
-        print("  Skipping — delete the *_checkpoint.pt file or pass --clean to retrain.")
+    skip_history = maybe_skip_completed(resume_ckpt, args.epochs)
+    if skip_history is not None:
         tee.close()
-        return resume_ckpt.get("history")
+        return skip_history
 
     if resume_ckpt is not None:
         model.model.load_state_dict(resume_ckpt["model_state_dict"])
@@ -559,7 +503,7 @@ def train(args) -> Dict:
         )
 
         # Save resume checkpoint
-        _save_resume_state(model, optimizer, scheduler, epoch, best_f1, history, args, backbone_frozen)
+        save_resume_state(model, optimizer, scheduler, epoch, best_f1, history, args, fp, RESUME_KEYS, backbone_frozen)
 
         # Checkpoint best
         if val_f1 > best_f1:
@@ -573,7 +517,7 @@ def train(args) -> Dict:
             break
 
     # Mark training as complete so future runs skip this model
-    _save_resume_state(model, optimizer, scheduler, epoch, best_f1, history, args, backbone_frozen, completed=True)
+    save_resume_state(model, optimizer, scheduler, epoch, best_f1, history, args, fp, RESUME_KEYS, backbone_frozen, completed=True)
 
     # Save final model
     final_path = os.path.join(args.output_dir, f"{fp}_final.pt")

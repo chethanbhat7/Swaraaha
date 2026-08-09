@@ -122,6 +122,11 @@ python -m model.training.train_classifier --class_name prolongation
 python -m model.training.train
 ```
 
+- **Localizer pipelines (`loc`, `wav2vec`) resume too**: each run is
+  fingerprint-named (`{fp}_checkpoint.pt`, `{fp}_best.pt`, `{fp}_final.pt`,
+  `{fp}_log.csv`, `training_curves/{fp}_curves.png`) and a finished run is
+  skipped on the next invocation. Use `--clean` to force retraining.
+
 See [`model/training/README.md`](model/training/README.md) for all flags, resume, and tuning options.
 
 ## Evaluating Trained Models
