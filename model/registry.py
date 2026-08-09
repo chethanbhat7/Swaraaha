@@ -21,13 +21,19 @@ Usage:
     # Per-call threshold override
     result = clf.analyze(audio, threshold=0.6)
 
-    # Localizer (unchanged)
-    loc = Localizer("cnn")
-    regions = loc.predict(audio_tensor)
+    # Localizer (regions always; words/syllables when text is provided)
+    loc = Localizer()                            # type comes from registry.json
+    result = loc.analyze("recording.wav", text="the cat sat", language="en")
+    # result: {regions: [...], words: [...], syllables: [...]}
 
-    # Everything at once
+    # Transcription (Whisper, word-level timestamps + stutter flagging)
+    tr = Transcriber()
+    result = tr.transcribe("recording.wav")
+
+    # Everything at once — raw audio in, all results out
     m = ModelRegistry()
-    all_results = m.run_all(audio_tensor)
+    all_results = m.run_all("recording.wav", text="the cat sat")
+    # all_results: {classification: {...}, localization: {...}, transcription: {...}}
 """
 
 import json
@@ -35,6 +41,7 @@ import os
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from model.fingerprint import model_name_from_path
+from model.transcription import Transcriber
 
 _REGISTRY_PATH = os.path.join(os.path.dirname(__file__), "registry.json")
 
@@ -92,42 +99,15 @@ def _preprocess_audio(
 
     Returns a float32 tensor of shape [1, max_length_seconds * sr].
     """
-    import io
-    import os
-
-    import numpy as np
-    import soundfile as sf
     import torch
 
     from model.data.preprocessing import (
         clean_audio,
-        convert_to_wav,
-        load_audio,
-        load_audio_from_array,
+        load_audio_input,
         pad_to_length,
     )
 
-    if isinstance(audio, (str, os.PathLike)):
-        if not os.path.isfile(audio):
-            raise FileNotFoundError(f"Audio file not found: {audio}")
-        audio_array, _ = load_audio(audio, sr=sr)
-    elif isinstance(audio, bytes):
-        wav_bytes = convert_to_wav(audio)
-        audio_array, file_sr = sf.read(io.BytesIO(wav_bytes), dtype="float32")
-        if audio_array.ndim > 1:
-            audio_array = audio_array.mean(axis=1)
-        if file_sr != sr:
-            import librosa
-
-            audio_array = librosa.resample(audio_array, orig_sr=file_sr, target_sr=sr)
-    elif isinstance(audio, np.ndarray):
-        audio_array, _ = load_audio_from_array(audio, sr=sr)
-    else:
-        raise TypeError(
-            f"Unsupported audio type: {type(audio).__name__}. "
-            "Expected str path, bytes, or numpy array."
-        )
-
+    audio_array = load_audio_input(audio, sr=sr)
     audio_array = clean_audio(audio_array, sr=sr)
     audio_array = pad_to_length(
         audio_array, int(max_length_seconds * sr), axis=0, pad_value=0.0
@@ -161,6 +141,57 @@ def _classifier_output(clf, audio_tensor, threshold: float, include_logits: bool
             "present": logits[0, 1].item(),
         }
     return result
+
+
+def _align_words_syllables(
+    audio_array, text: str, language_code: str = "en", sr: int = 16000
+):
+    """Align transcript text to audio → word timestamps, then syllabify.
+
+    Uses CTC forced alignment when available, falling back to the simple
+    energy-based aligner. Returns ([word dicts], [syllable dicts]).
+    """
+    from model.localization.language_adapter import LanguageAdapterRegistry
+
+    try:
+        from model.localization.ctc_alignment import CTCTimeAligner
+
+        aligner = CTCTimeAligner()
+    except Exception:
+        from model.localization.ctc_alignment import SimpleForcedAligner
+
+        aligner = SimpleForcedAligner()
+
+    try:
+        word_timestamps = aligner.align(audio_array, text, sr=sr)
+        word_list = [
+            {
+                "word": wt.word,
+                "start": wt.start_sec,
+                "end": wt.end_sec,
+                "confidence": round(wt.confidence, 4),
+            }
+            for wt in word_timestamps
+        ]
+
+        registry = LanguageAdapterRegistry()
+        adapter = registry.get(language_code)
+        syllable_timestamps = adapter.adapt(word_timestamps, text)
+        syllable_list = [
+            {
+                "syllable": s.syllable,
+                "start": s.start_sec,
+                "end": s.end_sec,
+                "word": s.word,
+                "index": s.syllable_index,
+                "total": s.total_syllables,
+            }
+            for s in syllable_timestamps
+        ]
+        return word_list, syllable_list
+    except Exception as e:
+        print(f"Alignment/syllabification failed: {e}")
+        return [], []
 
 
 class Classifier:
@@ -356,6 +387,72 @@ class Localizer:
                 results[name] = model.predict(audio_tensor, threshold=threshold)
             return results
 
+    def analyze(
+        self,
+        audio,
+        text: Optional[str] = None,
+        language: str = "en",
+        threshold: float = 0.3,
+        max_length_seconds: float = 10.0,
+    ) -> Union[Dict[str, Any], Dict[str, Dict[str, Any]]]:
+        """Analyze raw audio → dysfluency regions (+ words/syllables if text).
+
+        Args:
+            audio: File path, raw bytes, or 1-D numpy array.
+            text: Optional transcript for word/syllable-level alignment.
+            language: ISO language code for syllabification (en, kn, hi).
+            threshold: Detection threshold for regions.
+            max_length_seconds: Max audio length to process.
+
+        Returns:
+            Single-type: {regions, [words], [syllables]}.
+            All-types: {type: {...}} keyed by localizer type.
+        """
+        if not self._models:
+            self._load()
+
+        from model.data.preprocessing import generate_mel_spectrogram, load_audio_input
+
+        audio_array = load_audio_input(audio, sr=16000)
+
+        types = [self.model_type] if self.model_type else list(self._models.keys())
+        results: Dict[str, Any] = {}
+
+        for lt in types:
+            model = self._models[lt]
+            if lt == "cnn":
+                spec = generate_mel_spectrogram(audio_array, sr=16000)
+                regions = model.predict(spec, sr=16000, threshold=threshold)
+            elif lt == "wav2vec2":
+                regions = model.predict(
+                    audio_array,
+                    sr=16000,
+                    threshold=threshold,
+                    max_length_seconds=max_length_seconds,
+                )
+            else:
+                raise ValueError(f"Unknown localizer type: {lt}")
+
+            entry: Dict[str, Any] = {
+                "regions": [
+                    {"start": round(s, 3), "end": round(e, 3), "confidence": round(c, 4)}
+                    for s, e, c in regions
+                ]
+            }
+
+            if text:
+                words, syllables = _align_words_syllables(
+                    audio_array, text, language, sr=16000
+                )
+                entry["words"] = words
+                entry["syllables"] = syllables
+
+            results[lt] = entry
+
+        if self.model_type is not None:
+            return results[self.model_type]
+        return results
+
     @property
     def is_loaded(self) -> bool:
         return bool(self._models)
@@ -365,25 +462,57 @@ class ModelRegistry:
     def __init__(self):
         self.classifier = Classifier()
         self.localizer = Localizer()
+        self.transcriber = Transcriber()
 
     def run_all(
-        self, audio_tensor, classify_threshold: float = 0.5, localize_threshold: float = 0.3
+        self,
+        audio,
+        classify_threshold: float = 0.5,
+        localize_threshold: float = 0.3,
+        language: str = "english",
+        text: Optional[str] = None,
     ) -> Dict[str, Any]:
+        """Run classification, localization, and transcription on raw audio.
+
+        Args:
+            audio: File path, raw bytes, or 1-D numpy array.
+            classify_threshold: Label threshold for classifiers.
+            localize_threshold: Detection threshold for the localizer.
+            language: Whisper language name (english/kannada/hindi).
+            text: Optional transcript for word/syllable-level localization.
+
+        Returns:
+            {"classification": ..., "localization": ..., "transcription": ...}
+            Sub-results become {"error": ...} if a model is unavailable.
+        """
+        from model.transcription import WHISPER_LANG_CODES
+
         results = {}
 
         try:
-            results["classification"] = self.classifier.predict(
-                audio_tensor, threshold=classify_threshold
+            results["classification"] = self.classifier.analyze(
+                audio, threshold=classify_threshold
             )
         except FileNotFoundError as e:
             results["classification"] = {"error": str(e)}
 
         try:
-            results["localization"] = self.localizer.predict(
-                audio_tensor, threshold=localize_threshold
+            iso = WHISPER_LANG_CODES.get(language.lower(), "en")
+            results["localization"] = self.localizer.analyze(
+                audio,
+                text=text,
+                language=iso,
+                threshold=localize_threshold,
             )
         except FileNotFoundError as e:
             results["localization"] = {"error": str(e)}
+
+        try:
+            results["transcription"] = self.transcriber.transcribe(
+                audio, language=language
+            )
+        except Exception as e:
+            results["transcription"] = {"error": str(e)}
 
         return results
 
