@@ -105,6 +105,18 @@ def build_stylesheet():
         color: {COLORS['primary']};
     }}
 
+    /* === Tool Bar === */
+    QToolBar {{
+        background-color: {COLORS['surface']};
+        border: none;
+        padding: 2px;
+        spacing: 8px;
+    }}
+    QToolBar::separator {{
+        width: 1px;
+        background-color: {COLORS['outline']}44;
+    }}
+
     /* === Buttons === */
     QPushButton {{
         background-color: {COLORS['primary']};
@@ -166,7 +178,7 @@ def build_stylesheet():
 
     /* === Record Button === */
     QPushButton[cssClass="record"] {{
-        background-color: #2E7D32;
+        background-color: #8E24AA;
         border-radius: {RADIUS['lg']}px;
         padding: {SPACING['md']}px {SPACING['xl']}px;
         font-size: 16px;
@@ -174,10 +186,10 @@ def build_stylesheet():
         min-height: 48px;
     }}
     QPushButton[cssClass="record"]:hover {{
-        background-color: #2E7D32DD;
+        background-color: #8E24AADD;
     }}
     QPushButton[cssClass="record"]:pressed {{
-        background-color: #2E7D32BB;
+        background-color: #8E24AABB;
     }}
 
     /* === Panels === */
@@ -185,6 +197,50 @@ def build_stylesheet():
         background-color: {COLORS['surface_variant']};
         border-radius: {RADIUS['md']}px;
         padding: {SPACING['md']}px;
+    }}
+
+    /* === Menu === */
+    QMenu {{
+        background-color: {COLORS['surface_variant']};
+        color: {COLORS['on_surface']};
+        border: 1px solid {COLORS['outline']}44;
+        border-radius: {RADIUS['sm']}px;
+        padding: {SPACING['sm']}px;
+    }}
+    QMenu::item {{
+        padding: {SPACING['sm']}px {SPACING['lg']}px;
+        border-radius: {RADIUS['sm']}px;
+    }}
+    QMenu::item:selected {{
+        background-color: {COLORS['primary_container']};
+        color: {COLORS['on_surface']};
+    }}
+
+    /* === Line Edit === */
+    QLineEdit {{
+        background-color: {COLORS['surface_variant']};
+        color: {COLORS['on_surface']};
+        border: 1px solid {COLORS['outline']}44;
+        border-radius: {RADIUS['sm']}px;
+        padding: {SPACING['sm']}px {SPACING['md']}px;
+        font-size: 14px;
+        min-height: 36px;
+    }}
+    QLineEdit:focus {{
+        border: 2px solid {COLORS['primary']};
+    }}
+
+    /* === Graphics View (waveform) === */
+    QGraphicsView {{
+        background-color: {COLORS['surface']};
+        border: 1px solid {COLORS['outline']}44;
+        border-radius: {RADIUS['md']}px;
+    }}
+
+    /* === Splitter === */
+    QSplitter::handle {{
+        background-color: {COLORS['outline']}33;
+        border-radius: 2px;
     }}
 
     /* === Tree View (PDF Browser) === */
@@ -244,6 +300,7 @@ def build_stylesheet():
     /* === Table Widget (Results & Transcription) === */
     QTableWidget {{
         background-color: {COLORS['surface']};
+        alternate-background-color: {COLORS['surface_variant']};
         border: 1px solid {COLORS['outline']}33;
         border-radius: {RADIUS['md']}px;
         gridline-color: {COLORS['outline']}22;
@@ -253,6 +310,7 @@ def build_stylesheet():
     }}
     QTableWidget::item:selected {{
         background-color: {COLORS['primary_container']};
+        color: {COLORS['on_surface']};
     }}
     QHeaderView::section {{
         background-color: {COLORS['surface_variant']};

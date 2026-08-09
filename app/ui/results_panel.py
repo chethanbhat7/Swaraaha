@@ -64,7 +64,7 @@ class ResultsPanel(QWidget):
             dot = QLabel("●")
             dot.setStyleSheet(f"color: {color}; font-size: 12px;")
             label = QLabel(display_name)
-            label.setStyleSheet("font-size: 11px; color: #79747E;")
+            label.setStyleSheet(f"font-size: 11px; color: {COLORS['outline']};")
             legend_layout.addWidget(dot)
             legend_layout.addWidget(label)
             legend_layout.addSpacing(12)
@@ -103,7 +103,7 @@ class ResultsPanel(QWidget):
             self._waveform.set_audio(audio, sample_rate)
             overlays = []
             for start_sec, end_sec, conf in localizations:
-                overlays.append((start_sec, end_sec, "#B3261E"))
+                overlays.append((start_sec, end_sec, "#6A1B9A"))
             self._waveform.set_overlays(overlays)
 
         if transcription:

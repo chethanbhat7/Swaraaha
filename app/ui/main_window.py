@@ -4,10 +4,12 @@ import os
 
 import numpy as np
 from PySide6.QtCore import QThread, Signal
+from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
     QFileDialog,
     QMainWindow,
     QStackedWidget,
+    QToolBar,
     QVBoxLayout,
     QWidget,
 )
@@ -51,6 +53,7 @@ class MainWindow(QMainWindow):
         self._audio_handler = AudioHandler()
         self._model_runner = ModelRunner()
         self._current_audio = None
+        self._current_filename = ""
         self._worker = None
         self._current_language = "english"
         self._transcription_worker = None
@@ -59,6 +62,16 @@ class MainWindow(QMainWindow):
         self._setup_ui()
 
     def _setup_ui(self):
+        self._theme_action = QAction("Toggle Dark Mode", self)
+        self._theme_action.setCheckable(True)
+        self._theme_action.setChecked(is_dark_mode())
+        self._theme_action.triggered.connect(self._toggle_theme)
+
+        self._theme_toolbar = QToolBar("Theme")
+        self._theme_toolbar.setMovable(False)
+        self._theme_toolbar.addAction(self._theme_action)
+        self.addToolBar(self._theme_toolbar)
+
         central = QWidget()
         self.setCentralWidget(central)
         layout = QVBoxLayout(central)
@@ -82,9 +95,6 @@ class MainWindow(QMainWindow):
 
         self._analysis_page.back_clicked.connect(self._go_home)
 
-        theme_action = self.menuBar().addAction("Toggle Dark Mode")
-        theme_action.triggered.connect(self._toggle_theme)
-
         self.setAcceptDrops(True)
 
     def _on_file_selected(self, path: str):
@@ -94,6 +104,7 @@ class MainWindow(QMainWindow):
         try:
             audio = self._audio_handler.load_audio(path)
             self._current_audio = audio
+            self._current_filename = os.path.basename(path)
             self._home_page.get_audio_controls().set_audio_loaded()
             self._home_page.get_transcription_panel().clear()
             self._home_page.set_transcript_visible(True)
@@ -112,6 +123,7 @@ class MainWindow(QMainWindow):
         audio = self._audio_handler.stop_recording()
         if len(audio) > 0:
             self._current_audio = audio
+            self._current_filename = "recording.wav"
             self._home_page.get_audio_controls().set_recording(False)
             self._home_page.get_audio_controls().set_audio_loaded()
             self._home_page.get_transcription_panel().clear()
@@ -189,7 +201,12 @@ class MainWindow(QMainWindow):
         if "error" in results:
             self.statusBar().showMessage(f"Analysis failed: {results['error']}")
             return
-        self._analysis_page.set_results(results, self._current_audio, language=self._current_language)
+        self._analysis_page.set_results(
+            results,
+            self._current_audio,
+            filename=self._current_filename,
+            language=self._current_language,
+        )
         self._stack.setCurrentIndex(1)
         self.statusBar().showMessage("Analysis complete")
 
@@ -198,7 +215,7 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Ready")
 
     def _toggle_theme(self):
-        set_theme(not is_dark_mode())
+        set_theme(self._theme_action.isChecked())
         self.setStyleSheet(build_stylesheet())
 
     def dragEnterEvent(self, event):

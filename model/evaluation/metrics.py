@@ -12,6 +12,19 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 
 
+def _trapezoid(y: np.ndarray, x: np.ndarray) -> float:
+    """
+    Integrate ``y`` over ``x`` with the trapezoidal rule.
+
+    numpy < 2.0 exposes ``np.trapz``; numpy >= 2.0 renamed it to
+    ``np.trapezoid`` (and removed the old alias). This helper keeps the
+    metrics working across both.
+    """
+    if hasattr(np, "trapezoid"):
+        return float(np.trapezoid(y, x))
+    return float(np.trapz(y, x))
+
+
 # ---------------------------------------------------------------------------
 # Classification Metrics
 # ---------------------------------------------------------------------------
@@ -213,7 +226,7 @@ def _compute_auroc(y_true: np.ndarray, y_scores: np.ndarray) -> float:
         tpr_list.append(tp / n_pos)
         fpr_list.append(fp / n_neg)
 
-    return abs(float(np.trapz(tpr_list, fpr_list)))
+    return abs(_trapezoid(tpr_list, fpr_list))
 
 
 def _compute_auprc(y_true: np.ndarray, y_scores: np.ndarray) -> float:
@@ -241,7 +254,7 @@ def _compute_auprc(y_true: np.ndarray, y_scores: np.ndarray) -> float:
         prec_list.append(tp / (tp + fp))
         rec_list.append(tp / n_pos)
 
-    return abs(float(np.trapz(prec_list, rec_list)))
+    return abs(_trapezoid(prec_list, rec_list))
 
 
 def find_optimal_threshold(
@@ -290,78 +303,6 @@ def find_optimal_threshold(
             best_thresh = thresh
 
     return float(best_thresh), float(best_val)
-
-
-# ---------------------------------------------------------------------------
-# Multi-Label Classification Metrics
-# ---------------------------------------------------------------------------
-
-def compute_multilabel_metrics(
-    y_true: np.ndarray,
-    y_pred: np.ndarray,
-    class_names: Optional[List[str]] = None,
-) -> Dict[str, object]:
-    """
-    Compute multi-label metrics for clips with multiple simultaneous dysfluencies.
-
-    Args:
-        y_true: Ground truth binary matrix, shape (N, C).
-        y_pred: Predicted binary matrix, shape (N, C).
-        class_names: Optional list of class names.
-
-    Returns:
-        Dict with subset_accuracy, hamming_loss, samples_accuracy, per_class, macro.
-    """
-    y_true = np.asarray(y_true).astype(int)
-    y_pred = np.asarray(y_pred).astype(int)
-    n_samples, n_classes = y_true.shape
-
-    if class_names is None:
-        class_names = [f"class_{i}" for i in range(n_classes)]
-
-    subset_acc = float(np.mean(np.all(y_true == y_pred, axis=1)))
-    hamming = float(np.mean(y_true != y_pred))
-
-    intersection = np.sum(y_true & y_pred, axis=1).astype(float)
-    union = np.sum(y_true | y_pred, axis=1).astype(float)
-    union[union == 0] = 1.0
-    samples_acc = float(np.mean(intersection / union))
-
-    per_class = {}
-    precisions, recalls, f1s = [], [], []
-
-    for c in range(n_classes):
-        tp = int(np.sum((y_true[:, c] == 1) & (y_pred[:, c] == 1)))
-        fp = int(np.sum((y_true[:, c] == 0) & (y_pred[:, c] == 1)))
-        fn = int(np.sum((y_true[:, c] == 1) & (y_pred[:, c] == 0)))
-        support = int(np.sum(y_true[:, c] == 1))
-
-        p = tp / (tp + fp) if (tp + fp) > 0 else 0.0
-        r = tp / (tp + fn) if (tp + fn) > 0 else 0.0
-        f = 2 * p * r / (p + r) if (p + r) > 0 else 0.0
-
-        name = class_names[c] if c < len(class_names) else f"class_{c}"
-        per_class[name] = {
-            "precision": round(p, 4), "recall": round(r, 4),
-            "f1": round(f, 4), "support": support,
-        }
-        precisions.append(p)
-        recalls.append(r)
-        f1s.append(f)
-
-    macro = {
-        "precision": round(float(np.mean(precisions)), 4),
-        "recall": round(float(np.mean(recalls)), 4),
-        "f1": round(float(np.mean(f1s)), 4),
-    }
-
-    return {
-        "subset_accuracy": round(subset_acc, 4),
-        "hamming_loss": round(hamming, 4),
-        "samples_accuracy": round(samples_acc, 4),
-        "per_class": per_class,
-        "macro": macro,
-    }
 
 
 # ---------------------------------------------------------------------------

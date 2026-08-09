@@ -102,6 +102,49 @@ def load_audio_from_array(audio: np.ndarray, sr: int = 16000) -> Tuple[np.ndarra
     return audio, sr
 
 
+def load_audio_input(audio, sr: int = 16000) -> np.ndarray:
+    """Load raw audio from a file path, bytes, or numpy array.
+
+    Args:
+        audio: File path (str/PathLike), raw bytes, or 1-D numpy array.
+        sr: Target sample rate in Hz (16000 for Wav2Vec2-based models).
+
+    Returns:
+        1-D float32 mono numpy array, values in [-1.0, 1.0].
+
+    Raises:
+        FileNotFoundError: If the path does not exist or cannot be decoded.
+        ValueError: If an array is not 1-D.
+        TypeError: If the input type is not supported.
+    """
+    import io
+    import os
+
+    import soundfile as sf
+
+    if isinstance(audio, (str, os.PathLike)):
+        if not os.path.isfile(audio):
+            raise FileNotFoundError(f"Audio file not found: {audio}")
+        audio_array, _ = load_audio(audio, sr=sr)
+    elif isinstance(audio, bytes):
+        wav_bytes = convert_to_wav(audio)
+        audio_array, file_sr = sf.read(io.BytesIO(wav_bytes), dtype="float32")
+        if audio_array.ndim > 1:
+            audio_array = audio_array.mean(axis=1)
+        if file_sr != sr:
+            import librosa
+
+            audio_array = librosa.resample(audio_array, orig_sr=file_sr, target_sr=sr)
+    elif isinstance(audio, np.ndarray):
+        audio_array, _ = load_audio_from_array(audio, sr=sr)
+    else:
+        raise TypeError(
+            f"Unsupported audio type: {type(audio).__name__}. "
+            "Expected str path, bytes, or numpy array."
+        )
+    return audio_array
+
+
 # ---------------------------------------------------------------------------
 # Spectrogram Generation
 # ---------------------------------------------------------------------------
@@ -140,6 +183,14 @@ def generate_mel_spectrogram(
 
     if fmax is None:
         fmax = sr / 2.0
+
+    # Signals shorter than the FFT window (e.g. silence-trimmed audio) would
+    # trigger librosa warnings. Pad to n_fft so the window always fits and
+    # frequency resolution stays consistent across the dataset.
+    n = len(audio)
+    if 0 < n < n_fft:
+        pad = n_fft - n
+        audio = np.pad(audio, (pad // 2, pad - pad // 2), mode="constant")
 
     mel_spec = librosa.feature.melspectrogram(
         y=audio,

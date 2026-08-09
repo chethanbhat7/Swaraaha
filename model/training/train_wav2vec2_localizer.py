@@ -28,6 +28,8 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 
+from model.training.utils import align_frame_labels
+
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -65,6 +67,8 @@ def parse_args():
                         help="Validation split ratio.")
     parser.add_argument("--warmup_steps", type=int, default=500,
                         help="Linear warmup steps.")
+    parser.add_argument("--clean", action="store_true",
+                        help="Ignore resume checkpoints and train from scratch.")
     return parser.parse_args()
 
 
@@ -114,17 +118,19 @@ def collate_wav2vec2(batch):
 def train_one_epoch(model, dataloader, optimizer, criterion, device, scheduler=None):
     """Train for one epoch. Returns average loss."""
     import torch
+    from tqdm import tqdm
 
     model.model.train()
     total_loss = 0.0
     num_batches = 0
 
-    for waveforms, frame_labels in dataloader:
+    for waveforms, frame_labels in tqdm(dataloader, desc="  Train", leave=False):
         waveforms = waveforms.to(device)
         frame_labels = frame_labels.float().to(device)
 
         optimizer.zero_grad()
         logits = model.forward(waveforms).squeeze(1)  # (B, T)
+        frame_labels = align_frame_labels(frame_labels, logits)
         loss = criterion(logits, frame_labels)
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.model.parameters(), max_norm=1.0)
@@ -146,6 +152,7 @@ def evaluate_model(model, dataloader, device, threshold: float = 0.5):
         frame_f1, avg_loss, all_true, all_pred_probs
     """
     import torch
+    from tqdm import tqdm
 
     model.model.eval()
     all_true, all_pred = [], []
@@ -154,11 +161,12 @@ def evaluate_model(model, dataloader, device, threshold: float = 0.5):
     criterion = torch.nn.BCEWithLogitsLoss()
 
     with torch.no_grad():
-        for waveforms, frame_labels in dataloader:
+        for waveforms, frame_labels in tqdm(dataloader, desc="  Val", leave=False):
             waveforms = waveforms.to(device)
             frame_labels = frame_labels.float().to(device)
 
             logits = model.forward(waveforms).squeeze(1)
+            frame_labels = align_frame_labels(frame_labels, logits)
             loss = criterion(logits, frame_labels)
 
             probs = torch.sigmoid(logits).cpu().numpy()
@@ -193,9 +201,21 @@ def train(args) -> Dict:
 
     from model.localization.wav2vec2_localizer import Wav2Vec2Localizer
     from model.localization.wav2vec2_dataset import Wav2Vec2LocalizationDataset
-    from model.training.utils import CSVLogger, EarlyStopping
+    from model.fingerprint import W2V2_LOCALIZER_RESUME_KEYS, localizer_fingerprint
+    from model.training.utils import (
+        CSVLogger,
+        EarlyStopping,
+        TeeLogger,
+        maybe_skip_completed,
+        save_resume_state,
+        try_load_resume,
+    )
 
     set_seed(args.seed)
+    fp = localizer_fingerprint(args, "wav2vec")
+    os.makedirs(args.output_dir, exist_ok=True)
+    tee = TeeLogger(os.path.join(args.output_dir, f"{fp}_training.log"))
+    sys.stdout = tee
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     print(f"\n{'='*60}")
@@ -205,6 +225,13 @@ def train(args) -> Dict:
     print(f"  Model: {args.model_name}")
     print(f"  Epochs: {args.epochs}, Batch: {args.batch_size}, LR: {args.lr}")
     print(f"  Freeze backbone: {args.freeze_backbone_epochs} epochs")
+
+    # ---- Checkpoint resume ----
+    resume_ckpt = try_load_resume(args, device, fp)
+    skip_history = maybe_skip_completed(resume_ckpt, args.epochs)
+    if skip_history is not None:
+        tee.close()
+        return skip_history
 
     # ---- Dataset ----
     print("\n  Loading dataset...")
@@ -253,20 +280,22 @@ def train(args) -> Dict:
     model.model.to(device)
     print(f"  Parameters: {model.count_parameters():,}")
 
-    # Freeze backbone initially
-    if args.freeze_backbone_epochs > 0:
+    # Freeze backbone initially (unless resuming past the unfreeze epoch)
+    backbone_frozen = True
+    if resume_ckpt is not None:
+        backbone_frozen = bool(resume_ckpt.get("backbone_frozen", True))
+    if backbone_frozen and args.freeze_backbone_epochs > 0:
         model.freeze_backbone()
         print(f"  Backbone frozen for {args.freeze_backbone_epochs} epochs")
+    elif not backbone_frozen:
+        model.unfreeze_backbone()
+        print("  Backbone unfrozen (resumed)")
 
     # ---- Loss & Optimizer ----
     criterion = torch.nn.BCEWithLogitsLoss()
-    optimizer = torch.optim.AdamW(
-        filter(lambda p: p.requires_grad, model.model.parameters()),
-        lr=args.lr,
-        weight_decay=args.weight_decay,
-    )
 
-    # Linear warmup + cosine decay
+    # Always rebuild the FULL original schedule (total_steps over all epochs)
+    # so a restored last_epoch maps correctly and LR is never pinned to 0.
     total_steps = len(train_loader) * args.epochs
     warmup_steps = min(args.warmup_steps, total_steps // 4)
 
@@ -276,21 +305,41 @@ def train(args) -> Dict:
         progress = float(step - warmup_steps) / float(max(1, total_steps - warmup_steps))
         return max(0.0, 0.5 * (1.0 + np.cos(np.pi * progress)))
 
+    if backbone_frozen:
+        optimizer = torch.optim.AdamW(
+            filter(lambda p: p.requires_grad, model.model.parameters()),
+            lr=args.lr,
+            weight_decay=args.weight_decay,
+        )
+    else:
+        # Resumed past the unfreeze epoch: full param group at 0.1x LR
+        optimizer = torch.optim.AdamW(
+            model.model.parameters(), lr=args.lr * 0.1, weight_decay=args.weight_decay,
+        )
     scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
 
-    # ---- Logging ----
-    os.makedirs(args.output_dir, exist_ok=True)
-    log_path = os.path.join(args.output_dir, "w2v2_localization_training_log.csv")
-    logger = CSVLogger(log_path, ["epoch", "train_loss", "val_loss", "val_frame_f1", "lr"])
-    early_stopping = EarlyStopping(patience=args.patience, mode="max")
-
+    start_epoch = 1
     best_f1 = 0.0
     history = {"train_loss": [], "val_loss": [], "val_frame_f1": []}
+    if resume_ckpt is not None:
+        model.model.load_state_dict(resume_ckpt["model_state_dict"])
+        optimizer.load_state_dict(resume_ckpt["optimizer_state_dict"])
+        if resume_ckpt.get("scheduler_state_dict"):
+            scheduler.load_state_dict(resume_ckpt["scheduler_state_dict"])
+        start_epoch = resume_ckpt["epoch"] + 1
+        best_f1 = resume_ckpt["best_f1"]
+        history = resume_ckpt["history"]
+        print(f"  Resuming from epoch {resume_ckpt['epoch']} (best F1: {best_f1:.4f})")
+
+    # ---- Logging ----
+    log_path = os.path.join(args.output_dir, f"{fp}_log.csv")
+    logger = CSVLogger(log_path, ["epoch", "train_loss", "val_loss", "val_frame_f1", "lr"])
+    early_stopping = EarlyStopping(patience=args.patience, mode="max")
 
     print(f"\n  Starting training for {args.epochs} epochs...\n")
     start_time = time.time()
 
-    for epoch in range(1, args.epochs + 1):
+    for epoch in range(start_epoch, args.epochs + 1):
         epoch_start = time.time()
 
         # Unfreeze backbone after warmup
@@ -302,6 +351,7 @@ def train(args) -> Dict:
                 weight_decay=args.weight_decay,
             )
             scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
+            backbone_frozen = False
 
         # Train
         train_loss = train_one_epoch(model, train_loader, optimizer, criterion, device, scheduler)
@@ -327,18 +377,26 @@ def train(args) -> Dict:
             f"frame_F1={val_f1:.3f} | lr={current_lr:.2e} | {epoch_time:.1f}s"
         )
 
+        # Save resume checkpoint
+        save_resume_state(model, optimizer, scheduler, epoch, best_f1, history, args, fp,
+                          W2V2_LOCALIZER_RESUME_KEYS, backbone_frozen, completed=False)
+
         # Checkpoint best
         if val_f1 > best_f1:
             best_f1 = val_f1
-            ckpt_path = os.path.join(args.output_dir, "w2v2_localizer_best.pt")
+            ckpt_path = os.path.join(args.output_dir, f"{fp}_best.pt")
             model.save(ckpt_path)
 
         if early_stopping.step(val_f1):
             print(f"\n  Early stopping at epoch {epoch}")
             break
 
+    # Mark training as complete so future runs skip this model
+    save_resume_state(model, optimizer, scheduler, epoch, best_f1, history, args, fp,
+                      W2V2_LOCALIZER_RESUME_KEYS, backbone_frozen, completed=True)
+
     # Save final
-    final_path = os.path.join(args.output_dir, "w2v2_localizer_final.pt")
+    final_path = os.path.join(args.output_dir, f"{fp}_final.pt")
     model.save(final_path)
 
     total_time = time.time() - start_time
@@ -349,12 +407,12 @@ def train(args) -> Dict:
     print(f"  Saved: {final_path}")
 
     # Save training curves
-    _save_training_curves(history, args.output_dir)
+    _save_training_curves(history, fp, args.output_dir)
 
     return history
 
 
-def _save_training_curves(history: Dict, output_dir: str) -> None:
+def _save_training_curves(history: Dict, fp: str, output_dir: str) -> None:
     """Save training curves as PNG."""
     import matplotlib
     matplotlib.use("Agg")
@@ -383,7 +441,7 @@ def _save_training_curves(history: Dict, output_dir: str) -> None:
     ax2.grid(True, alpha=0.3)
 
     fig.tight_layout()
-    path = os.path.join(curves_dir, "w2v2_localization_curves.png")
+    path = os.path.join(curves_dir, f"{fp}_curves.png")
     fig.savefig(path, dpi=150, bbox_inches="tight")
     plt.close(fig)
     print(f"  Training curves saved: {path}")

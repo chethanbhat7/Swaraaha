@@ -7,6 +7,7 @@ Checkpointing, logging, learning rate schedulers, and helper functions.
 import csv
 import json
 import os
+import sys
 from typing import Dict, List, Optional
 
 import torch
@@ -220,3 +221,121 @@ def format_duration(seconds: float) -> str:
     if hours > 0:
         return f"{hours:02d}:{minutes:02d}:{secs:02d}"
     return f"{minutes:02d}:{secs:02d}"
+
+
+class TeeLogger:
+    """Write to both stdout and a file."""
+
+    def __init__(self, path):
+        self.file = open(path, "w")
+        self._stdout = sys.stdout
+
+    def write(self, text):
+        self._stdout.write(text)
+        self.file.write(text)
+        self.file.flush()
+
+    def flush(self):
+        self._stdout.flush()
+        self.file.flush()
+
+    def isatty(self):
+        return self._stdout.isatty()
+
+    def fileno(self):
+        return self._stdout.fileno()
+
+    def close(self):
+        self.file.close()
+        sys.stdout = self._stdout
+
+
+def resume_checkpoint_path(args, fp: str) -> str:
+    """Path to the resume checkpoint for a fingerprint string."""
+    return os.path.join(args.output_dir, f"{fp}_checkpoint.pt")
+
+
+def save_resume_state(model, optimizer, scheduler, epoch, best_f1, history, args, fp,
+                      resume_keys=None, backbone_frozen=False, completed=False):
+    """Persist a resume checkpoint keyed by a fingerprint string."""
+    path = resume_checkpoint_path(args, fp)
+    if resume_keys is None:
+        from model.fingerprint import RESUME_KEYS
+        resume_keys = RESUME_KEYS
+    ckpt = {
+        "epoch": epoch,
+        "model_state_dict": model.model.state_dict(),
+        "optimizer_state_dict": optimizer.state_dict(),
+        "scheduler_state_dict": scheduler.state_dict() if scheduler else None,
+        "best_f1": best_f1,
+        "history": history,
+        "args": {k: getattr(args, k) for k in resume_keys if hasattr(args, k)},
+        "backbone_frozen": backbone_frozen,
+        "completed": completed,
+        "fp": fp,
+    }
+    torch.save(ckpt, path)
+
+
+def try_load_resume(args, device, fp: str):
+    """Load a resume checkpoint, or None if --clean or the file is missing."""
+    path = resume_checkpoint_path(args, fp)
+    if getattr(args, "clean", False) or not os.path.isfile(path):
+        return None
+    return torch.load(path, map_location=device, weights_only=False)
+
+
+def maybe_skip_completed(resume_ckpt, epochs: int):
+    """Print the skip message and return saved history if training already
+    completed; otherwise return None."""
+    if resume_ckpt is not None and resume_ckpt.get("completed"):
+        print(f"\n  Training already complete (epoch {resume_ckpt['epoch']}/{epochs}, "
+              f"best F1: {resume_ckpt.get('best_f1', 0.0):.4f})")
+        print("  Skipping — delete the *_checkpoint.pt file or pass --clean to retrain.")
+        return resume_ckpt.get("history")
+    return None
+
+
+def align_frame_labels(frame_labels, logits):
+    """Truncate or pad frame labels to match the model's output frame count.
+
+    Wav2Vec2's conv feature extractor can emit one fewer frame than the
+    dataset's label count (e.g. 499 vs 500 for 160000 samples), which breaks
+    the BCE loss shape check. Align labels to the model output before use.
+    """
+    n = logits.shape[-1]
+    if frame_labels.shape[-1] == n:
+        return frame_labels
+    if frame_labels.shape[-1] > n:
+        return frame_labels[..., :n]
+    return torch.nn.functional.pad(frame_labels, (0, n - frame_labels.shape[-1]))
+
+
+def find_latest_localizer(output_dir: str, pipeline: str) -> Optional[str]:
+    """Return the most recently modified {pipeline} best-checkpoint path, or None."""
+    import glob
+
+    prefix = "cnnloc_" if pipeline == "loc" else "w2v2loc_"
+    paths = glob.glob(os.path.join(output_dir, f"{prefix}*_best.pt"))
+    if not paths:
+        return None
+    return max(paths, key=os.path.getmtime)
+
+
+def update_registry_localizers(registry_path: str, output_dir: str) -> Dict[str, str]:
+    """Scan output_dir for the newest localizer checkpoints and write them into
+    the registry.json localization section. Returns the new localization mapping
+    (may be empty if no checkpoints were found)."""
+    mapping = {}
+    for pipeline, key in (("loc", "cnn"), ("wav2vec", "wav2vec2")):
+        best = find_latest_localizer(output_dir, pipeline)
+        if best:
+            mapping[key] = os.path.relpath(best, os.path.dirname(os.path.dirname(registry_path)))
+
+    with open(registry_path) as f:
+        registry = json.load(f)
+    registry["localization"] = mapping
+    with open(registry_path, "w") as f:
+        json.dump(registry, f, indent=2)
+        f.write("\n")
+    return mapping

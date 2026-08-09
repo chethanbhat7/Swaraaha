@@ -13,11 +13,11 @@ LIGHT_COLORS = {
     "on_surface": "#1C1B1F",
     "outline": "#79747E",
     "dysfluency": {
-        "prolongation": "#B3261E",
-        "block": "#7D5260",
-        "soundrep": "#006D3F",
-        "wordrep": "#0061A4",
-        "interjection": "#984061",
+        "prolongation": "#6A1B9A",
+        "block": "#7B1FA2",
+        "soundrep": "#8E24AA",
+        "wordrep": "#9C27B0",
+        "interjection": "#AB47BC",
     },
 }
 
@@ -30,11 +30,11 @@ DARK_COLORS = {
     "on_surface": "#E6E1E5",
     "outline": "#938F99",
     "dysfluency": {
-        "prolongation": "#F2B8B5",
-        "block": "#EFB8C8",
-        "soundrep": "#80E8A8",
-        "wordrep": "#80CAFF",
-        "interjection": "#FFB1C8",
+        "prolongation": "#E1BEE7",
+        "block": "#CE93D8",
+        "soundrep": "#BA68C8",
+        "wordrep": "#AB47BC",
+        "interjection": "#9C27B0",
     },
 }
 

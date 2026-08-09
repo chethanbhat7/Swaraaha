@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from app.ui.theme import COLORS
 
 PASSAGES_DIR = os.path.join(os.path.dirname(__file__), "..", "assets", "passages")
 
@@ -97,7 +98,7 @@ class PdfViewer(QWidget):
 
         self._pdf_label = QLabel("No PDF loaded")
         self._pdf_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._pdf_label.setStyleSheet("color: #79747E; font-size: 14px; padding: 40px;")
+        self._pdf_label.setStyleSheet(f"color: {COLORS['outline']}; font-size: 14px; padding: 40px;")
         self._pdf_layout.addWidget(self._pdf_label)
 
         self._scroll_area.setWidget(self._pdf_container)
