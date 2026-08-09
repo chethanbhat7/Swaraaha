@@ -39,6 +39,9 @@ def parse_args():
     parser.add_argument("--weight_decay", type=float, default=1e-4, help="Weight decay.")
     parser.add_argument("--num_workers", type=int, default=0, help="DataLoader workers.")
 
+    parser.add_argument("--clean", action="store_true",
+                        help="Ignore resume checkpoints and train from scratch.")
+
     parser.add_argument("--seed", type=int, default=42, help="Random seed.")
     parser.add_argument("--val_ratio", type=float, default=0.2, help="Validation split ratio.")
     return parser.parse_args()
@@ -206,13 +209,22 @@ def train(args) -> Dict:
     from torch.utils.data import DataLoader
 
     from model.data.dataset import LocalizationDataset
+    from model.fingerprint import CNN_LOCALIZER_RESUME_KEYS, localizer_fingerprint
     from model.training.utils import (
         CSVLogger,
         EarlyStopping,
+        TeeLogger,
+        maybe_skip_completed,
         save_checkpoint,
+        save_resume_state,
+        try_load_resume,
     )
 
     set_seed(args.seed)
+    fp = localizer_fingerprint(args, "loc")
+    os.makedirs(args.output_dir, exist_ok=True)
+    tee = TeeLogger(os.path.join(args.output_dir, f"{fp}_training.log"))
+    sys.stdout = tee
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     print(f"\n{'='*60}")
@@ -221,6 +233,13 @@ def train(args) -> Dict:
     print(f"  Device: {device}")
     print(f"  Data: {args.data_dir}")
     print(f"  Epochs: {args.epochs}, Batch: {args.batch_size}, LR: {args.lr}")
+
+    # ---- Checkpoint resume ----
+    resume_ckpt = try_load_resume(args, device, fp)
+    skip_history = maybe_skip_completed(resume_ckpt, args.epochs)
+    if skip_history is not None:
+        tee.close()
+        return skip_history
 
     # ---- Dataset ----
     print("\n  Loading dataset...")
@@ -269,6 +288,16 @@ def train(args) -> Dict:
     model.model.to(device)
     print(f"  Parameters: {sum(p.numel() for p in model.model.parameters()):,}")
 
+    start_epoch = 1
+    best_f1 = 0.0
+    history = {"train_loss": [], "val_loss": [], "val_frame_f1": [], "val_mean_iou": []}
+    if resume_ckpt is not None:
+        model.model.load_state_dict(resume_ckpt["model_state_dict"])
+        start_epoch = resume_ckpt["epoch"] + 1
+        best_f1 = resume_ckpt["best_f1"]
+        history = resume_ckpt["history"]
+        print(f"  Resuming from epoch {resume_ckpt['epoch']} (best F1: {best_f1:.4f})")
+
     # ---- Loss & Optimizer ----
     # Positive class weighting for frame-level imbalance
     pos_weight = torch.tensor([5.0], device=device)
@@ -277,24 +306,26 @@ def train(args) -> Dict:
     optimizer = torch.optim.AdamW(
         model.model.parameters(), lr=args.lr, weight_decay=args.weight_decay,
     )
-
+    # Always build with the FULL schedule so restored last_epoch maps correctly.
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
+
+    if resume_ckpt is not None:
+        optimizer.load_state_dict(resume_ckpt["optimizer_state_dict"])
+        if resume_ckpt.get("scheduler_state_dict"):
+            scheduler.load_state_dict(resume_ckpt["scheduler_state_dict"])
 
     # ---- Logging ----
     os.makedirs(args.output_dir, exist_ok=True)
-    log_path = os.path.join(args.output_dir, "localization_training_log.csv")
+    log_path = os.path.join(args.output_dir, f"{fp}_log.csv")
     logger = CSVLogger(log_path, ["epoch", "train_loss", "val_loss", "val_frame_f1", "val_mean_iou", "lr"])
 
     early_stopping = EarlyStopping(patience=args.patience, mode="max")
 
     # ---- Training ----
-    best_f1 = 0.0
-    history = {"train_loss": [], "val_loss": [], "val_frame_f1": [], "val_mean_iou": []}
-
     print(f"\n  Starting training for {args.epochs} epochs...\n")
     start_time = time.time()
 
-    for epoch in range(1, args.epochs + 1):
+    for epoch in range(start_epoch, args.epochs + 1):
         epoch_start = time.time()
 
         # Train
@@ -325,18 +356,26 @@ def train(args) -> Dict:
             f"lr={current_lr:.2e} | {epoch_time:.1f}s"
         )
 
+        # Save resume checkpoint
+        save_resume_state(model, optimizer, scheduler, epoch, best_f1, history, args, fp,
+                          CNN_LOCALIZER_RESUME_KEYS, completed=False)
+
         # Checkpoint best
         if val_f1 > best_f1:
             best_f1 = val_f1
-            ckpt_path = os.path.join(args.output_dir, "localizer_best.pt")
+            ckpt_path = os.path.join(args.output_dir, f"{fp}_best.pt")
             save_checkpoint(model, optimizer, epoch, {"val_f1": val_f1, "val_iou": val_iou}, ckpt_path, scheduler)
 
         if early_stopping.step(val_f1):
             print(f"\n  Early stopping at epoch {epoch}")
             break
 
+    # Mark training as complete so future runs skip this model
+    save_resume_state(model, optimizer, scheduler, epoch, best_f1, history, args, fp,
+                      CNN_LOCALIZER_RESUME_KEYS, completed=True)
+
     # Save final
-    final_path = os.path.join(args.output_dir, "localizer_final.pt")
+    final_path = os.path.join(args.output_dir, f"{fp}_final.pt")
     save_checkpoint(model, optimizer, epoch, {"val_f1": best_f1}, final_path, scheduler)
 
     total_time = time.time() - start_time
@@ -347,12 +386,12 @@ def train(args) -> Dict:
     print(f"  Saved: {final_path}")
 
     # Save training curves
-    _save_training_curves(history, args.output_dir)
+    _save_training_curves(history, fp, args.output_dir)
 
     return history
 
 
-def _save_training_curves(history: Dict, output_dir: str) -> None:
+def _save_training_curves(history: Dict, fp: str, output_dir: str) -> None:
     """Save training curves as PNG."""
     import matplotlib
     matplotlib.use("Agg")
@@ -382,7 +421,7 @@ def _save_training_curves(history: Dict, output_dir: str) -> None:
     ax2.grid(True, alpha=0.3)
 
     fig.tight_layout()
-    path = os.path.join(curves_dir, "localization_curves.png")
+    path = os.path.join(curves_dir, f"{fp}_curves.png")
     fig.savefig(path, dpi=150, bbox_inches="tight")
     plt.close(fig)
     print(f"  Training curves saved: {path}")
