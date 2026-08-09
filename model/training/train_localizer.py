@@ -315,7 +315,6 @@ def train(args) -> Dict:
             scheduler.load_state_dict(resume_ckpt["scheduler_state_dict"])
 
     # ---- Logging ----
-    os.makedirs(args.output_dir, exist_ok=True)
     log_path = os.path.join(args.output_dir, f"{fp}_log.csv")
     logger = CSVLogger(log_path, ["epoch", "train_loss", "val_loss", "val_frame_f1", "val_mean_iou", "lr"])
 
