@@ -12,7 +12,7 @@
 #let document_title = "Major Project Report"
 #let degree = "Bachelor of Engineering"
 #let degree_short = "B.E."
-#let semester = "5"
+#let semester = "7"
 
 // University
 #let university_name = "Visvesvaraya Technological University"

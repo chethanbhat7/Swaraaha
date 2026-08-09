@@ -25,15 +25,6 @@
     ])
   }
 
-  // centered within a fixed-width box placed with glyph bbox top at y=dy
-  #let tcenter(dx, width, dy, size, body) = {
-    let off = 0.77 * size - 0.1pt
-    place(dx: _pt(dx), dy: _pt(dy) + off, box(width: width, align(center)[
-      #set text(size: size, top-edge: 0pt, bottom-edge: 0pt)
-      #body
-    ]))
-  }
-
   #tline(76.2, 18pt, weight: "bold")[DECLARATION]
 
   // body text
@@ -49,7 +40,7 @@
     columns: (177pt, 109.4pt, 168.9pt),
     rows: (26.3pt, 33.6pt, 33.6pt, 33.6pt, 33.6pt),
     stroke: 0.75pt + black,
-    inset: (x: 8pt, y: 5pt),
+    inset: (x: 8pt, y: 3.4pt),
     align: (center, center, center),
     [
       #set text(12pt)
