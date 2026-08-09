@@ -294,3 +294,33 @@ def maybe_skip_completed(resume_ckpt, epochs: int):
         print("  Skipping — delete the *_checkpoint.pt file or pass --clean to retrain.")
         return resume_ckpt.get("history")
     return None
+
+
+def find_latest_localizer(output_dir: str, pipeline: str) -> Optional[str]:
+    """Return the most recently modified {pipeline} best-checkpoint path, or None."""
+    import glob
+
+    prefix = "cnnloc_" if pipeline == "loc" else "w2v2loc_"
+    paths = glob.glob(os.path.join(output_dir, f"{prefix}*_best.pt"))
+    if not paths:
+        return None
+    return max(paths, key=os.path.getmtime)
+
+
+def update_registry_localizers(registry_path: str, output_dir: str) -> Dict[str, str]:
+    """Scan output_dir for the newest localizer checkpoints and write them into
+    the registry.json localization section. Returns the new localization mapping
+    (may be empty if no checkpoints were found)."""
+    mapping = {}
+    for pipeline, key in (("loc", "cnn"), ("wav2vec", "wav2vec2")):
+        best = find_latest_localizer(output_dir, pipeline)
+        if best:
+            mapping[key] = os.path.relpath(best, os.path.dirname(os.path.dirname(registry_path)))
+
+    with open(registry_path) as f:
+        registry = json.load(f)
+    registry["localization"] = mapping
+    with open(registry_path, "w") as f:
+        json.dump(registry, f, indent=2)
+        f.write("\n")
+    return mapping

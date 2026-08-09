@@ -104,3 +104,49 @@ def test_generate_mel_spectrogram_short_audio_no_warning():
         warnings.simplefilter("error")
         spec = generate_mel_spectrogram(audio, sr=16000)
     assert spec.shape[0] == 128
+
+
+def test_find_latest_localizer(tmp_path):
+    from model.training.utils import find_latest_localizer
+
+    assert find_latest_localizer(str(tmp_path), "loc") is None
+
+    import os
+
+    import torch
+
+    a = tmp_path / "cnnloc_e30_b8_x_best.pt"
+    b = tmp_path / "cnnloc_e30_b8_y_best.pt"
+    torch.save({"epoch": 5}, a)
+    torch.save({"epoch": 6}, b)
+
+    os.utime(a, (1, 1))
+    os.utime(b, (2, 2))
+
+    latest = find_latest_localizer(str(tmp_path), "loc")
+    assert latest == str(b)
+    assert find_latest_localizer(str(tmp_path), "wav2vec") is None
+
+
+def test_update_registry_localizers(tmp_path):
+    import json
+    import os
+
+    import torch
+
+    from model.training.utils import update_registry_localizers
+
+    registry_path = tmp_path / "registry.json"
+    registry_path.write_text(json.dumps({"localization": {}}))
+
+    # No checkpoints yet -> stays empty
+    mapping = update_registry_localizers(str(registry_path), str(tmp_path))
+    assert mapping == {}
+
+    ckpt = tmp_path / "cnnloc_e30_b8_zz_best.pt"
+    torch.save({"epoch": 5}, ckpt)
+    mapping = update_registry_localizers(str(registry_path), str(tmp_path))
+    expected = os.path.relpath(str(ckpt), str(tmp_path.parent))
+    assert mapping == {"cnn": expected}
+    data = json.loads(registry_path.read_text())
+    assert data["localization"] == {"cnn": expected}
