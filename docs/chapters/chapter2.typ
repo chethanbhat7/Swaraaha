@@ -164,7 +164,7 @@
 )[
   FluentNet employs a hybrid CNN-LSTM architecture designed to automatically capture both spatial and temporal dependencies in speech signals.
   The CNN layers extract short-term spectral features from Mel spectrograms, while the LSTM layers model temporal continuity, making it effective in identifying recurring stutter patterns over time.
-  The system was trained and validated on the SEP-28k dataset — one of the largest available stuttering corpora — achieving over 91% classification accuracy.
+  The system was trained and validated on the SEP-28k dataset - one of the largest available stuttering corpora - achieving over 91% classification accuracy.
   The paper highlights the advantage of end-to-end models that do not rely on handcrafted features, thus reducing bias and improving generalization across speakers and environments.
   Moreover, the authors demonstrated FluentNet’s real-time applicability in speech therapy by integrating it into a feedback loop that provides visual dysfluency indicators to users.
   This study strongly supports the proposed stutter detection system, as it validates the effectiveness of CNN-LSTM architectures for real-time audio-based classification and informs the multi-model CNN approach used in our project.

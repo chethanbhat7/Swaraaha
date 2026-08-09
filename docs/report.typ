@@ -1,5 +1,5 @@
 #set document(
-  title: [Major Project Phase 1 Report]
+  title: [Major Project Report]
 )
 
 #set page(
@@ -88,7 +88,7 @@
   header: [
       #set text(9pt)
       “A Multi-Stage Deep Learning Framework for Syllable-Level Stuttering Localization, \
-      Classification, and Remediation using Wav2Vec 2.0 and Ensembled Transformers” #h(1fr) 2025-26
+      Classification, and Remediation using Wav2Vec 2.0 and Ensembled Transformers” #h(1fr) 2026-27
       #v(-0.8em)
       #header_footer_line()
   ],

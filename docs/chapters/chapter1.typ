@@ -73,7 +73,9 @@ The primary goal of this project is to create an automated and accurate system f
 
 == Organization of the Report
 This report is organized into two chapters, each presenting a structured explanation of the project’s goal and the research carried out to support the future implementation of the project.
-- *Chapter 1* introduces the project, its motivation, objectives, and overall structure. It outlines the problem of stuttering, the need for automation, and
+- *Chapter 1* introduces the project, its motivation, objectives, and overall structure. It outlines the problem of stuttering, the need for automation, and the proposed system’s benefits.
 - *Chapter 2* presents the Literature Survey, reviewing previous work, existing speech analysis tools, and limitations in current methods.
+- *Chapter 3* explains the System Requirements, including both hardware and software specifications, as well as functional and non-functional requirements.
+- *Chapter 4* focuses on System Design, providing architectural diagrams, data flow representations, and a detailed explanation of the CNN-based classification process.
 
 #pagebreak()
