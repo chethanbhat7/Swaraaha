@@ -4,10 +4,12 @@ import os
 
 import numpy as np
 from PySide6.QtCore import QThread, Signal
+from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
     QFileDialog,
     QMainWindow,
     QStackedWidget,
+    QToolBar,
     QVBoxLayout,
     QWidget,
 )
@@ -60,6 +62,16 @@ class MainWindow(QMainWindow):
         self._setup_ui()
 
     def _setup_ui(self):
+        self._theme_action = QAction("Toggle Dark Mode", self)
+        self._theme_action.setCheckable(True)
+        self._theme_action.setChecked(is_dark_mode())
+        self._theme_action.triggered.connect(self._toggle_theme)
+
+        self._theme_toolbar = QToolBar("Theme")
+        self._theme_toolbar.setMovable(False)
+        self._theme_toolbar.addAction(self._theme_action)
+        self.addToolBar(self._theme_toolbar)
+
         central = QWidget()
         self.setCentralWidget(central)
         layout = QVBoxLayout(central)
@@ -82,9 +94,6 @@ class MainWindow(QMainWindow):
         self._home_page.file_selected.connect(self._on_file_selected)
 
         self._analysis_page.back_clicked.connect(self._go_home)
-
-        theme_action = self.menuBar().addAction("Toggle Dark Mode")
-        theme_action.triggered.connect(self._toggle_theme)
 
         self.setAcceptDrops(True)
 
@@ -206,7 +215,7 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Ready")
 
     def _toggle_theme(self):
-        set_theme(not is_dark_mode())
+        set_theme(self._theme_action.isChecked())
         self.setStyleSheet(build_stylesheet())
 
     def dragEnterEvent(self, event):

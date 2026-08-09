@@ -20,19 +20,19 @@ LANGUAGE_NAMES = {
 _CSS = """
 body { font-family: Georgia, 'Times New Roman', serif; color: #1C1B1F; margin: 0; }
 .header { border-bottom: 3px solid #6750A4; padding-bottom: 8px; margin-bottom: 16px; }
-.brand { font-size: 26px; font-weight: bold; letter-spacing: 2px; }
-.tagline { font-size: 12px; color: #49454F; }
-h1 { font-size: 18px; margin: 0 0 4px 0; }
-.subtitle { font-size: 12px; color: #49454F; margin: 0 0 16px 0; }
-h2 { font-size: 14px; margin-top: 20px; }
-table { width: 100%; font-size: 11px; margin-bottom: 8px; border-collapse: collapse; }
+.brand { font-size: 26pt; font-weight: bold; letter-spacing: 2px; }
+.tagline { font-size: 12pt; color: #49454F; }
+h1 { font-size: 18pt; margin: 0 0 4px 0; }
+.subtitle { font-size: 12pt; color: #49454F; margin: 0 0 16px 0; }
+h2 { font-size: 14pt; margin-top: 20px; }
+table { width: 100%; font-size: 11pt; margin-bottom: 8px; border-collapse: collapse; }
 th, td { border: 1px solid #CAC4D0; padding: 4px 8px; text-align: left; }
 th { background-color: #EADDFF; }
 .k { font-weight: bold; width: 40%; }
 .meta td.k { background-color: #F3EDF7; }
-.transcript { font-size: 12px; line-height: 1.5; }
+.transcript { font-size: 12pt; line-height: 1.5; }
 .severity { font-weight: bold; }
-.footer { margin-top: 24px; padding-top: 8px; border-top: 1px solid #CAC4D0; font-size: 10px; color: #49454F; }
+.footer { margin-top: 24px; padding-top: 8px; border-top: 1px solid #CAC4D0; font-size: 10pt; color: #49454F; }
 """
 
 

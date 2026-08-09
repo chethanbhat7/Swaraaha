@@ -21,6 +21,7 @@ from app.core.recent_files import (
     remember_last_dir,
     update_recent_files,
 )
+from app.ui.theme import COLORS
 
 AUDIO_FILTERS = ["*.wav", "*.mp3", "*.flac"]
 AUDIO_EXTENSIONS = {".wav", ".mp3", ".flac"}
@@ -66,7 +67,7 @@ class FilePanel(QWidget):
 
         self._no_dir_label = QLabel("No directory selected.\nClick 'Select Directory...' to load a folder.")
         self._no_dir_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._no_dir_label.setStyleSheet("color: #79747E; font-size: 13px; padding: 30px; border: 1px dashed #79747E44; border-radius: 8px;")
+        self._no_dir_label.setStyleSheet(f"color: {COLORS['outline']}; font-size: 13px; padding: 30px; border: 1px dashed {COLORS['outline']}44; border-radius: 8px;")
         layout.addWidget(self._no_dir_label, stretch=1)
 
         self._tree = QTreeView()

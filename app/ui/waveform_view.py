@@ -21,9 +21,6 @@ class WaveformView(QGraphicsView):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setMinimumHeight(120)
-        self.setStyleSheet(
-            "background-color: #FFFBFE; border: 1px solid #79747E33; border-radius: 16px;"
-        )
 
     def set_audio(self, audio: np.ndarray, sample_rate: int = 16000):
         """Set the audio data to display."""

@@ -64,7 +64,7 @@ class ResultsPanel(QWidget):
             dot = QLabel("●")
             dot.setStyleSheet(f"color: {color}; font-size: 12px;")
             label = QLabel(display_name)
-            label.setStyleSheet("font-size: 11px; color: #79747E;")
+            label.setStyleSheet(f"font-size: 11px; color: {COLORS['outline']};")
             legend_layout.addWidget(dot)
             legend_layout.addWidget(label)
             legend_layout.addSpacing(12)
