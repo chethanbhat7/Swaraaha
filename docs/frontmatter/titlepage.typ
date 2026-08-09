@@ -28,8 +28,6 @@
     ])
   }
 
-  #let row_ys = (352.2, 369.1, 386.9, 404.0)
-
   #tline(52.3, 12pt, weight: "bold", fill: rgb("#c00000"))[#university_title]
   #tline(66.3, 12pt, weight: "bold")[#university_address]
   #place(dx: 249.9pt, dy: 82.8pt, image("../assets/vtu_logo.png", width: 104.35pt, height: 108.6pt, fit: "stretch"))
@@ -40,12 +38,31 @@
   #tline(270.6 + S, 12pt, weight: "bold")[#degree_upper]
   #tline(289.6 + S, 12pt, weight: "bold", fill: rgb("#6c2c9f"))[#department_upper]
   #tline(318.1 + S, 12pt, weight: "bold")[Submitted By]
-  #tleft(149.9, 335.2 + S, 12pt, weight: "bold", fill: rgb("#001f5f"))[Name]
-  #tleft(424.9, 335.2 + S, 12pt, weight: "bold", fill: rgb("#001f5f"))[USN]
-  #for (i, a) in authors.enumerate() {
-    tleft(122.0, row_ys.at(i) + S, 12pt, weight: "bold", fill: rgb("#006cc0"))[#upper(a.name)]
-    tleft(409.0, row_ys.at(i) + S, 12pt, weight: "bold", fill: rgb("#006cc0"))[#a.usn]
-  }
+  #place(dx: (595.28pt - 397pt) / 2, dy: _pt(335.2 + S + 1), table(
+    columns: (287pt, 110pt),
+    stroke: none,
+    inset: (x: 0pt, y: 0pt),
+    row-gutter: 8.88pt,
+    align: (left, center),
+    [
+      #set text(12pt, weight: "bold", fill: rgb("#001f5f"))
+      #h(50pt) Name
+    ],
+    [
+      #set text(12pt, weight: "bold", fill: rgb("#001f5f"))
+      USN
+    ],
+    ..authors.map(a => (
+      [
+        #set text(12pt, weight: "bold", fill: rgb("#006cc0"))
+        #upper(a.name)
+      ],
+      [
+        #set text(12pt, weight: "bold", fill: rgb("#006cc0"))
+        #a.usn
+      ],
+    )).flatten(),
+  ))
   #tline(431.3 + S, 12pt, weight: "bold")[Under the Guidance of]
   #tline(445.2 + S, 12pt, weight: "bold", fill: rgb("#c00000"))[#upper(guide)]
   #tline(459.2 + S, 12pt, weight: "bold")[Assistant Professor]
