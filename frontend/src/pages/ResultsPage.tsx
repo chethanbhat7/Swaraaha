@@ -633,7 +633,6 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
 
   // Determine Severity Level from localized dysfluency coverage
   const stutterIndexValue = durationSec > 0 ? (localizationCoverage / durationSec) * 100 : 0
-  const stutterIndex = `${stutterIndexValue.toFixed(1)}%`
 
   let severity = "Fluent"
   let severityColor = "text-emerald-500 bg-emerald-500/10 border-emerald-500/20"
@@ -714,7 +713,7 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
       )}
 
       {/* CLINICAL SUMMARY CARDS (Adaptive Grid Layout) */}
-      <div className="grid gap-6 md:grid-cols-3 print:hidden">
+      <div className="grid gap-6 md:grid-cols-2 print:hidden">
         
         {/* Severity Card */}
         <div className="p-5 bg-bg-card border border-border-color rounded-xl flex flex-col justify-between shadow-xs" style={{ borderRadius: '16px' }}>
@@ -728,20 +727,6 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
             </span>
             <p className="text-xs text-text-secondary mt-2">
               Based on speech localization regions.
-            </p>
-          </div>
-        </div>
-
-        {/* Index Metric Card */}
-        <div className="p-5 bg-bg-card border border-border-color rounded-xl flex flex-col justify-between shadow-xs" style={{ borderRadius: '16px' }}>
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Dysfluency Index</span>
-            <Activity className="text-accent-teal" size={16} />
-          </div>
-          <div className="mt-4">
-            <h3 className="text-2xl font-bold tracking-tight text-text-primary">{stutterIndex}</h3>
-            <p className="text-xs text-text-secondary mt-1">
-              Percentage of audio duration covered by localized dysfluency events.
             </p>
           </div>
         </div>
