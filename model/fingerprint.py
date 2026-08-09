@@ -93,3 +93,99 @@ def parse_fingerprint_from_path(path: str) -> Dict:
             base = base[: -len(suffix)]
             break
     return parse_fingerprint(base)
+
+
+CNN_LOCALIZER_RESUME_KEYS = [
+    "data_dir", "epochs", "batch_size", "lr", "n_mels", "hop_length",
+    "max_length_seconds", "dropout", "patience", "weight_decay", "seed",
+    "val_ratio",
+]
+
+W2V2_LOCALIZER_RESUME_KEYS = [
+    "data_dir", "epochs", "batch_size", "lr", "max_length_seconds", "dropout",
+    "hidden_dim", "patience", "weight_decay", "freeze_backbone_epochs",
+    "model_name", "seed", "val_ratio", "warmup_steps",
+]
+
+LOCALIZER_RESUME_KEYS = {
+    "loc": CNN_LOCALIZER_RESUME_KEYS,
+    "wav2vec": W2V2_LOCALIZER_RESUME_KEYS,
+}
+
+CNN_LOCALIZER_FMT = (
+    "cnnloc_e{epochs}_b{batch_size}_lr{lr}_n{n_mels}_h{hop_length}"
+    "_ml{max_length_seconds}_d{dropout}_pa{patience}_wd{weight_decay}"
+    "_vr{val_ratio}_s{seed}_{data_short}"
+)
+
+W2V2_LOCALIZER_FMT = (
+    "w2v2loc_e{epochs}_b{batch_size}_lr{lr}_frz{freeze_backbone_epochs}"
+    "_wu{warmup_steps}_hd{hidden_dim}_d{dropout}_wd{weight_decay}"
+    "_ml{max_length_seconds}_pa{patience}_vr{val_ratio}_s{seed}"
+    "_{data_short}_{model_short}"
+)
+
+LOCALIZER_FINGERPRINT_FMTS = {
+    "loc": CNN_LOCALIZER_FMT,
+    "wav2vec": W2V2_LOCALIZER_FMT,
+}
+
+
+def localizer_fingerprint(args, pipeline: str) -> str:
+    """Build a fingerprint string for a localizer pipeline."""
+    if pipeline not in LOCALIZER_FINGERPRINT_FMTS:
+        raise ValueError(f"Unknown localizer pipeline: {pipeline}")
+    fmt = LOCALIZER_FINGERPRINT_FMTS[pipeline]
+    keys = LOCALIZER_RESUME_KEYS[pipeline]
+    values = {k: _fmt_fp(getattr(args, k)) for k in keys if hasattr(args, k)}
+    values["data_short"] = os.path.basename(args.data_dir.rstrip("/"))
+    if pipeline == "wav2vec":
+        values["model_short"] = MODEL_ALIASES.get(
+            args.model_name, args.model_name.replace("/", "_")
+        )
+    return fmt.format(**values)
+
+
+def parse_localizer_fingerprint(fp: str) -> dict:
+    """Parse a localizer fingerprint string back into a params dict."""
+    if fp.startswith("cnnloc_"):
+        pattern = (
+            r'^cnnloc_e(?P<epochs>\d+)_b(?P<batch_size>\d+)_lr(?P<lr>[\d.e\-]+)'
+            r'_n(?P<n_mels>\d+)_h(?P<hop_length>\d+)'
+            r'_ml(?P<max_length_seconds>[\d.e\-]+)_d(?P<dropout>[\d.e\-]+)'
+            r'_pa(?P<patience>\d+)_wd(?P<weight_decay>[\d.e\-]+)'
+            r'_vr(?P<val_ratio>[\d.e\-]+)_s(?P<seed>\d+)_(?P<data_short>\w+)$'
+        )
+    elif fp.startswith("w2v2loc_"):
+        pattern = (
+            r'^w2v2loc_e(?P<epochs>\d+)_b(?P<batch_size>\d+)_lr(?P<lr>[\d.e\-]+)'
+            r'_frz(?P<freeze_backbone_epochs>\d+)_wu(?P<warmup_steps>\d+)'
+            r'_hd(?P<hidden_dim>\d+)_d(?P<dropout>[\d.e\-]+)'
+            r'_wd(?P<weight_decay>[\d.e\-]+)_ml(?P<max_length_seconds>[\d.e\-]+)'
+            r'_pa(?P<patience>\d+)_vr(?P<val_ratio>[\d.e\-]+)_s(?P<seed>\d+)'
+            r'_(?P<data_short>\w+)_(?P<model_short>\w+)$'
+        )
+    else:
+        raise ValueError(f"Cannot parse localizer fingerprint: {fp}")
+    m = re.match(pattern, fp)
+    if not m:
+        raise ValueError(f"Cannot parse localizer fingerprint: {fp}")
+    d = m.groupdict()
+    int_keys = ("epochs", "batch_size", "patience", "seed")
+    if "n_mels" in d:
+        int_keys += ("n_mels", "hop_length")
+    if "freeze_backbone_epochs" in d:
+        int_keys += ("freeze_backbone_epochs",)
+    if "warmup_steps" in d:
+        int_keys += ("warmup_steps",)
+    if "hidden_dim" in d:
+        int_keys += ("hidden_dim",)
+    for k in int_keys:
+        d[k] = int(d[k])
+    for k in ("lr", "max_length_seconds", "dropout", "weight_decay", "val_ratio"):
+        d[k] = float(d[k])
+    d.pop("data_short", None)
+    if "model_short" in d:
+        ms = d.pop("model_short")
+        d["model_name"] = MODEL_SHORT_TO_NAME.get(ms, ms)
+    return d

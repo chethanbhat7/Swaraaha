@@ -56,7 +56,7 @@ def test_localizer_fingerprint_roundtrip_w2v2():
 
     args = _w2v2_args()
     fp = localizer_fingerprint(args, "wav2vec")
-    assert fp.startswith("w2v2loc_e20_b4_lr3e-05_frz5_wu500_hd256_d0.3_wd0.01_ml10_pa5_vr0.2_s42_train_w2v2base")
+    assert fp.startswith("w2v2loc_e20_b4_lr3e-5_frz5_wu500_hd256_d0.3_wd0.01_ml10_pa5_vr0.2_s42_train_w2v2base")
     parsed = parse_localizer_fingerprint(fp)
     assert parsed["freeze_backbone_epochs"] == 5
     assert parsed["warmup_steps"] == 500
