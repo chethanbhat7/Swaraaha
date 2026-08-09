@@ -1,4 +1,5 @@
 #import "../lib.typ": *
+#import "../meta.typ": *
 
 // --- Declaration page (replicates DADS_final_edit.pdf page 3) ---
 #[
@@ -8,7 +9,7 @@
 
   // centered line placed with its glyph bbox top at y=dy
   #let tline(dy, size, weight: "regular", fill: black, edge: 0pt, body) = {
-    let off = if edge > 0pt { -3.99pt } else { 0.77 * size - 0.1pt }
+    let off = 0.77 * size - 0.1pt - edge
     place(dx: 0pt, dy: _pt(dy) + off, box(width: 100%, align(center)[
       #set text(size: size, weight: weight, fill: fill, top-edge: edge, bottom-edge: edge)
       #body
@@ -40,7 +41,7 @@
     #set text(size: 13pt, top-edge: 13.9pt, bottom-edge: 13.9pt)
     #set par(justify: true)
 
-    We, #text(fill: rgb("#6c2c9f"))[*Mr. K Shreekrishna Upadhyaya (4VP23AI020), Mr. M Chethan Keshav Bhat (4VP23AI023), Mr. Skanda Prasad K (4VP23AI051), Mr. Srinivas Hegde M (4VP23AI054)*] students of B.E. 5#super[th] Semester in Artificial Intelligence & Machine Learning, #text(fill: rgb("#00aceb"))[*Vivekananda College of Engineering & Technology*], Puttur, hereby declare that the project work entitled #text(fill: rgb("#ff0000"))[*“Stutter Detection and Classification System for Speech Pathology Assistance”*] has been carried out by us at VCET, Puttur, under the guidance of #text(fill: rgb("#c0504d"))[*Prof. Ajay shastry C G*] Assistant Professor, Department of Artificial Intelligence & Machine Learning, Vivekananda College of Engineering & Technology, Puttur, and submitted in partial fulfillment of the requirements for the award of degree in #text(fill: rgb("#006cc0"))[*Bachelor of Engineering in Artificial Intelligence & Machine Learning*] by #text(fill: rgb("#c00000"))[*Visvesvaraya Technological University*], Belagavi during the academic year 2025-2026.
+    We, #text(fill: rgb("#6c2c9f"))[*#author_decl_list*] students of #degree_short #semester#super[th] Semester in #department, #text(fill: rgb("#00aceb"))[*#college_name*], #college_place, hereby declare that the project work entitled #text(fill: rgb("#ff0000"))[*“#project_title”*] has been carried out by us at #college_short, #college_place, under the guidance of #text(fill: rgb("#c0504d"))[*#guide*] #guide_designation, Department of #department, #college_name, #college_place, and submitted in partial fulfillment of the requirements for the award of degree in #text(fill: rgb("#006cc0"))[*#degree in #department*] by #text(fill: rgb("#c00000"))[*#university_name*], #university_city during the academic year #academic_year_full.
   ])
 
   // table grid (0.75pt)
@@ -61,16 +62,13 @@
   #tcenter(357.3pt, 168.9pt, 416.3, 12pt)[Signature with date]
 
   // table data
-  #tleft(95.4, 449.8, 12pt)[K Shreekrishna Upadhyaya]
-  #tleft(271.8, 449.8, 12pt)[4VP23AI020]
-  #tleft(95.4, 483.6, 12pt)[M Chethan Keshav Bhat]
-  #tleft(271.8, 483.6, 12pt)[4VP23AI023]
-  #tleft(95.4, 517.6, 12pt)[Skanda Prasad K]
-  #tleft(271.8, 517.6, 12pt)[4VP23AI051]
-  #tleft(95.4, 551.2, 12pt)[Srinivas Hegde M]
-  #tleft(271.8, 551.2, 12pt)[4VP23AI054]
+  #let row_ys = (449.8, 483.6, 517.6, 551.2)
+  #for (i, a) in authors.enumerate() {
+    tleft(95.4, row_ys.at(i), 12pt)[#a.name]
+    tleft(271.8, row_ys.at(i), 12pt)[#a.usn]
+  }
 
   // date and place
   #tleft(72.1, 635.2, 12pt)[Date:]
-  #tleft(72.1, 654.2, 12pt)[Place: Puttur]
+  #tleft(72.1, 654.2, 12pt)[Place: #college_place]
 ]

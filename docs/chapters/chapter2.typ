@@ -1,4 +1,5 @@
 #import "../lib.typ": *
+#import "../meta.typ": *
 
 // --- Chapter 2: Literature Survey ---
 #chapter_heading[LITERATURE SURVEY]
@@ -231,7 +232,7 @@ detection and classification. The collective findings establish that deep learni
 particularly CNN- and transformer-based architectures, represents the state of the art in
 this domain.
 
-Early approaches relied heavily on manual inspection or handcrafted acoustic features, whereas recent advances in embedding-based speech representations, spectrogram-driven CNNs, temporal modeling, and transfer learning have achieved significant improvements in detection accuracy and generalization. Studies such as YOLO- Stutter and FluentNet highlight the importance of region-wise and temporal feature learning, while works like Stutter-TTS and Wang et al. emphasize the impact of data augmentation and dataset balancing. Furthermore, explainability and multilingual adaptability, as demonstrated in Stutter-Solver and Ghosh et al., ensure that these systems remain transparent, interpretable, and globally applicable. Collectively, the insights summarized in Table 2.1 form the scientific and technical foundation for the proposed “A Multi-Stage Deep Learning Framework for Syllable-Level Stuttering Localization, Classification, and Remediation using Wav2Vec 2.0 and Ensembled Transformers” guiding model design, feature extraction, timestamp alignment, and evaluation strategies to develop an effective, scalable, and user-accessible speech pathology support system.
+Early approaches relied heavily on manual inspection or handcrafted acoustic features, whereas recent advances in embedding-based speech representations, spectrogram-driven CNNs, temporal modeling, and transfer learning have achieved significant improvements in detection accuracy and generalization. Studies such as YOLO- Stutter and FluentNet highlight the importance of region-wise and temporal feature learning, while works like Stutter-TTS and Wang et al. emphasize the impact of data augmentation and dataset balancing. Furthermore, explainability and multilingual adaptability, as demonstrated in Stutter-Solver and Ghosh et al., ensure that these systems remain transparent, interpretable, and globally applicable. Collectively, the insights summarized in Table 2.1 form the scientific and technical foundation for the proposed "#project_title" guiding model design, feature extraction, timestamp alignment, and evaluation strategies to develop an effective, scalable, and user-accessible speech pathology support system.
 
 #add_table(
   table(

@@ -1,5 +1,8 @@
+#import "meta.typ": *
+#import "lib.typ": *
+
 #set document(
-  title: [Major Project Report]
+  title: document_title,
 )
 
 #set page(
@@ -39,8 +42,6 @@
   v(0.5em)
   it
 }
-
-#import "lib.typ": *
 
 #show outline.entry: it => {
   v(12pt, weak: true)
@@ -90,8 +91,7 @@
   // Header definition
   header: [
       #set text(9pt)
-      “A Multi-Stage Deep Learning Framework for Syllable-Level Stuttering Localization, \
-      Classification, and Remediation using Wav2Vec 2.0 and Ensembled Transformers” #h(1fr) 2026-27
+      #header_title #h(1fr) #header_year
       #v(-0.8em)
       #header_footer_line()
   ],
@@ -101,7 +101,7 @@
     #set text(9pt)
     #footer_line()
     #v(-0.8em)
-    Department of Artificial Intelligence & Machine Learning, V. C. E. T, Puttur. #h(1fr) Page #counter(page).display()
+    #footer_dept #h(1fr) Page #counter(page).display()
   ]
 )
 
