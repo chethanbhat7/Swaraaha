@@ -84,22 +84,28 @@
   ]
 }
 
-// A certificate signature column: label above a rule above the name.
-#let signature_cell(label, name) = {
+// A certificate signature column: a rule above the label above the name.
+#let signature_cell(label, name, line_gap: 4pt, name_gap: 4pt, label_leading: 0.65em, line_length: 60%) = {
   align(center, stack(dir: ltr)[
-    #text(size: 13pt)[#label]
-    #v(4pt)
-    #line(length: 60%, stroke: 0.5pt)
-    #v(4pt)
+    #line(length: line_length, stroke: 0.5pt)
+    #v(line_gap)
+    #par(leading: label_leading)[#text(size: 13pt)[#label]]
+    #v(name_gap)
     #text(size: 13pt, weight: "bold")[#name]
   ])
 }
 
 // A row of signature columns for the certificate page.
-#let signature_block(entries) = {
+// Entries are `(label, name)` or `(label, name, name_gap, label_leading, line_length)`.
+#let signature_block(entries, columns: (1fr, 1fr, 1fr), gutter: 2em, line_gap: 4pt, name_gap: 4pt, label_leading: 0.65em, line_length: 60%) = {
   grid(
-    columns: (1fr, 1fr, 1fr),
-    column-gutter: 2em,
-    ..entries.map(e => signature_cell(e.at(0), e.at(1))),
+    columns: columns,
+    column-gutter: gutter,
+    ..entries.map(e => {
+      let ng = if e.len() > 2 { e.at(2) } else { name_gap }
+      let ll = if e.len() > 3 { e.at(3) } else { label_leading }
+      let ln = if e.len() > 4 { e.at(4) } else { line_length }
+      signature_cell(e.at(0), e.at(1), line_gap: line_gap, name_gap: ng, label_leading: ll, line_length: ln)
+    }),
   )
 }

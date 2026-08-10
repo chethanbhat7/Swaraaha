@@ -12,7 +12,7 @@
 #let document_title = "Major Project Report"
 #let degree = "Bachelor of Engineering"
 #let degree_short = "B.E."
-#let semester = "5"
+#let semester = "7"
 
 // University
 #let university_name = "Visvesvaraya Technological University"
@@ -56,6 +56,7 @@
 
 #let guide = "Prof. Ajay Shastry C G"
 #let guide_designation = "Assistant Professor"
+#let project_coordinator = "Prof. Ajay Shastry C G"
 #let hod = "Dr. Radhika Shetty D S"
 #let principal = "Dr. Mahesh Prasanna K"
 
