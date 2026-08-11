@@ -96,3 +96,39 @@ def test_classification_eval_default_still_splits(tmp_path):
     _, loader, val_idx = _build_classification_eval(args)
     assert len(loader.dataset) < 5
     assert len(val_idx) < 5
+
+
+def _full_eval_args(tmp_path):
+    """Build the Namespace full_evaluate passes to evaluate.py (H2)."""
+    from model.evaluation.full_evaluate import _eval_args
+
+    class _Args:
+        data_dir = str(_make_data(tmp_path))
+        output_dir = str(tmp_path / "out")
+        registry = None
+        batch_size = 2
+        max_length_seconds = 2.0
+        threshold = 0.5
+        save_misclassified = False
+        sweep_thresholds = False
+
+    return _eval_args(_Args())
+
+
+def test_full_evaluate_eval_args_sets_full_true(tmp_path):
+    ea = _full_eval_args(tmp_path)
+    assert ea.full is True
+
+
+def test_full_evaluate_classification_eval_uses_every_clip(tmp_path):
+    ea = _full_eval_args(tmp_path)
+    _, loader, val_idx = _build_classification_eval(ea)
+    assert len(loader.dataset) == 5
+    assert len(val_idx) == 5
+
+
+def test_full_evaluate_localization_eval_uses_every_clip(tmp_path):
+    ea = _full_eval_args(tmp_path)
+    _, loader, val_idx = _build_localization_eval(ea)
+    assert len(loader.dataset) == 5
+    assert len(val_idx) == 5

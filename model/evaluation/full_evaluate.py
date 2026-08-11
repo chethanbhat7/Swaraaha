@@ -80,6 +80,7 @@ def _eval_args(args, **overrides):
         "hop_length": 512,
         "class_name": None,
         "model_path": None,
+        "full": True,
     }
     base.update(overrides)
     return argparse.Namespace(**base)
