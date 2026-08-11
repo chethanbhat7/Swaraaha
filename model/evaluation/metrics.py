@@ -83,8 +83,13 @@ def compute_classification_metrics(
         fn = int(np.sum((y_true_idx == c) & (y_pred_idx != c)))
         support = int(np.sum(y_true_idx == c))
 
-        precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
-        recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+        # With no predicted positives, precision is trivially 1.0 (no false
+        # alarms); with no true positives, recall is trivially 1.0 (nothing
+        # missed). Degenerate classes (no support, no predictions) are
+        # therefore perfect, so a perfect model on an all-one-class split
+        # scores macro-F1 1.0 instead of 1/C (sklearn zero_division=1).
+        precision = tp / (tp + fp) if (tp + fp) > 0 else 1.0
+        recall = tp / (tp + fn) if (tp + fn) > 0 else 1.0
         f1 = (
             2 * precision * recall / (precision + recall)
             if (precision + recall) > 0
