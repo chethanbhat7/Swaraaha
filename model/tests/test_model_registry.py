@@ -72,6 +72,27 @@ def test_run_all_catches_missing_models(monkeypatch):
     assert result["localization"]["error"]
 
 
+def test_run_all_catches_arbitrary_errors(monkeypatch):
+    """run_all must degrade classification/localization sub-results to
+    {"error": ...} for ANY exception, not just FileNotFoundError (e.g. a
+    ValueError from empty audio), mirroring the transcription handler."""
+    reg = ModelRegistry()
+
+    def _raise(*a, **k):
+        raise ValueError("empty audio")
+
+    monkeypatch.setattr(reg.classifier, "analyze", _raise)
+    monkeypatch.setattr(reg.localizer, "analyze", _raise)
+    monkeypatch.setattr(
+        reg.transcriber, "transcribe",
+        lambda audio, **kwargs: {"text": "", "words": [], "duration_sec": 0.0},
+    )
+    result = reg.run_all(np.zeros(16000, dtype=np.float32))
+    assert result["classification"]["error"] == "empty audio"
+    assert result["localization"]["error"] == "empty audio"
+    assert result["transcription"]["text"] == ""
+
+
 def test_classifier_all_mode_skips_unknown_registry_entries(monkeypatch, tmp_path):
     canonical = {"prolongation", "block", "soundrep", "wordrep", "interjection"}
 
