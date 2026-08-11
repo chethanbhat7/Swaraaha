@@ -28,7 +28,7 @@ def fake_raw(tmp_path, monkeypatch):
     labels_csv.write_text(
         "Show,EpId,ClipId,Start,Stop,Prolongation,Block,SoundRep,WordRep,"
         "Interjection,NoStutteredWords\n"
-        "FluencyBank,010,0,88960,136960,0,1,0,0,0,2\n"
+        "FluencyBank,010,0,88960,136960,0,2,0,0,0,2\n"
     )
 
     uclass_clips = raw / "UCLASS SEP-28K Format" / "clips" / "clips"
@@ -99,6 +99,51 @@ def test_normalize_uclass_writes_centered_intervals(fake_raw):
     assert intervals[dysfluent] == [(1.25, 1.75, "Block"), (1.25, 1.75, "SoundRep")]
     assert df[df["clip_file"] == dysfluent].iloc[0]["source"] == "uclass"
     assert df[df["clip_file"] == fluent].iloc[0]["source"] == "uclass"
+
+
+def test_normalize_sep28k_single_annotator_vote_is_negative(fake_raw):
+    """A lone 'yes' vote must not flip the clip positive (SEP-28K majority is
+    >=2 of 3 annotators); previously any single vote counted."""
+    labels_csv = fake_raw / "SEP-28K Dataset" / "fluencybank_labels.csv"
+    labels_csv.write_text(
+        "Show,EpId,ClipId,Start,Stop,Prolongation,Block,SoundRep,WordRep,"
+        "Interjection,NoStutteredWords\n"
+        "FluencyBank,010,0,88960,136960,0,1,0,0,0,2\n"
+    )
+    df, intervals = merge_mod.normalize_sep28k()
+    assert len(df) == 1
+    assert df.iloc[0]["Block"] == 0
+    assert intervals == {}
+
+
+def test_normalize_sep28k_majority_votes_are_positive(fake_raw):
+    """Two+ 'yes' votes flip the clip positive (SEP-28K majority rule)."""
+    labels_csv = fake_raw / "SEP-28K Dataset" / "fluencybank_labels.csv"
+    labels_csv.write_text(
+        "Show,EpId,ClipId,Start,Stop,Prolongation,Block,SoundRep,WordRep,"
+        "Interjection,NoStutteredWords\n"
+        "FluencyBank,010,0,88960,136960,0,2,0,0,0,2\n"
+    )
+    df, intervals = merge_mod.normalize_sep28k()
+    assert len(df) == 1
+    assert df.iloc[0]["Block"] == 1
+    clip = os.path.join(fake_raw, SEP28K_CLIP, "FluencyBank_010_0.wav")
+    assert intervals[clip] == [(0.0, 3.0, "Block")]
+
+
+def test_normalize_sep28k_skips_malformed_episode_id_without_aborting(fake_raw):
+    """Rows whose Episode/Clip ID cannot be parsed must be skipped, not crash
+    the whole merge (int(EpId) previously raised ValueError)."""
+    labels_csv = fake_raw / "SEP-28K Dataset" / "fluencybank_labels.csv"
+    labels_csv.write_text(
+        "Show,EpId,ClipId,Start,Stop,Prolongation,Block,SoundRep,WordRep,"
+        "Interjection,NoStutteredWords\n"
+        "BadShow,Ep1,0,88960,136960,0,2,0,0,0,2\n"
+        "FluencyBank,010,0,88960,136960,0,2,0,0,0,2\n"
+    )
+    df, _ = merge_mod.normalize_sep28k()
+    assert len(df) == 1
+    assert df.iloc[0]["clip_file"].endswith("FluencyBank_010_0.wav")
 
 
 def test_merge_datasets_adds_source_column(fake_raw, tmp_path):
