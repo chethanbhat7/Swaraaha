@@ -227,11 +227,11 @@ def _finalize_classifier_report(args, class_name, model_path, y_true, y_scores,
     metrics["model"] = model_info_from_path(model_path)
 
     if args.sweep_thresholds:
-        from model.evaluation.metrics import find_optimal_threshold
+        from model.evaluation.metrics import THRESHOLD_SWEEP, find_optimal_threshold
 
         print("\n  --- Threshold Sweep ---")
         sweep_results = []
-        for t in np.arange(0.1, 0.91, 0.05):
+        for t in THRESHOLD_SWEEP:
             m = compute_binary_metrics(y_true, y_scores, threshold=t)
             sweep_results.append(m)
             print(f"  t={t:.2f}  F1={m['f1']:.3f}  P={m['precision']:.3f}  "
@@ -366,6 +366,45 @@ def evaluate_all_classifiers(args) -> Dict[str, Dict]:
 # Localization
 # ---------------------------------------------------------------------------
 
+def _run_localizer_sweep(y_true, y_pred, sr=16000, hop_length=512):
+    """Run a frame-level threshold sweep for a localizer.
+
+    Returns dict with:
+        "sweep": list of per-threshold frame-F1 rows
+        "best_f1": {"threshold", "f1"} maximizing frame F1
+        "best_youden": {"threshold", "youden"} maximizing Youden's J
+
+    Frame F1 (and Youden) are threshold-dependent for localizers, so the
+    optimal operating point is not fixed at 0.5.
+    """
+    from model.evaluation.metrics import THRESHOLD_SWEEP, compute_localization_metrics
+
+    sweep = []
+    best_f1 = {"threshold": 0.5, "f1": 0.0}
+    best_youden = {"threshold": 0.5, "youden": -float("inf")}
+
+    for t in THRESHOLD_SWEEP:
+        m = compute_localization_metrics(
+            y_true, y_pred, threshold=t, sr=sr, hop_length=hop_length,
+        )
+        fl = m["frame_level"]
+        row = {
+            "threshold": float(t),
+            "frame_f1": fl["f1"],
+            "precision": fl["precision"],
+            "recall": fl["recall"],
+            "specificity": fl["specificity"],
+        }
+        sweep.append(row)
+        if fl["f1"] > best_f1["f1"]:
+            best_f1 = {"threshold": float(t), "f1": fl["f1"]}
+        youden = fl["recall"] + fl["specificity"] - 1.0
+        if youden > best_youden["youden"]:
+            best_youden = {"threshold": float(t), "youden": youden}
+
+    return {"sweep": sweep, "best_f1": best_f1, "best_youden": best_youden}
+
+
 def evaluate_localizer(args) -> Dict:
     """Evaluate a trained localization model (CNN or Wav2Vec2)."""
     import torch
@@ -410,6 +449,24 @@ def evaluate_localizer(args) -> Dict:
     metrics["model_path"] = args.model_path
     metrics["num_samples"] = len(eval_dataset)
     metrics["threshold"] = args.threshold
+
+    if args.sweep_thresholds:
+        print("\n  --- Threshold Sweep (frame-level) ---")
+        sweep = _run_localizer_sweep(y_true, y_pred, sr=16000, hop_length=args.hop_length)
+        for row in sweep["sweep"]:
+            print(f"  t={row['threshold']:.2f}  F1={row['frame_f1']:.3f}  "
+                  f"P={row['precision']:.3f}  R={row['recall']:.3f}  "
+                  f"Spec={row['specificity']:.3f}")
+        print("\n  Optimal thresholds:")
+        print(f"    Best frame F1:   t={sweep['best_f1']['threshold']:.2f}  "
+              f"(F1={sweep['best_f1']['f1']:.3f})")
+        print(f"    Best Youden's J: t={sweep['best_youden']['threshold']:.2f}  "
+              f"(J={sweep['best_youden']['youden']:.3f})")
+        metrics["threshold_sweep"] = {
+            "best_f1": sweep["best_f1"],
+            "best_youden": sweep["best_youden"],
+            "sweep": sweep["sweep"],
+        }
 
     from model.evaluation.loader import model_info_from_path
 

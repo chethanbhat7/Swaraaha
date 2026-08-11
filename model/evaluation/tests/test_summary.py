@@ -10,9 +10,11 @@ import pytest
 
 from model.evaluation import summary
 from model.evaluation.metrics import (
+    THRESHOLD_SWEEP,
     compute_binary_metrics,
     compute_classification_metrics,
     compute_localization_metrics,
+    find_optimal_threshold,
 )
 
 # ---------------------------------------------------------------------------
@@ -335,3 +337,39 @@ def test_format_summary_markdown_renders_nested_binary_summary():
 
     assert "| prolongation | 0.700 | 0.600 | 0.650 | 0.800 | 0.700 | 100 |" in doc
     assert "Macro-averaged F1 (all 5 classes): 0.65" in doc
+
+
+# ---------------------------------------------------------------------------
+# find_optimal_threshold (M8)
+# ---------------------------------------------------------------------------
+
+def test_find_optimal_threshold_youden_reports_real_value():
+    """youden can be negative (worse than chance); the returned value must be
+    the youden actually achieved at the returned threshold, not a hardcoded
+    default of 0.0 (old code started best_val=0.0 and never updated)."""
+    y_true = np.array([1, 0, 1, 0, 1, 0])
+    y_scores = np.array([0.2, 0.8, 0.1, 0.9, 0.3, 0.7])
+
+    t, val = find_optimal_threshold(y_true, y_scores, metric="youden")
+
+    pred = (y_scores >= t).astype(int)
+    tp = int(np.sum((y_true == 1) & (pred == 1)))
+    fp = int(np.sum((y_true == 0) & (pred == 1)))
+    fn = int(np.sum((y_true == 1) & (pred == 0)))
+    tn = int(np.sum((y_true == 0) & (pred == 0)))
+    recall = tp / (tp + fn) if tp + fn > 0 else 0.0
+    specificity = tn / (tn + fp) if tn + fp > 0 else 0.0
+    assert val == pytest.approx(recall + specificity - 1.0)
+
+
+def test_find_optimal_threshold_sweep_matches_printed_grid():
+    """find_optimal_threshold must search the same grid the printed sweep
+    shows (THRESHOLD_SWEEP), so the reported optimum is always visible in the
+    table. Old code searched 0.05..0.95 while the table prints 0.10..0.90."""
+    y_true = np.array([1, 1, 1])
+    y_scores = np.array([0.99, 0.98, 0.97])
+
+    t, val = find_optimal_threshold(y_true, y_scores, metric="f1")
+
+    assert t in THRESHOLD_SWEEP
+    assert val == 1.0

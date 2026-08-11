@@ -12,6 +12,15 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 
 
+THRESHOLD_SWEEP = np.arange(0.1, 0.91, 0.05)
+"""Canonical threshold grid for sweep-based optimal-threshold search.
+
+Shared by ``find_optimal_threshold`` and the printed sweep in
+``evaluate.py`` so the reported optimum is always a row of the printed
+table (M8: they previously disagreed).
+"""
+
+
 def _trapezoid(y: np.ndarray, x: np.ndarray) -> float:
     """
     Integrate ``y`` over ``x`` with the trapezoidal rule.
@@ -283,9 +292,9 @@ def find_optimal_threshold(
     y_true = np.asarray(y_true).astype(int)
     y_scores = np.asarray(y_scores).astype(float)
 
-    thresholds = np.arange(0.05, 0.96, 0.05)
+    thresholds = THRESHOLD_SWEEP
     best_thresh = 0.5
-    best_val = 0.0
+    best_val = -float("inf")
 
     for thresh in thresholds:
         y_pred = (y_scores >= thresh).astype(int)
