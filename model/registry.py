@@ -245,18 +245,19 @@ class Classifier:
                 self._models[name] = _load_classifier(name, path)
 
     def predict(
-        self, audio_tensor, threshold: float = 0.5
+        self, audio_tensor, threshold: Optional[float] = None
     ) -> Union[Dict[str, Tuple[int, float]], Tuple[int, float]]:
         if self._model is None and not self._models:
             self._load()
 
         if self.class_name is not None:
-            return self._model.predict(audio_tensor)
+            thr = self._resolve_thresholds(threshold)[self.class_name]
+            return self._model.predict(audio_tensor, threshold=thr)
         else:
-            return self.predict_all(audio_tensor)
+            return self.predict_all(audio_tensor, threshold)
 
     def predict_all(
-        self, audio_tensor
+        self, audio_tensor, threshold: Optional[float] = None
     ) -> Dict[str, Tuple[int, float]]:
         if self._model is None:
             self._load()
@@ -267,9 +268,10 @@ class Classifier:
                 "(call Classifier() without class_name)"
             )
 
+        thresholds = self._resolve_thresholds(threshold)
         results = {}
         for name, clf in self._models.items():
-            results[name] = clf.predict(audio_tensor)
+            results[name] = clf.predict(audio_tensor, threshold=thresholds[name])
         return results
 
     @staticmethod
