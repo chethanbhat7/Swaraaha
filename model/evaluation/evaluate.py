@@ -70,6 +70,9 @@ def parse_args():
     parser.add_argument("--n_mels", type=int, default=128, help="Mel bins (for localizer).")
     parser.add_argument("--hop_length", type=int, default=512,
                         help="Hop length (for localizer).")
+    parser.add_argument("--full", action="store_true",
+                        help="Evaluate the ENTIRE data_dir (no 20% split). "
+                             "Use with a prepared test split, e.g. --data_dir data/test.")
     return parser.parse_args()
 
 
@@ -92,9 +95,13 @@ def _build_classification_eval(args):
                            "Prepare the dataset first (see model/data/setup.py).")
 
     _, val_idx = stratified_split(dataset, val_ratio=0.2, seed=42)
-    eval_dataset = SubsetDataset(dataset, val_idx)
+    if args.full:
+        indices = list(range(len(dataset)))
+    else:
+        indices = val_idx
+    eval_dataset = SubsetDataset(dataset, indices)
     eval_loader = DataLoader(eval_dataset, batch_size=args.batch_size, shuffle=False)
-    return eval_dataset, eval_loader, val_idx
+    return eval_dataset, eval_loader, indices
 
 
 def _build_localization_eval(args):
@@ -125,9 +132,13 @@ def _build_localization_eval(args):
                            "Prepare the dataset first (see model/data/setup.py).")
 
     _, val_idx = split_dataset(dataset, val_ratio=0.2, seed=42)
-    eval_dataset = SubsetDataset(dataset, val_idx)
+    if args.full:
+        indices = list(range(len(dataset)))
+    else:
+        indices = val_idx
+    eval_dataset = SubsetDataset(dataset, indices)
     eval_loader = DataLoader(eval_dataset, batch_size=args.batch_size, shuffle=False)
-    return eval_dataset, eval_loader, val_idx
+    return eval_dataset, eval_loader, indices
 
 
 def _move_model(model, device):
