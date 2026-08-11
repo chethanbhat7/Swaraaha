@@ -11,6 +11,7 @@ import pytest
 from model.evaluation import summary
 from model.evaluation.metrics import (
     compute_binary_metrics,
+    compute_classification_metrics,
     compute_localization_metrics,
 )
 
@@ -131,6 +132,45 @@ def test_compute_localization_metrics_all_positive_missed():
     assert m["frame_level"]["recall"] == 0.0
     assert m["frame_level"]["f1"] == 0.0
     assert m["event_level"]["detection_accuracy"] == 0.0
+
+
+# ---------------------------------------------------------------------------
+# Multi-class classification metrics
+# ---------------------------------------------------------------------------
+
+def test_compute_classification_metrics_degenerate_perfect():
+    """All samples are one class (index 1) and the model predicts them
+    perfectly: macro-F1 must be 1.0, not 0.5. The absent class 0 has no
+    support and no predictions, so it is trivially perfect (zero_division=1)."""
+    y_true = np.ones(50, dtype=int)
+    y_pred = np.ones(50, dtype=int)
+
+    m = compute_classification_metrics(y_true, y_pred, class_names=["a", "b"])
+
+    assert m["per_class"]["a"]["precision"] == 1.0
+    assert m["per_class"]["a"]["recall"] == 1.0
+    assert m["per_class"]["a"]["f1"] == 1.0
+    assert m["per_class"]["b"]["precision"] == 1.0
+    assert m["per_class"]["b"]["recall"] == 1.0
+    assert m["per_class"]["b"]["f1"] == 1.0
+    assert m["macro"]["f1"] == 1.0
+    assert m["accuracy"] == 1.0
+
+
+def test_compute_classification_metrics_degenerate_class_false_alarms():
+    """A class with no true samples but predicted samples scores 0: every
+    prediction is a false alarm, even with the zero_division=1 default."""
+    y_true = np.zeros(50, dtype=int)
+    y_pred = np.zeros(50, dtype=int)
+    y_pred[:10] = 1  # 10 false alarms of class 1
+
+    m = compute_classification_metrics(y_true, y_pred, class_names=["a", "b"])
+
+    assert m["per_class"]["a"]["recall"] == pytest.approx(0.8)
+    assert m["per_class"]["a"]["precision"] == 1.0
+    assert m["per_class"]["b"]["precision"] == 0.0
+    assert m["per_class"]["b"]["recall"] == 1.0
+    assert m["per_class"]["b"]["f1"] == 0.0
 
 
 # ---------------------------------------------------------------------------
