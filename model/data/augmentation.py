@@ -35,15 +35,23 @@ class AudioAugmentor:
 
     @staticmethod
     def _resample(arr: np.ndarray, factor: float) -> np.ndarray:
-        """Resample a 1-D array by a time factor, keeping the same length."""
-        indices = np.round(np.arange(0, len(arr), factor)).astype(np.int64)
-        indices = indices[indices < len(arr)]
-        out = arr[indices]
-        if len(out) < len(arr):
-            out = np.pad(out, (0, len(arr) - len(out)))
-        else:
-            out = out[: len(arr)]
-        return out
+        """Resample a 1-D array by a time-stretch factor, keeping length.
+
+        factor > 1 stretches (slower/longer); factor < 1 compresses
+        (faster/shorter). Output length equals input length; out-of-range
+        reads clamp to the final sample instead of zero-padding the tail.
+
+        This is the resampling primitive for both time_stretch (direct
+        factor) and pitch_shift (inverse factor, so positive semitones
+        raise pitch).
+        """
+        if factor == 1.0:
+            return arr
+        if len(arr) == 0:
+            return arr
+        indices = np.floor(np.arange(len(arr)) / factor).astype(np.int64)
+        np.clip(indices, 0, len(arr) - 1, out=indices)
+        return arr[indices]
 
     def add_noise(self, audio: np.ndarray) -> np.ndarray:
         """Add Gaussian noise to audio."""
@@ -53,15 +61,23 @@ class AudioAugmentor:
         return audio + noise
 
     def time_stretch(self, audio: np.ndarray) -> np.ndarray:
-        """Time-stretch audio by resampling."""
+        """Time-stretch audio by resampling.
+
+        factor > 1 plays the audio slower (stretch); factor < 1 faster.
+        """
         factor = random.uniform(*self.time_stretch_range)
         return self._resample(audio, factor)
 
     def pitch_shift(self, audio: np.ndarray, sample_rate: int = 16000) -> np.ndarray:
-        """Pitch-shift audio using resampling."""
+        """Pitch-shift audio using resampling.
+
+        Positive semitones raise pitch; negative semitones lower it. Uses
+        the inverse stretch factor so higher pitch corresponds to faster
+        content (as the caller expects from the semitone sign).
+        """
         semitones = random.uniform(*self.pitch_shift_range)
         factor = 2 ** (semitones / 12.0)
-        return self._resample(audio, factor)
+        return self._resample(audio, 1.0 / factor)
 
     def time_shift(self, audio: np.ndarray) -> np.ndarray:
         """Shift audio in time by rolling samples."""
@@ -109,8 +125,8 @@ class AudioAugmentor:
 
         semitones = random.uniform(*self.pitch_shift_range)
         pitch_factor = 2 ** (semitones / 12.0)
-        audio = self._resample(audio, pitch_factor)
-        frame_labels = self._resample(frame_labels, pitch_factor)
+        audio = self._resample(audio, 1.0 / pitch_factor)
+        frame_labels = self._resample(frame_labels, 1.0 / pitch_factor)
 
         shift_sec = random.uniform(*self.shift_range)
         shift_samples = int(shift_sec * sample_rate)
