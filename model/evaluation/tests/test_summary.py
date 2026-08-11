@@ -185,3 +185,64 @@ def test_build_classification_summary_passes_through_model_info():
     entry = summary_result["per_class"]["prolongation"]
     assert entry["model"]["fingerprint"] == "prolongation_e20_b16_..."
     assert entry["model"]["lr"] == 3e-05
+
+
+def _sample_nested_binary_result():
+    return {
+        "class_name": "prolongation",
+        "model_path": "model/weights/prolongation_e20_b8_best.pt",
+        "num_samples": 100,
+        "threshold": 0.5,
+        "binary": {"auroc": 0.8, "auprc": 0.7, "threshold": 0.5,
+                   "precision": 0.7, "recall": 0.6, "f1": 0.65,
+                   "specificity": 0.8, "accuracy": 0.75, "support": 100,
+                   "tn": 60, "fp": 15, "fn": 10, "tp": 15},
+        "threshold_sweep": {"best_f1": {"threshold": 0.4, "f1": 0.66}},
+        "model": {"fingerprint": "prolongation_e20_b8_best", "lr": 3e-05,
+                  "model_name": "facebook/wav2vec2-base"},
+    }
+
+
+def test_build_classification_summary_reads_nested_binary_metrics():
+    """evaluate_classifier returns metrics nested under 'binary'; the summary
+    must read them from there instead of flat keys."""
+    results = {"prolongation": _sample_nested_binary_result()}
+    result = summary.build_classification_summary(results, threshold=0.7)
+
+    entry = result["per_class"]["prolongation"]
+    assert entry["f1"] == 0.65
+    assert entry["precision"] == 0.7
+    assert entry["recall"] == 0.6
+    assert entry["support"] == 100
+    assert entry["auroc"] == 0.8
+    assert entry["auprc"] == 0.7
+    assert entry["specificity"] == 0.8
+    assert entry["threshold"] == 0.5
+    assert entry["model"]["fingerprint"] == "prolongation_e20_b8_best"
+    assert result["macro_f1"] == pytest.approx(0.65)
+    assert len(result["flagged"]) == 1
+
+
+def test_format_summary_markdown_survives_missing_metrics():
+    """The markdown renderer must not crash with 'Unknown format code f' when
+    a per-class result is missing precision/recall (e.g. an errored run)."""
+    classification = summary.build_classification_summary(
+        {"prolongation": {"status": "error", "model": {"fingerprint": ""}}},
+        threshold=0.7,
+    )
+    doc = summary.format_summary_markdown({"classification": classification})
+    assert "## Classification" in doc
+    assert "| prolongation |" in doc
+
+
+def test_format_summary_markdown_renders_nested_binary_summary():
+    results = {"prolongation": _sample_nested_binary_result()}
+    classification = summary.build_classification_summary(results, threshold=0.7)
+    doc = summary.format_summary_markdown({
+        "metadata": {"timestamp": "2026-01-01T00:00:00+00:00", "data_dir": "data",
+                     "flag_threshold": 0.7},
+        "classification": classification,
+    })
+
+    assert "| prolongation | 0.700 | 0.600 | 0.650 | 0.800 | 0.700 | 100 |" in doc
+    assert "Macro-averaged F1 (all 5 classes): 0.65" in doc
