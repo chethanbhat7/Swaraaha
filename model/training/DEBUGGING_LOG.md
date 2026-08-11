@@ -530,3 +530,159 @@ is not used — all-5 output is raw per-classifier results plus a detected-class
 F1 is optimized at the default 0.5 decision threshold. Sweeping the threshold on
 the val set (precision/recall curve) can recover several points of F1 with zero
 retraining — worth doing before any architecture change.
+
+---
+
+## 9. Localizer: waveform augmentation applied to spectrograms
+
+**Symptom:** CNN spectrogram localizer frame `F1` stuck at `0.000`; validation
+loss dropped but no frame ever crossed the `0.5` threshold.
+
+**Root cause:** `AugmentedDataset` ran the *waveform* `AudioAugmentor` (noise,
+time-stretch, pitch-shift, roll) directly on `(1, n_mels, T)` spectrogram
+arrays. Stretch/pitch-shift resampled the time axis while frame labels stayed
+put — augmented "signal" had near-zero correlation with labels (measured ≈
+`−0.11`). Training on misaligned labels ≈ training on noise.
+
+**Files affected:**
+- `model/data/augmentation.py`
+
+**Fix (rewrote `model/data/augmentation.py`):**
+- `SpectrogramAugmentor` — SpecAugment-style masking on `(C, n_mels, T)`;
+  masking never moves energy in time, labels stay valid.
+- `AudioAugmentor.apply_with_labels(...)` — samples each transform once and
+  applies it to audio AND frame labels in lockstep (stretch/pitch via
+  `_resample`, roll shifts labels by `round(shift / frame_hop)` frames).
+- `AugmentedDataset` routes by input dimensionality + `label_aligned` /
+  `frame_hop_samples` instead of waveform-augmenting everything.
+
+**Verified by:** 12 new tests in `model/data/tests/test_augmentation.py`.
+
+---
+
+## 10. Localizer: SEP-28K weak labels inflate all-source metrics
+
+**Symptom:** All-sources run (sep28k + uclass) hit frame `F1 0.85`, IoU `0.90`
+— looked great but was not the trustworthy number.
+
+**Root cause:** SEP-28K intervals span the whole clip (`0.000,3.000`), so
+whole-clip predictions trivially match whole-clip ground truth. Only UCLASS has
+precise event intervals.
+
+**Fix:** The trustworthy number comes from a UCLASS-only run:
+`python -m model.training.train --pipelines loc wav2vec -- --sources uclass --clean`.
+
+---
+
+## 11. Localizer: `pos_weight=5.0` ~8× too weak (current case)
+
+**Symptom:** UCLASS-only CNN run: `AUROC 0.927` but frame `F1@0.5 = 0.011`
+(final best `0.014`). Prediction distribution: `max = 0.537`, `p99.9 = 0.488`
+— nothing meaningfully exceeds `0.5`. Best-threshold F1 only `0.256`
+(at `t = 0.38`); precision at the API default threshold `0.3` is `0.148`
+(85% false positives).
+
+**Root cause:** Positive-frame rate on UCLASS is `2.5%`, so the balanced
+`pos_weight` should be `n_neg/n_pos ≈ 39`. The hardcoded `5.0` is ~8× too
+weak — the loss never pushes outputs into confident territory, and every
+prediction is compressed into a low-probability band overlapping the negatives.
+High AUROC despite poor F1 = small separable subset drives the ranking.
+
+**Diagnostic evidence** (evaluate on val, `check_cnn_preds.py`):
+```
+positive ratio = 0.02486
+F1@0.5 = 0.0114   AUROC = 0.9273   best-threshold F1 = 0.256 at t=0.38
+pos preds: mean 0.384, p90 0.464
+neg preds: p99.9 0.484, max 0.537   ← negatives beat most positives
+t=0.3 → F1 0.249, precision 0.148, recall 0.793
+```
+
+**Fix (implemented, awaiting retrain):** `--pos_weight` default `5.0` → `None`
+(auto-computed from training-split frame labels, inverse frequency); best-
+threshold F1 reported alongside AUROC. Files:
+`model/training/train_localizer.py`, `model/training/train_wav2vec2_localizer.py`,
+`model/training/utils.py`.
+
+---
+
+## 12. Localizer: Wav2Vec2 path is the working one
+
+UCLASS-only w2v2 run reached frame `F1@0.5 = 0.322`, `AUROC 0.943` at epoch 6
+and still climbing. The pretrained backbone separates events even at threshold
+0.5 — no compression problem. Expect CNN to remain the weak link.
+
+---
+
+## 13. Project Boli: all clips silently skipped in merge
+
+**Symptom:** 0 Boli clips ingested; combined labels only had sep28k + uclass.
+
+**Root causes (two, in `model/data/merge.py`):**
+1. **Filename mismatch:** transcript stems are `{nEvents}_{speaker}_{task}`
+   (`10_727253_EI`) but audio files are `{speaker}_english_{task}_blob.wav`
+   (`727253_english_image_blob.wav`). Matcher only tried `{stem}.wav`.
+2. **Timestamps are seconds, not ms:** the parser divided by 1000, so every
+   Boli interval would be 1000× too small.
+
+**Fix (TDD, 9 tests in `model/data/tests/test_merge.py`):**
+`_boli_audio_name()` maps `{nEvents}_{speaker}_{task}` →
+`{speaker}_english_{task}_blob.wav` (task codes `E1/E2/E3/EI`); raw seconds
+kept as seconds.
+
+**Verified by:** real-data run → 54/55 clips ingested as `source='boli'`
+(312 intervals: SR 159, B 74, PR 42, WR 21, IN 16). The 1 skipped clip is a
+genuine missing-audio case upstream.
+
+---
+
+## 14. Transcription fidelity: Whisper is not a stutter detector
+
+**Probe:** 100 SEP-28K single-label clips per group (soundrep, wordrep, block,
+prolongation, clean) + 50 UCLASS clips with precise events, through the real
+`Transcriber.transcribe()` (Whisper-tiny + `_flag_repetitions`).
+
+**Results:**
+- Raw fidelity: sound-reps as repeated tokens in **1/100** clips; blocks
+  vanish entirely (**0/100**).
+- `wordrep` flag fired **0/500** times — even where Whisper DID transcribe the
+  repeat.
+- `soundrep` flags dominated by ellipsis false positives: regex `(.)\1{2,}`
+  matches `...` in `"she..."`, `"just..."`, plus `,000` in numbers.
+  False-positive rate on clean clips (4%) > recall on real soundreps (3%).
+- UCLASS event-level: recall 6.1%, precision 75% (only 4 flags in 50 clips).
+
+**Root causes:**
+1. `_transcribe_with_whisper` de-dups consecutive identical chunks
+   (hallucination guard) *before* `_flag_repetitions` runs → genuine repeats
+   already collapsed.
+2. `_is_repeated_fragment` regex matches 3+ trailing periods.
+
+**Fix:** none applied yet (pending: fix regex + reorder flagging, or document
+as display-layer limitation).
+
+**Design implication:** detection never uses the transcript; type-linking stays
+audio-only (classifier saliency). Transcription is display-only.
+
+---
+
+## 15. `--sources` not in localizer fingerprint → silent skip
+
+**Symptom:** rerun with different `--sources` would silently skip because
+`maybe_skip_completed` saw a completed checkpoint with the same fingerprint.
+
+**Root cause:** `sources` not in `CNN_LOCALIZER_RESUME_KEYS` /
+`W2V2_LOCALIZER_RESUME_KEYS`.
+
+**Fix (workflow):** always pass `--clean` when changing sources.
+
+---
+
+## 16. Probe infra bug: `pipe.__call__` monkeypatch ignored
+
+**Symptom:** raw Whisper chunks never captured; raw-fidelity metrics showed 0%.
+
+**Root cause:** Python resolves `__call__` on the *type*, not the instance;
+`pipe.__call__ = fn` is silently ignored.
+
+**Fix:** wrap the pipeline in a `_Proxy` instance that stashes raw output on a
+side channel.
