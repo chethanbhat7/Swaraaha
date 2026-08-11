@@ -64,6 +64,22 @@ def test_localizer_fingerprint_roundtrip_w2v2():
     assert parsed["model_name"] == "facebook/wav2vec2-base"
 
 
+def test_model_name_from_path_w2v2large():
+    from model.fingerprint import model_name_from_path
+
+    path = ("model/weights/block_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_"
+            "wd0.01_ml10_s42_train_w2v2large_best.pt")
+    assert model_name_from_path(path) == "facebook/wav2vec2-large"
+
+
+def test_model_name_from_path_w2v2base():
+    from model.fingerprint import model_name_from_path
+
+    path = ("model/weights/block_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_"
+            "wd0.01_ml10_s42_train_w2v2base_final.pt")
+    assert model_name_from_path(path) == "facebook/wav2vec2-base"
+
+
 def test_resume_state_roundtrip_and_skip(tmp_path):
     args = Namespace(output_dir=str(tmp_path), clean=False, epochs=30)
     model = StubModel()
