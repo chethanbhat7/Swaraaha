@@ -84,6 +84,55 @@ def test_compute_localization_metrics_partial_overlap():
     assert m["frame_level"]["f1"] > 0.0
 
 
+def test_compute_localization_metrics_all_negative_perfect():
+    """All-negative truth with all-negative predictions is perfect agreement:
+    frame F1 must be 1.0, consistent with the event-level 1.0/1.0."""
+    y_true = np.zeros(100, dtype=int)
+    y_pred = np.zeros(100)
+
+    m = compute_localization_metrics(y_true, y_pred, threshold=0.5, sr=16000, hop_length=512)
+
+    assert m["frame_level"]["precision"] == 1.0
+    assert m["frame_level"]["recall"] == 1.0
+    assert m["frame_level"]["f1"] == 1.0
+    assert m["event_level"]["detection_accuracy"] == 1.0
+    assert m["event_level"]["mean_iou"] == 1.0
+    assert m["event_level"]["num_true_events"] == 0
+    assert m["event_level"]["num_pred_events"] == 0
+    assert m["event_level"]["num_false_alarms"] == 0
+
+
+def test_compute_localization_metrics_all_negative_with_false_alarms():
+    """All-negative truth with predicted positives: every prediction is a false
+    alarm (precision 0.0), and recall is trivially 1.0 (nothing to miss)."""
+    y_true = np.zeros(100, dtype=int)
+    y_pred = np.zeros(100)
+    y_pred[30:45] = 1
+
+    m = compute_localization_metrics(y_true, y_pred, threshold=0.5, sr=16000, hop_length=512)
+
+    assert m["frame_level"]["precision"] == 0.0
+    assert m["frame_level"]["recall"] == 1.0
+    assert m["frame_level"]["f1"] == 0.0
+    assert m["event_level"]["detection_accuracy"] == 0.0
+    assert m["event_level"]["num_pred_events"] == 1
+    assert m["event_level"]["num_false_alarms"] == 1
+
+
+def test_compute_localization_metrics_all_positive_missed():
+    """All-positive truth with nothing predicted: recall 0.0, but precision is
+    trivially 1.0 (no false predictions)."""
+    y_true = np.ones(100, dtype=int)
+    y_pred = np.zeros(100)
+
+    m = compute_localization_metrics(y_true, y_pred, threshold=0.5, sr=16000, hop_length=512)
+
+    assert m["frame_level"]["precision"] == 1.0
+    assert m["frame_level"]["recall"] == 0.0
+    assert m["frame_level"]["f1"] == 0.0
+    assert m["event_level"]["detection_accuracy"] == 0.0
+
+
 # ---------------------------------------------------------------------------
 # Summary helpers
 # ---------------------------------------------------------------------------

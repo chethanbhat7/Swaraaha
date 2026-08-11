@@ -350,8 +350,13 @@ def compute_localization_metrics(
     fn = int(np.sum((y_true == 1) & (y_pred_bin == 0)))
     tn = int(np.sum((y_true == 0) & (y_pred_bin == 0)))
 
-    precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
-    recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+    # With no predicted positives, precision is trivially 1.0 (no false
+    # alarms); with no true positives, recall is trivially 1.0 (nothing
+    # missed). Keeps all-negative perfect predictions at F1=1.0, consistent
+    # with _compute_event_metrics returning (1.0, 1.0) for empty region lists
+    # (matches sklearn's zero_division=1 convention).
+    precision = tp / (tp + fp) if (tp + fp) > 0 else 1.0
+    recall = tp / (tp + fn) if (tp + fn) > 0 else 1.0
     f1 = (
         2 * precision * recall / (precision + recall)
         if (precision + recall) > 0
