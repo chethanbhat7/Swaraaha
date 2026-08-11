@@ -31,6 +31,12 @@ SOURCE_SEP28K = "sep28k"
 SOURCE_UCLASS = "uclass"
 SOURCE_BOLI = "boli"
 
+# SEP-28K label columns hold aggregate 'yes' vote counts across ~3 annotators
+# per clip. A clip is treated as positive only when a majority (>=2) of
+# annotators marked it; counting any single vote inflated positives ~3.5x
+# (e.g. Block 11,970 -> 3,370 clips) on this mirror.
+SEP28K_MIN_VOTES = 2
+
 # Boli transcript task codes -> audio filename task token.
 # Transcript stems look like '{nEvents}_{speaker}_{task}' (e.g. 10_727253_EI)
 # while audio files are '{speaker}_english_{task}_blob.wav'.
@@ -192,10 +198,18 @@ def normalize_sep28k() -> Tuple[Optional[pd.DataFrame], Dict[str, List[Tuple[flo
             except ValueError:
                 continue
 
+    def _safe_int(value):
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return None
+
     def _find_clip_file(row):
         show = row["Show"]
-        ep = int(row["EpId"])
-        clip = int(row["ClipId"])
+        ep = _safe_int(row["EpId"])
+        clip = _safe_int(row["ClipId"])
+        if ep is None or clip is None:
+            return None
         show_files = existing_files.get(show, {})
         filename = show_files.get((ep, clip))
         if filename:
@@ -207,6 +221,10 @@ def normalize_sep28k() -> Tuple[Optional[pd.DataFrame], Dict[str, List[Tuple[flo
         )
 
     df["clip_file"] = df.apply(_find_clip_file, axis=1)
+    n_dropped = int(df["clip_file"].isna().sum())
+    if n_dropped:
+        print(f"  SEP-28K: skipping {n_dropped} row(s) with malformed Episode/Clip IDs")
+        df = df[df["clip_file"].notna()].copy()
 
     # SEP-28K Start/Stop columns are episode-relative SAMPLE boundaries (the
     # clip edges Apple's extract_clips.py used to cut the 3s clips), NOT
@@ -218,7 +236,7 @@ def normalize_sep28k() -> Tuple[Optional[pd.DataFrame], Dict[str, List[Tuple[flo
         for label in DYSFLUENCY_LABELS:
             if label in group.columns:
                 val = pd.to_numeric(group[label], errors="coerce")
-                if val.fillna(0).gt(0).any():
+                if val.fillna(0).ge(SEP28K_MIN_VOTES).any():
                     clip_intervals.append(
                         (0.0, SEP28K_CLIP_DURATION_SEC, label)
                     )
@@ -231,9 +249,12 @@ def normalize_sep28k() -> Tuple[Optional[pd.DataFrame], Dict[str, List[Tuple[flo
     df = df[keep_cols].copy()
     df["source"] = SOURCE_SEP28K
 
-    # Convert label values to binary (0/1)
+    # Convert label values to binary (0/1): positive requires a majority
+    # (>= SEP28K_MIN_VOTES) of annotators to have marked the clip.
     for col in label_cols:
-        df[col] = (pd.to_numeric(df[col], errors="coerce").fillna(0) > 0).astype(int)
+        df[col] = (
+            pd.to_numeric(df[col], errors="coerce").fillna(0) >= SEP28K_MIN_VOTES
+        ).astype(int)
 
     print(f"  SEP-28K: {len(df)} examples")
     return df, all_intervals
