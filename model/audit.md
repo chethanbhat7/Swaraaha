@@ -7,9 +7,9 @@ Each fixed item is addressed by a failing test first (TDD) and lands as its own 
 
 | # | Location | Bug | Status |
 |---|----------|-----|--------|
-| H1 | data/dataset.py:213-231, localization/wav2vec2_dataset.py:127-135 | `clean_audio` trims leading/trailing silence but frame labels keep the original timebase → every label is shifted late by the trim offset. Also train/serve skew: `Localizer.analyze` (registry.py:424) feeds the untrimmed spectrogram at inference. | OPEN |
+| H1 | data/dataset.py:213-231, localization/wav2vec2_dataset.py:127-135 | `clean_audio` trims leading/trailing silence but frame labels keep the original timebase → every label is shifted late by the trim offset. Also train/serve skew: `Localizer.analyze` (registry.py:424) feeds the untrimmed spectrogram at inference. | DONE |
 | H2 | evaluation/full_evaluate.py:67-85 | `_eval_args()` never sets `full`; `evaluate.py` reads `args.full` → AttributeError → every classifier/localizer reports `"status": "error"`. full_evaluate is fully broken. | DONE |
-| H3 | fingerprint.py:80 | `model_name_from_path` regex `_(\w+v2\w+)_` can't isolate the model short (`\w` matches `_`) → always returns `facebook/wav2vec2-base`; a `w2v2large` checkpoint loads the base architecture → shape RuntimeError. | OPEN |
+| H3 | fingerprint.py:80 | `model_name_from_path` regex `_(\w+v2\w+)_` can't isolate the model short (`\w` matches `_`) → always returns `facebook/wav2vec2-base`; a `w2v2large` checkpoint loads the base architecture → shape RuntimeError. | DONE |
 | H4 | localization/ctc_alignment.py:34-54 | `Wav2Vec2ForCTC.from_pretrained("facebook/wav2vec2-base")` — base is a pre-training model with a randomly initialized CTC head → alignment timestamps are garbage, silently. | OPEN |
 | H5 | classification/__init__.py:138 | `from_pretrained` uses `strict=False`: compiled checkpoints (`_orig_mod.` prefixes) load with ALL keys dropped → silently random weights; also masks head-shape mismatches. | OPEN |
 

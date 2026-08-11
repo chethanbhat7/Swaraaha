@@ -76,13 +76,11 @@ def parse_fingerprint(fp: str) -> dict:
 
 def model_name_from_path(path: str) -> str:
     """Extract the HF model name from a fingerprint-encoded file path."""
-    base = os.path.basename(path)
-    m = re.search(r"_(\w+v2\w+)_", base)
-    if m:
-        short = m.group(1)
-        if short in MODEL_SHORT_TO_NAME:
-            return MODEL_SHORT_TO_NAME[short]
-    return "facebook/wav2vec2-base"
+    try:
+        params = parse_fingerprint_from_path(path)
+    except ValueError:
+        return "facebook/wav2vec2-base"
+    return params.get("model_name", "facebook/wav2vec2-base")
 
 
 def parse_fingerprint_from_path(path: str) -> Dict:
