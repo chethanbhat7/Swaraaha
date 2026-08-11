@@ -503,7 +503,7 @@ class ModelRegistry:
             results["classification"] = self.classifier.analyze(
                 audio, threshold=classify_threshold
             )
-        except FileNotFoundError as e:
+        except Exception as e:
             results["classification"] = {"error": str(e)}
 
         try:
@@ -514,7 +514,7 @@ class ModelRegistry:
                 language=iso,
                 threshold=localize_threshold,
             )
-        except FileNotFoundError as e:
+        except Exception as e:
             results["localization"] = {"error": str(e)}
 
         try:
