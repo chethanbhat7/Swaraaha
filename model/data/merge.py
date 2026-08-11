@@ -21,12 +21,55 @@ from model.data.config import (
     DYSFLUENCY_LABELS,
     PROJECT_BOLI_LABEL_MAP,
     RAW_DATA_DIR,
+    SEP28K_CLIP_DURATION_SEC,
+    UCLASS_EVENT_CENTER_SEC,
+    UCLASS_INTERVAL_HALF_WIDTH_SEC,
 )
+
+# Source identifiers recorded in combined_labels.csv and sources.csv.
+SOURCE_SEP28K = "sep28k"
+SOURCE_UCLASS = "uclass"
+SOURCE_BOLI = "boli"
+
+# Boli transcript task codes -> audio filename task token.
+# Transcript stems look like '{nEvents}_{speaker}_{task}' (e.g. 10_727253_EI)
+# while audio files are '{speaker}_english_{task}_blob.wav'.
+BOLI_TASK_CODE_TO_AUDIO = {
+    "E1": "1_paragraph",
+    "E2": "2_paragraph",
+    "E3": "3_paragraph",
+    "EI": "image",
+}
+_BOLI_STEM_RE = re.compile(r"^\d+_(\d+)_([A-Za-z]+\d*)(?:_\d+)?$")
+
+
+def _boli_audio_name(transcript_stem: str) -> str | None:
+    """Map a Boli transcript stem to its audio filename, or None if unmapped.
+
+    Handles the leading event-count prefix and the optional trailing segment
+    index (e.g. ``1_14446_E1_1`` -> ``14446_english_1_paragraph_blob.wav``).
+    """
+    match = _BOLI_STEM_RE.fullmatch(transcript_stem)
+    if not match:
+        return None
+    speaker, task_code = match.group(1), match.group(2)
+    audio_task = BOLI_TASK_CODE_TO_AUDIO.get(task_code.upper())
+    if audio_task is None:
+        return None
+    return f"{speaker}_english_{audio_task}_blob.wav"
 
 
 def _find_matching_audio(audios_dir: Path, transcript_stem: str) -> Path | None:
-    """Find the audio file matching a transcript filename."""
+    """Find the audio file matching a transcript filename.
+
+    Boli transcripts are named ``{nEvents}_{speaker}_{task}`` but the audio
+    files are ``{speaker}_english_{task}_blob.wav``, so a mapped-name lookup
+    is tried when the direct filename does not exist.
+    """
     candidates = [audios_dir / f"{transcript_stem}.wav"]
+    mapped = _boli_audio_name(transcript_stem)
+    if mapped is not None:
+        candidates.append(audios_dir / mapped)
     candidates.extend(sorted(audios_dir.rglob(f"{transcript_stem}.wav")))
     for candidate in candidates:
         if candidate.exists():
@@ -54,13 +97,13 @@ def _parse_project_boli_transcript(transcript_path: Path) -> Tuple[set, List[Tup
             if len(parts) < 3:
                 continue
 
-            start_ms = float(parts[0])
-            end_ms = float(parts[1])
+            start_sec = float(parts[0])
+            end_sec = float(parts[1])
             code = parts[2].strip().upper()
             mapped = PROJECT_BOLI_LABEL_MAP.get(code)
             if mapped:
                 labels.add(mapped)
-                intervals.append((start_ms / 1000.0, end_ms / 1000.0, mapped))
+                intervals.append((start_sec, end_sec, mapped))
 
     return labels, intervals
 
@@ -95,6 +138,7 @@ def normalize_project_boli() -> Tuple[Optional[pd.DataFrame], Dict[str, List[Tup
         row = {"clip_file": str(audio_path)}
         for label in DYSFLUENCY_LABELS:
             row[label] = 1 if label in labels_found else 0
+        row["source"] = SOURCE_BOLI
         rows.append(row)
         all_intervals[str(audio_path)] = intervals
 
@@ -164,31 +208,28 @@ def normalize_sep28k() -> Tuple[Optional[pd.DataFrame], Dict[str, List[Tuple[flo
 
     df["clip_file"] = df.apply(_find_clip_file, axis=1)
 
-    # Extract intervals from Start/Stop columns if available
+    # SEP-28K Start/Stop columns are episode-relative SAMPLE boundaries (the
+    # clip edges Apple's extract_clips.py used to cut the 3s clips), NOT
+    # event intervals. There is no event-level ground truth, so each present
+    # clip-level label is materialized as a full-clip weak interval.
     all_intervals = {}
-    has_start = "Start" in df.columns
-    has_stop = "Stop" in df.columns
-
-    if has_start and has_stop:
-        for clip_file, group in df.groupby("clip_file"):
-            clip_intervals = []
-            for _, row in group.iterrows():
-                start = pd.to_numeric(row["Start"], errors="coerce")
-                stop = pd.to_numeric(row["Stop"], errors="coerce")
-                if pd.isna(start) or pd.isna(stop):
-                    continue
-                for label in DYSFLUENCY_LABELS:
-                    if label in group.columns:
-                        val = pd.to_numeric(row[label], errors="coerce")
-                        if not pd.isna(val) and val > 0:
-                            clip_intervals.append((float(start), float(stop), label))
-            if clip_intervals:
-                all_intervals[clip_file] = clip_intervals
+    for clip_file, group in df.groupby("clip_file"):
+        clip_intervals = []
+        for label in DYSFLUENCY_LABELS:
+            if label in group.columns:
+                val = pd.to_numeric(group[label], errors="coerce")
+                if val.fillna(0).gt(0).any():
+                    clip_intervals.append(
+                        (0.0, SEP28K_CLIP_DURATION_SEC, label)
+                    )
+        if clip_intervals:
+            all_intervals[clip_file] = clip_intervals
 
     # Keep only the columns we need
     label_cols = [c for c in DYSFLUENCY_LABELS if c in df.columns]
     keep_cols = ["clip_file"] + label_cols
     df = df[keep_cols].copy()
+    df["source"] = SOURCE_SEP28K
 
     # Convert label values to binary (0/1)
     for col in label_cols:
@@ -236,28 +277,35 @@ def normalize_uclass() -> Tuple[Optional[pd.DataFrame], Dict[str, List[Tuple[flo
         expand_labels = pd.json_normalize(df["labels"])
         df = pd.concat([df, expand_labels], axis=1)
 
-    # Extract intervals if available in metadata
+    # UCLASS clips are 3s windows centered on the stutter event, so the event
+    # sits ~1.5s into every dysfluent clip. Metadata carries clip-level labels
+    # only (no intervals), so each present label becomes a centered interval.
     all_intervals = {}
-    if "intervals" in df.columns:
-        for _, row in df.iterrows():
-            clip_file = row["clip_file"]
-            try:
-                clip_intervals = []
-                for interval in row["intervals"]:
-                    start = float(interval.get("start", 0))
-                    end = float(interval.get("end", 0))
-                    label = interval.get("label", "").strip()
-                    if label and start < end:
-                        clip_intervals.append((start, end, label))
-                if clip_intervals:
-                    all_intervals[clip_file] = clip_intervals
-            except (TypeError, ValueError):
-                pass
+    for _, row in df.iterrows():
+        clip_file = row["clip_file"]
+        is_fluent = bool(row.get("is_fluent", True))
+        if is_fluent:
+            continue
+        clip_intervals = []
+        for label in DYSFLUENCY_LABELS:
+            if label in df.columns:
+                val = pd.to_numeric(row.get(label), errors="coerce")
+                if not pd.isna(val) and val > 0:
+                    clip_intervals.append(
+                        (
+                            UCLASS_EVENT_CENTER_SEC - UCLASS_INTERVAL_HALF_WIDTH_SEC,
+                            UCLASS_EVENT_CENTER_SEC + UCLASS_INTERVAL_HALF_WIDTH_SEC,
+                            label,
+                        )
+                    )
+        if clip_intervals:
+            all_intervals[clip_file] = clip_intervals
 
     # Keep only the columns we need
     label_cols = [c for c in DYSFLUENCY_LABELS if c in df.columns]
     keep_cols = ["clip_file"] + label_cols
     df = df[keep_cols].copy()
+    df["source"] = SOURCE_UCLASS
 
     # Convert label values to binary (0/1)
     for col in label_cols:
@@ -267,16 +315,17 @@ def normalize_uclass() -> Tuple[Optional[pd.DataFrame], Dict[str, List[Tuple[flo
     return df, all_intervals
 
 
-def merge_datasets(output_path: str | None = None) -> pd.DataFrame | None:
+def merge_datasets(output_path: str | None = None, force: bool = False) -> pd.DataFrame | None:
     """
     Merge all datasets into a single combined CSV and per-clip interval CSVs.
 
     Runs each normalizer, concatenates valid results, writes:
-    - combined_labels.csv (binary multi-label)
+    - combined_labels.csv (binary multi-label + source column)
     - labels/<clip_stem>.csv (per-clip interval CSVs)
 
     Args:
         output_path: Override output path. Defaults to config.COMBINED_DATASET_PATH.
+        force: Overwrite existing per-clip interval CSVs.
 
     Returns:
         Combined DataFrame, or None if no data was produced.
@@ -304,7 +353,9 @@ def merge_datasets(output_path: str | None = None) -> pd.DataFrame | None:
     for label in DYSFLUENCY_LABELS:
         if label not in combined.columns:
             combined[label] = 0
-    combined = combined[["clip_file"] + DYSFLUENCY_LABELS].copy()
+    if "source" not in combined.columns:
+        combined["source"] = SOURCE_SEP28K
+    combined = combined[["clip_file"] + DYSFLUENCY_LABELS + ["source"]].copy()
 
     # Drop rows with missing clip_file
     before_drop = len(combined)
@@ -332,11 +383,13 @@ def merge_datasets(output_path: str | None = None) -> pd.DataFrame | None:
 
     written = 0
     no_intervals = 0
+    skipped = 0
     for clip_file in combined["clip_file"]:
         clip_stem = Path(clip_file).stem
         label_path = labels_dir / f"{clip_stem}.csv"
 
-        if label_path.exists():
+        if label_path.exists() and not force:
+            skipped += 1
             continue
 
         intervals = all_intervals.get(clip_file, [])
@@ -348,6 +401,13 @@ def merge_datasets(output_path: str | None = None) -> pd.DataFrame | None:
                 f.write(f"{start:.3f},{end:.3f},{dtype}\n")
         written += 1
 
+    # Write sources.csv mapping clip_id -> dataset source
+    sources_path = out.parent / "sources.csv"
+    combined[["clip_file"]].assign(
+        source=combined["source"],
+        clip_id=combined["clip_file"].apply(lambda p: Path(p).stem),
+    )[["clip_id", "source"]].to_csv(sources_path, index=False)
+
     # Summary report
     print(f"\n  === Merge Report ===")
     print(f"  Total entries: {len(combined)}")
@@ -356,8 +416,11 @@ def merge_datasets(output_path: str | None = None) -> pd.DataFrame | None:
     if missing_count > 0:
         print(f"  Missing audio files: {missing_count} ({100 * missing_count / len(combined):.1f}%)")
     print(f"  Interval CSVs written: {written}")
+    if skipped > 0:
+        print(f"  Interval CSVs skipped (already exist): {skipped}")
     if no_intervals > 0:
         print(f"  Clips without interval data: {no_intervals}")
+    print(f"  Sources CSV: {sources_path}")
     print(f"\n  Label distribution:")
     for label in DYSFLUENCY_LABELS:
         count = combined[label].sum()
@@ -368,4 +431,12 @@ def merge_datasets(output_path: str | None = None) -> pd.DataFrame | None:
 
 
 if __name__ == "__main__":
-    merge_datasets()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Merge datasets into combined labels.")
+    parser.add_argument(
+        "--force", action="store_true",
+        help="Overwrite existing per-clip interval CSVs.",
+    )
+    args = parser.parse_args()
+    merge_datasets(force=args.force)
