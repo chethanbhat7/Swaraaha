@@ -327,7 +327,12 @@ class ClassificationDataset:
         label_signature = self._label_signature(sample["label_path"])
 
         if self.use_cache:
-            cached = self._load_from_cache(sample["clip_id"], label_signature)
+            cached = self._load_from_cache(
+                sample["clip_id"],
+                label_signature,
+                self._config_signature(),
+                self._audio_signature(sample["audio_path"]),
+            )
             if cached is not None:
                 return cached
 
@@ -351,7 +356,13 @@ class ClassificationDataset:
         result = (audio.astype(np.float32), label_vector)
 
         if self.use_cache:
-            self._save_to_cache(sample["clip_id"], label_signature, result)
+            self._save_to_cache(
+                sample["clip_id"],
+                label_signature,
+                self._config_signature(),
+                self._audio_signature(sample["audio_path"]),
+                result,
+            )
 
         return result
 
@@ -367,8 +378,26 @@ class ClassificationDataset:
         except OSError:
             return "missing"
 
+    def _config_signature(self) -> str:
+        """Signature of the dataset config that changes the preprocessed audio
+        (sample rate and padded length)."""
+        return f"sr={self.sr};max_samples={self.max_samples}"
+
+    def _audio_signature(self, audio_path: str) -> str:
+        """Identity of the source audio file (size + mtime), so replacing or
+        re-downloading a clip invalidates its cached preprocessed audio."""
+        try:
+            st = os.stat(audio_path)
+        except OSError:
+            return "missing"
+        return f"{st.st_size}:{st.st_mtime_ns}"
+
     def _load_from_cache(
-        self, clip_id: str, label_signature: str
+        self,
+        clip_id: str,
+        label_signature: str,
+        config_signature: str,
+        audio_signature: str,
     ) -> Optional[Tuple[np.ndarray, np.ndarray]]:
         path = self._cache_path(clip_id)
         if not os.path.isfile(path):
@@ -378,16 +407,31 @@ class ClassificationDataset:
                 payload = pickle.load(f)
         except (pickle.UnpicklingError, EOFError):
             return None
-        if isinstance(payload, tuple) and len(payload) == 3 and payload[0] == label_signature:
-            return payload[1], payload[2]
+        if (
+            isinstance(payload, tuple)
+            and len(payload) == 5
+            and payload[0] == label_signature
+            and payload[1] == config_signature
+            and payload[2] == audio_signature
+        ):
+            return payload[3], payload[4]
         return None
 
     def _save_to_cache(
-        self, clip_id: str, label_signature: str, data: Tuple[np.ndarray, np.ndarray]
+        self,
+        clip_id: str,
+        label_signature: str,
+        config_signature: str,
+        audio_signature: str,
+        data: Tuple[np.ndarray, np.ndarray],
     ) -> None:
         path = self._cache_path(clip_id)
         with open(path, "wb") as f:
-            pickle.dump((label_signature, data[0], data[1]), f, protocol=pickle.HIGHEST_PROTOCOL)
+            pickle.dump(
+                (label_signature, config_signature, audio_signature, data[0], data[1]),
+                f,
+                protocol=pickle.HIGHEST_PROTOCOL,
+            )
 
     def get_sample_info(self, idx: int) -> Dict:
         return self.samples[idx].copy()

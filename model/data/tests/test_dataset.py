@@ -12,10 +12,10 @@ import pytest
 from model.data.dataset import ClassificationDataset, LocalizationDataset
 
 
-def _write_wav(path, seconds=1.0, sr=16000):
+def _write_wav(path, seconds=1.0, sr=16000, freq=440.0):
     path.parent.mkdir(parents=True, exist_ok=True)
     n = int(seconds * sr)
-    samples = (np.sin(2 * np.pi * 440 * np.arange(n) / sr) * 0.5).astype(np.float32)
+    samples = (np.sin(2 * np.pi * freq * np.arange(n) / sr) * 0.5).astype(np.float32)
     pcm = (samples * 32767).astype(np.int16).tobytes()
     with wave.open(str(path), "wb") as w:
         w.setnchannels(1)
@@ -100,6 +100,80 @@ def test_classification_cache_invalidates_on_label_change(tmp_path):
     _, labels2 = ds2[idx2]
     assert labels2[1] == 0  # block no longer present
     assert labels2[4] == 1  # interjection present
+
+
+def test_classification_cache_invalidates_on_sr_change(tmp_path):
+    """The cache key must include the dataset config (sr/max_samples): a run at
+    a different sample rate must NOT reuse pickles built at another sr."""
+    data = _make_data_dir(tmp_path)
+    clip = "M_0001_dysfluent_000"
+    cache = tmp_path / "cache"
+    ds = ClassificationDataset(
+        data_dir=str(data), sr=16000, max_length_seconds=1.0, cache_dir=str(cache),
+    )
+    idx = next(i for i, s in enumerate(ds.samples) if s["clip_id"] == clip)
+    audio, _ = ds[idx]
+    assert audio.shape[0] == 16000
+
+    ds2 = ClassificationDataset(
+        data_dir=str(data), sr=8000, max_length_seconds=1.0, cache_dir=str(cache),
+    )
+    idx2 = next(i for i, s in enumerate(ds2.samples) if s["clip_id"] == clip)
+    audio2, _ = ds2[idx2]
+    assert audio2.shape[0] == 8000  # stale cache would return 16000-length audio
+
+
+def test_classification_cache_invalidates_on_audio_change(tmp_path):
+    """The cache key must include the source audio identity: replacing the wav
+    (same labels, same config) must NOT reuse the old preprocessed audio."""
+    data = _make_data_dir(tmp_path)
+    clip = "M_0001_dysfluent_000"
+    cache = tmp_path / "cache"
+    ds = ClassificationDataset(
+        data_dir=str(data), max_length_seconds=1.0, cache_dir=str(cache),
+    )
+    idx = next(i for i, s in enumerate(ds.samples) if s["clip_id"] == clip)
+    ds[idx]  # populates cache
+
+    _write_wav(data / "audio" / f"{clip}.wav", seconds=0.5, sr=16000)
+
+    ref = ClassificationDataset(data_dir=str(data), max_length_seconds=1.0)
+    ref_audio, _ = ref[idx]
+    ds2 = ClassificationDataset(
+        data_dir=str(data), max_length_seconds=1.0, cache_dir=str(cache),
+    )
+    audio2, _ = ds2[idx]
+    assert np.array_equal(audio2, ref_audio)  # stale cache would return old audio
+
+
+def test_classification_cache_reused_when_unchanged(tmp_path, monkeypatch):
+    """Unchanged labels + audio + config must still be served from cache."""
+    data = _make_data_dir(tmp_path)
+    cache = tmp_path / "cache"
+
+    import model.data.preprocessing as preprocessing
+
+    orig_load = preprocessing.load_audio
+    calls = {"n": 0}
+
+    def counting_load(*a, **k):
+        calls["n"] += 1
+        return orig_load(*a, **k)
+
+    monkeypatch.setattr(preprocessing, "load_audio", counting_load)
+
+    ds = ClassificationDataset(
+        data_dir=str(data), max_length_seconds=1.0, cache_dir=str(cache),
+    )
+    audio, _ = ds[0]
+    assert calls["n"] == 1
+
+    ds2 = ClassificationDataset(
+        data_dir=str(data), max_length_seconds=1.0, cache_dir=str(cache),
+    )
+    audio2, _ = ds2[0]
+    assert calls["n"] == 1  # second access must hit the cache
+    assert np.array_equal(audio, audio2)
 
 
 def _write_wav_with_leading_silence(path, sr=16000):
