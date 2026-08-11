@@ -172,6 +172,92 @@ def test_augmented_dataset_spectrogram_not_waveform_shifted():
     assert np.array_equal(labels, np.zeros(312, dtype=np.uint8))
 
 
+# --- _resample direction ---------------------------------------------------
+
+
+def test_resample_stretch_factor_above_one_repeats_samples():
+    arr = np.arange(10, dtype=np.float32)
+    out = AudioAugmentor._resample(arr, 2.0)
+    assert out.shape == arr.shape
+    assert np.array_equal(out, np.array([0, 0, 1, 1, 2, 2, 3, 3, 4, 4]))
+
+
+def test_resample_compress_factor_below_one_skips_samples():
+    arr = np.arange(10, dtype=np.float32)
+    out = AudioAugmentor._resample(arr, 0.5)
+    assert out.shape == arr.shape
+    assert np.array_equal(out, np.array([0, 2, 4, 6, 8, 9, 9, 9, 9, 9]))
+
+
+def test_resample_stretch_does_not_zero_pad_tail():
+    arr = np.ones(100, dtype=np.float32)
+    out = AudioAugmentor._resample(arr, 1.1)
+    assert out.shape == arr.shape
+    assert np.all(out == 1.0)
+
+
+def test_resample_factor_one_is_identity():
+    arr = np.random.randn(50).astype(np.float32)
+    out = AudioAugmentor._resample(arr, 1.0)
+    assert np.array_equal(out, arr)
+
+
+def _dominant_freq(x, sr=16000):
+    spec = np.abs(np.fft.rfft(x * np.hanning(len(x))))
+    return float(np.argmax(spec) * sr / len(x))
+
+
+def test_time_stretch_above_one_slows_content():
+    sr = 16000
+    t = np.arange(sr) / sr
+    tone = np.sin(2 * np.pi * 440 * t).astype(np.float32)
+    augmentor = AudioAugmentor(
+        noise_level=0.0,
+        time_stretch_range=(1.0, 1.0),
+        pitch_shift_range=(0.0, 0.0),
+        shift_range=(0.0, 0.0),
+        scale_range=(1.0, 1.0),
+    )
+    augmentor.time_stretch_range = (2.0, 2.0)
+    out = augmentor.time_stretch(tone)
+    assert out.shape == tone.shape
+    assert _dominant_freq(out) < _dominant_freq(tone)
+
+
+def test_pitch_shift_up_raises_pitch():
+    sr = 16000
+    t = np.arange(sr) / sr
+    tone = np.sin(2 * np.pi * 440 * t).astype(np.float32)
+    augmentor = AudioAugmentor(
+        noise_level=0.0,
+        time_stretch_range=(1.0, 1.0),
+        pitch_shift_range=(0.0, 0.0),
+        shift_range=(0.0, 0.0),
+        scale_range=(1.0, 1.0),
+    )
+    augmentor.pitch_shift_range = (12.0, 12.0)
+    out = augmentor.pitch_shift(tone, sample_rate=sr)
+    assert out.shape == tone.shape
+    assert _dominant_freq(out) > _dominant_freq(tone)
+
+
+def test_pitch_shift_down_lowers_pitch():
+    sr = 16000
+    t = np.arange(sr) / sr
+    tone = np.sin(2 * np.pi * 440 * t).astype(np.float32)
+    augmentor = AudioAugmentor(
+        noise_level=0.0,
+        time_stretch_range=(1.0, 1.0),
+        pitch_shift_range=(0.0, 0.0),
+        shift_range=(0.0, 0.0),
+        scale_range=(1.0, 1.0),
+    )
+    augmentor.pitch_shift_range = (-12.0, -12.0)
+    out = augmentor.pitch_shift(tone, sample_rate=sr)
+    assert out.shape == tone.shape
+    assert _dominant_freq(out) < _dominant_freq(tone)
+
+
 # --- Label-aligned waveform augmentation ----------------------------------
 
 
@@ -231,10 +317,10 @@ def test_augmented_dataset_label_aligned_stretch_moves_mask_with_audio():
     audio, labels = aug[0]
     assert audio.shape == (16000,)
     assert labels.shape == (500,)
-    assert labels[90] == 0
-    assert labels[91] == 1
-    assert labels[135] == 1
-    assert labels[136] == 0
+    assert labels[110] == 0
+    assert labels[111] == 1
+    assert labels[164] == 1
+    assert labels[165] == 0
 
 
 def test_augmented_dataset_waveform_default_path_keeps_class_labels():
