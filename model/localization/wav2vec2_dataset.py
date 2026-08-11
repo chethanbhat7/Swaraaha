@@ -16,8 +16,9 @@ Expected directory layout:
 Frame resolution: 20ms per frame (320 samples at 16kHz)
 """
 
+import csv
 import os
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -39,6 +40,7 @@ class Wav2Vec2LocalizationDataset:
         sr: int = 16000,
         max_length_seconds: float = 10.0,
         hop_samples: int = 320,  # Wav2Vec2 subsampling factor
+        sources: Optional[List[str]] = None,
     ):
         """
         Args:
@@ -46,17 +48,36 @@ class Wav2Vec2LocalizationDataset:
             sr: Target sample rate.
             max_length_seconds: Pad/truncate all audio to this length.
             hop_samples: Samples per frame for Wav2Vec2 (320 = 20ms).
+            sources: If given, only include clips whose source (from
+                sources.csv) is in this list. Ignored when sources.csv is
+                missing.
         """
         self.data_dir = data_dir
         self.sr = sr
         self.max_samples = int(max_length_seconds * sr)
         self.hop_samples = hop_samples
         self.max_frames = self.max_samples // hop_samples
+        self.sources = set(sources) if sources else None
+        self._source_map = self._load_source_map()
 
         self.audio_dir = os.path.join(data_dir, "audio")
         self.labels_dir = os.path.join(data_dir, "labels")
 
         self.samples = self._scan_samples()
+
+    def _load_source_map(self) -> Dict[str, str]:
+        """Load clip_id -> source mapping from sources.csv (if present)."""
+        path = os.path.join(self.data_dir, "sources.csv")
+        if not os.path.isfile(path):
+            return {}
+        source_map = {}
+        with open(path, "r") as f:
+            for row in csv.DictReader(f):
+                clip_id = row.get("clip_id", "").strip()
+                source = row.get("source", "").strip()
+                if clip_id and source:
+                    source_map[clip_id] = source
+        return source_map
 
     def _scan_samples(self) -> List[Dict]:
         samples = []
@@ -72,6 +93,10 @@ class Wav2Vec2LocalizationDataset:
 
             if not os.path.isfile(label_path):
                 continue
+
+            if self.sources is not None and self._source_map:
+                if self._source_map.get(clip_id) not in self.sources:
+                    continue
 
             samples.append({
                 "clip_id": clip_id,

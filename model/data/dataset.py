@@ -21,6 +21,8 @@ Label CSV format:
     2.1,2.8,soundrep
 """
 
+import csv
+import hashlib
 import os
 import pickle
 from typing import Dict, List, Optional, Tuple
@@ -109,6 +111,7 @@ class LocalizationDataset:
         n_mels: int = 128,
         hop_length: int = 512,
         max_length_seconds: float = 10.0,
+        sources: Optional[List[str]] = None,
     ):
         """
         Args:
@@ -117,6 +120,9 @@ class LocalizationDataset:
             n_mels: Number of mel bins for spectrogram.
             hop_length: Hop length for spectrogram.
             max_length_seconds: Pad/truncate all audio to this length.
+            sources: If given, only include clips whose source (from
+                sources.csv) is in this list. Ignored when sources.csv is
+                missing.
         """
         self.data_dir = data_dir
         self.sr = sr
@@ -124,11 +130,27 @@ class LocalizationDataset:
         self.hop_length = hop_length
         self.max_samples = int(max_length_seconds * sr)
         self.max_frames = self.max_samples // hop_length
+        self.sources = set(sources) if sources else None
+        self._source_map = self._load_source_map()
 
         self.audio_dir = os.path.join(data_dir, "audio")
         self.labels_dir = os.path.join(data_dir, "labels")
 
         self.samples = self._scan_samples()
+
+    def _load_source_map(self) -> Dict[str, str]:
+        """Load clip_id -> source mapping from sources.csv (if present)."""
+        path = os.path.join(self.data_dir, "sources.csv")
+        if not os.path.isfile(path):
+            return {}
+        source_map = {}
+        with open(path, "r") as f:
+            for row in csv.DictReader(f):
+                clip_id = row.get("clip_id", "").strip()
+                source = row.get("source", "").strip()
+                if clip_id and source:
+                    source_map[clip_id] = source
+        return source_map
 
     def _scan_samples(self) -> List[Dict]:
         """Scan the data directory and build a list of available samples."""
@@ -149,6 +171,11 @@ class LocalizationDataset:
             # Skip header-only WAV files (no audio data)
             if os.path.getsize(audio_path) <= 44:
                 continue
+
+            # Apply source filter if configured
+            if self.sources is not None and self._source_map:
+                if self._source_map.get(clip_id) not in self.sources:
+                    continue
 
             samples.append({
                 "clip_id": clip_id,
@@ -295,8 +322,10 @@ class ClassificationDataset:
         """
         sample = self.samples[idx]
 
+        label_signature = self._label_signature(sample["label_path"])
+
         if self.use_cache:
-            cached = self._load_from_cache(sample["clip_id"])
+            cached = self._load_from_cache(sample["clip_id"], label_signature)
             if cached is not None:
                 return cached
 
@@ -320,24 +349,43 @@ class ClassificationDataset:
         result = (audio.astype(np.float32), label_vector)
 
         if self.use_cache:
-            self._save_to_cache(sample["clip_id"], result)
+            self._save_to_cache(sample["clip_id"], label_signature, result)
 
         return result
 
     def _cache_path(self, clip_id: str) -> str:
         return os.path.join(self.cache_dir, f"{clip_id}.pkl")
 
-    def _load_from_cache(self, clip_id: str) -> Optional[Tuple[np.ndarray, np.ndarray]]:
+    def _label_signature(self, label_path: str) -> str:
+        """Hash of the label CSV contents, so regenerated labels invalidate
+        the pickle cache (which is keyed by clip_id only)."""
+        try:
+            with open(label_path, "rb") as f:
+                return hashlib.md5(f.read()).hexdigest()[:12]
+        except OSError:
+            return "missing"
+
+    def _load_from_cache(
+        self, clip_id: str, label_signature: str
+    ) -> Optional[Tuple[np.ndarray, np.ndarray]]:
         path = self._cache_path(clip_id)
         if not os.path.isfile(path):
             return None
-        with open(path, "rb") as f:
-            return pickle.load(f)
+        try:
+            with open(path, "rb") as f:
+                payload = pickle.load(f)
+        except (pickle.UnpicklingError, EOFError):
+            return None
+        if isinstance(payload, tuple) and len(payload) == 3 and payload[0] == label_signature:
+            return payload[1], payload[2]
+        return None
 
-    def _save_to_cache(self, clip_id: str, data: Tuple[np.ndarray, np.ndarray]) -> None:
+    def _save_to_cache(
+        self, clip_id: str, label_signature: str, data: Tuple[np.ndarray, np.ndarray]
+    ) -> None:
         path = self._cache_path(clip_id)
         with open(path, "wb") as f:
-            pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
+            pickle.dump((label_signature, data[0], data[1]), f, protocol=pickle.HIGHEST_PROTOCOL)
 
     def get_sample_info(self, idx: int) -> Dict:
         return self.samples[idx].copy()
