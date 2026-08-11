@@ -135,7 +135,11 @@ class BaseWav2VecClassifier:
         import torch
         checkpoint = torch.load(path, map_location="cpu", weights_only=False)
         instance = cls(model_name=checkpoint["model_name"])
-        instance._model.load_state_dict(checkpoint["model_state_dict"], strict=False)
+        state_dict = checkpoint["model_state_dict"]
+        state_dict = {
+            k.replace("_orig_mod.", ""): v for k, v in state_dict.items()
+        }
+        instance._model.load_state_dict(state_dict, strict=True)
         return instance
 
     def __repr__(self):
