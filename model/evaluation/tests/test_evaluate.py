@@ -17,6 +17,7 @@ from model.evaluation.evaluate import (
     _build_classification_eval,
     _build_localization_eval,
 )
+from model.evaluation.metrics import THRESHOLD_SWEEP
 
 
 def _write_wav(path, seconds=1.0, sr=16000):
@@ -61,6 +62,11 @@ def _args(**overrides):
         n_mels=128,
         hop_length=512,
         full=False,
+        model_path="model/weights/localizer_best.pt",
+        output_dir="model/evaluation/reports",
+        threshold=0.5,
+        save_misclassified=False,
+        sweep_thresholds=False,
     )
     base.update(overrides)
     return argparse.Namespace(**base)
@@ -132,3 +138,78 @@ def test_full_evaluate_localization_eval_uses_every_clip(tmp_path):
     _, loader, val_idx = _build_localization_eval(ea)
     assert len(loader.dataset) == 5
     assert len(val_idx) == 5
+
+
+# ---------------------------------------------------------------------------
+# --sweep_thresholds for the localizer path (M7)
+# ---------------------------------------------------------------------------
+
+def test_localizer_sweep_thresholds_included_in_metrics():
+    """M7: --sweep_thresholds was a dead flag for the localizer path — it only
+    produced a sweep in _finalize_classifier_report. The localizer report must
+    include a threshold_sweep block with an optimal frame-F1 threshold."""
+    from model.evaluation.evaluate import _run_localizer_sweep
+
+    y_true = np.zeros(500)
+    y_true[100:200] = 1
+    y_pred = np.linspace(0.1, 0.9, 500)
+
+    sweep = _run_localizer_sweep(y_true, y_pred, sr=16000, hop_length=512)
+
+    assert "best_f1" in sweep
+    assert "best_youden" in sweep
+    assert 0.0 < sweep["best_f1"]["threshold"] < 1.0
+    assert sweep["best_f1"]["f1"] > 0.0
+    assert len(sweep["sweep"]) == len(THRESHOLD_SWEEP)
+
+
+def test_localizer_sweep_flag_reaches_evaluate_localizer(tmp_path, monkeypatch):
+    """The --sweep_thresholds flag must actually drive the localizer path."""
+    import torch
+
+    from model.evaluation import evaluate
+
+    y_true = np.zeros(200)
+    y_true[50:100] = 1
+
+    class _FakeModel:
+        def forward(self, x):
+            return torch.full((x.shape[0], 1, 4), 0.5)
+
+    class _FakeEval:
+        def __len__(self):
+            return 2
+
+    data = _make_data(tmp_path, n=5)
+
+    from model.evaluation import loader
+
+    monkeypatch.setattr(loader, "load_localizer", lambda *a, **k: _FakeModel())
+
+    def fake_build(args):
+        import torch as _t
+
+        audio = _t.randn(2, 1, 80, 10)
+        labels = _t.tensor([y_true[:4], y_true[4:8]], dtype=_t.float32)
+        return _FakeEval(), [(audio, labels)], [0, 1]
+
+    monkeypatch.setattr(evaluate, "_build_localization_eval", fake_build)
+
+    args = _args(data_dir=str(data), sweep_thresholds=True)
+    metrics = evaluate.evaluate_localizer(args)
+
+    assert "threshold_sweep" in metrics
+    assert 0.0 < metrics["threshold_sweep"]["best_f1"]["f1"] <= 1.0
+
+
+def test_localizer_sweep_all_negative_perfect_consistent():
+    """All-negative frames must not crash the sweep; perfect agreement with
+    zero events reports frame F1=1.0 (consistent with M4)."""
+    from model.evaluation.evaluate import _run_localizer_sweep
+
+    y_true = np.zeros(100)
+    y_pred = np.zeros(100)
+
+    sweep = _run_localizer_sweep(y_true, y_pred, sr=16000, hop_length=512)
+    assert len(sweep["sweep"]) == len(THRESHOLD_SWEEP)
+    assert sweep["best_f1"]["f1"] == 1.0
