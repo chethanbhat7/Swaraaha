@@ -116,8 +116,11 @@ def test_merge_datasets_adds_source_column(fake_raw, tmp_path):
     assert "source" in reloaded.splitlines()[0]
 
 
-def test_merge_datasets_force_regenerates_label_csvs(fake_raw, tmp_path):
-    """merge_datasets skips existing per-clip CSVs unless force=True."""
+def test_merge_datasets_regenerates_stale_label_csvs_without_force(fake_raw, tmp_path):
+    """combined_labels.csv is always overwritten, so per-clip CSVs must be
+    regenerated whenever their content diverges from the merged output — even
+    without --force. Otherwise classification/localization labels silently
+    disagree with the combined CSV."""
     out = tmp_path / "merged" / "combined_labels.csv"
     labels_dir = out.parent / "labels"
     labels_dir.mkdir(parents=True)
@@ -125,11 +128,20 @@ def test_merge_datasets_force_regenerates_label_csvs(fake_raw, tmp_path):
     stale.write_text("start_sec,end_sec,dysfluency_type\n0.000,0.100,block\n")
 
     merge_mod.merge_datasets(output_path=str(out), force=False)
-    assert stale.read_text() == "start_sec,end_sec,dysfluency_type\n0.000,0.100,block\n"
-
-    merge_mod.merge_datasets(output_path=str(out), force=True)
     content = stale.read_text()
     assert "0.000,3.000,Block" in content
+
+
+def test_merge_datasets_does_not_rewrite_unchanged_csvs(fake_raw, tmp_path):
+    """A re-merge with unchanged output must not rewrite identical per-clip
+    CSVs (avoids gratuitous mtime churn that would invalidate caches)."""
+    out = tmp_path / "merged" / "combined_labels.csv"
+    merge_mod.merge_datasets(output_path=str(out), force=False)
+    label_path = out.parent / "labels" / "FluencyBank_010_0.csv"
+    mtime = label_path.stat().st_mtime_ns
+
+    merge_mod.merge_datasets(output_path=str(out), force=False)
+    assert label_path.stat().st_mtime_ns == mtime
 
 
 def test_parse_project_boli_transcript_returns_seconds_and_skips_word_lines(tmp_path):

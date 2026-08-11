@@ -325,7 +325,9 @@ def merge_datasets(output_path: str | None = None, force: bool = False) -> pd.Da
 
     Args:
         output_path: Override output path. Defaults to config.COMBINED_DATASET_PATH.
-        force: Overwrite existing per-clip interval CSVs.
+        force: Rewrite per-clip interval CSVs even when their content is
+            unchanged. Stale CSVs (content differs from the merge output) are
+            always regenerated.
 
     Returns:
         Combined DataFrame, or None if no data was produced.
@@ -388,17 +390,23 @@ def merge_datasets(output_path: str | None = None, force: bool = False) -> pd.Da
         clip_stem = Path(clip_file).stem
         label_path = labels_dir / f"{clip_stem}.csv"
 
-        if label_path.exists() and not force:
-            skipped += 1
-            continue
-
         intervals = all_intervals.get(clip_file, [])
         if not intervals:
             no_intervals += 1
+        content = "start_sec,end_sec,dysfluency_type\n" + "".join(
+            f"{start:.3f},{end:.3f},{dtype}\n" for start, end, dtype in intervals
+        )
+
+        # Always keep per-clip CSVs in sync with combined_labels.csv: rewrite
+        # when content changed. Only skip when identical and not forced, so
+        # re-merges don't gratuitously churn mtimes (which would invalidate
+        # the audio caches keyed on label mtime/content).
+        if label_path.exists() and not force and label_path.read_text() == content:
+            skipped += 1
+            continue
+
         with open(label_path, "w") as f:
-            f.write("start_sec,end_sec,dysfluency_type\n")
-            for start, end, dtype in intervals:
-                f.write(f"{start:.3f},{end:.3f},{dtype}\n")
+            f.write(content)
         written += 1
 
     # Write sources.csv mapping clip_id -> dataset source
@@ -417,7 +425,7 @@ def merge_datasets(output_path: str | None = None, force: bool = False) -> pd.Da
         print(f"  Missing audio files: {missing_count} ({100 * missing_count / len(combined):.1f}%)")
     print(f"  Interval CSVs written: {written}")
     if skipped > 0:
-        print(f"  Interval CSVs skipped (already exist): {skipped}")
+        print(f"  Interval CSVs skipped (up to date): {skipped}")
     if no_intervals > 0:
         print(f"  Clips without interval data: {no_intervals}")
     print(f"  Sources CSV: {sources_path}")
