@@ -71,11 +71,14 @@ def build_classification_summary(
 
     for name, result in per_class_results.items():
         status[name] = result.get("status", "evaluated")
-        per_class[name] = {k: result[k] for k in _CLASSIFICATION_FIELDS if k in result}
+        # evaluate_classifier nests the binary metrics under result['binary'];
+        # fall back to flat keys for results that are already flat.
+        metrics = result.get("binary") if isinstance(result.get("binary"), dict) else result
+        per_class[name] = {k: metrics[k] for k in _CLASSIFICATION_FIELDS if k in metrics}
         for k in ("auroc", "auprc", "specificity"):
-            if k in result:
-                per_class[name][k] = result[k]
-        per_class[name]["threshold"] = result.get("threshold", 0.5)
+            if k in metrics:
+                per_class[name][k] = metrics[k]
+        per_class[name]["threshold"] = metrics.get("threshold", result.get("threshold", 0.5))
         if "model" in result:
             per_class[name]["model"] = result["model"]
 
@@ -113,6 +116,16 @@ def build_localization_summary(localizer_results: Dict[str, Dict]) -> Dict[str, 
 
 def _f1_str(f1: float) -> str:
     return "—" if f1 is None else f"{f1:.3f}"
+
+
+def _fmt(value, fmt: str = ".3f") -> str:
+    """Format a metric value as a string, tolerating missing/None/non-numeric."""
+    if value is None:
+        return "—"
+    try:
+        return f"{value:{fmt}}"
+    except (ValueError, TypeError):
+        return str(value)
 
 
 def format_summary_markdown(summary: Dict[str, object]) -> str:
@@ -157,10 +170,10 @@ def format_summary_markdown(summary: Dict[str, object]) -> str:
             f1 = metrics.get("f1")
             model_cell = metrics.get("model", {}).get("fingerprint", "")
             lines.append(
-                f"| {name} | {metrics.get('precision', '—'):.3f} | "
-                f"{metrics.get('recall', '—'):.3f} | {_f1_str(f1)} | "
-                f"{metrics.get('auroc', '—')} | {metrics.get('auprc', '—')} | "
-                f"{metrics.get('support', '—')} |"
+                f"| {name} | {_fmt(metrics.get('precision'))} | "
+                f"{_fmt(metrics.get('recall'))} | {_f1_str(f1)} | "
+                f"{_fmt(metrics.get('auroc'))} | {_fmt(metrics.get('auprc'))} | "
+                f"{_fmt(metrics.get('support'), 'd')} |"
             )
             if model_cell:
                 lines.append(f"| &nbsp; | model: `{model_cell}` | | | | | |")
