@@ -122,9 +122,10 @@ class Wav2Vec2LocalizationDataset:
 
         sample = self.samples[idx]
 
-        # Load and clean audio
+        # Load and clean audio. Silence trimming is disabled — labels use the
+        # original timeline and trimming would shift frame labels off the audio.
         audio, _ = load_audio(sample["audio_path"], sr=self.sr)
-        audio = clean_audio(audio, sr=self.sr)
+        audio = clean_audio(audio, sr=self.sr, trim=False)
 
         # Load labels
         intervals = load_label_csv(sample["label_path"])

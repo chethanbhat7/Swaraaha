@@ -100,3 +100,48 @@ def test_classification_cache_invalidates_on_label_change(tmp_path):
     _, labels2 = ds2[idx2]
     assert labels2[1] == 0  # block no longer present
     assert labels2[4] == 1  # interjection present
+
+
+def _write_wav_with_leading_silence(path, sr=16000):
+    """0.5s silence followed by 0.5s of 440Hz sine."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    silence = np.zeros(sr // 2, dtype=np.float32)
+    t = np.arange(sr // 2) / sr
+    sine = (0.5 * np.sin(2 * np.pi * 440 * t)).astype(np.float32)
+    samples = np.concatenate([silence, sine])
+    pcm = (samples * 32767).astype(np.int16).tobytes()
+    with wave.open(str(path), "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(sr)
+        w.writeframes(pcm)
+
+
+def test_localization_frame_labels_align_with_leading_silence(tmp_path):
+    """clean_audio's silence-trim must NOT shift frame labels off the original
+    timeline: the returned mask must match labels computed on the untrimmed
+    spectrogram."""
+    data = tmp_path / "data"
+    _write_wav_with_leading_silence(data / "audio" / "M_0002.wav")
+    _write_label(data / "labels" / "M_0002.csv", [(0.5, 1.0, "block")])
+    with open(data / "sources.csv", "w") as f:
+        f.write("clip_id,source\nM_0002,uclass\n")
+
+    ds = LocalizationDataset(data_dir=str(data), max_length_seconds=1.0)
+    spec, mask = ds[0]
+
+    from model.data.preprocessing import (
+        create_frame_labels,
+        generate_mel_spectrogram,
+        load_audio,
+    )
+    audio, _ = load_audio(str(data / "audio" / "M_0002.wav"), sr=16000)
+    full_spec = generate_mel_spectrogram(
+        audio, sr=16000, n_mels=ds.n_mels, hop_length=ds.hop_length,
+    )
+    expected = create_frame_labels(
+        [(0.5, 1.0)], num_frames=full_spec.shape[1], sr=16000,
+        hop_length=ds.hop_length,
+    )
+    assert mask.shape[0] == ds.max_frames
+    assert np.array_equal(mask, expected[: ds.max_frames])

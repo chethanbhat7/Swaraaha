@@ -210,8 +210,10 @@ class LocalizationDataset:
         # Load audio
         audio, _ = load_audio(sample["audio_path"], sr=self.sr)
 
-        # Clean audio: DC removal, peak normalization, silence trimming
-        audio = clean_audio(audio, sr=self.sr)
+        # Clean audio: DC removal, peak normalization. Silence trimming is
+        # disabled — labels use the original timeline and trimming would
+        # shift frame labels off the spectrogram.
+        audio = clean_audio(audio, sr=self.sr, trim=False)
 
         # Load labels
         intervals = load_label_csv(sample["label_path"])
