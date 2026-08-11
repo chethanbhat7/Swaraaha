@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 from model import ModelRegistry
+from model.registry import Classifier
 
 
 def test_run_all_composes(monkeypatch):
@@ -69,3 +70,38 @@ def test_run_all_catches_missing_models(monkeypatch):
     result = reg.run_all(np.zeros(16000, dtype=np.float32))
     assert result["classification"]["error"]
     assert result["localization"]["error"]
+
+
+def test_classifier_all_mode_skips_unknown_registry_entries(monkeypatch, tmp_path):
+    canonical = {"prolongation", "block", "soundrep", "wordrep", "interjection"}
+
+    classification = {}
+    for name in canonical:
+        path = tmp_path / f"{name}.pt"
+        path.write_bytes(b"")
+        classification[name] = str(path)
+    clut_path = tmp_path / "cluttering.pt"
+    clut_path.write_bytes(b"")
+    classification["cluttering"] = str(clut_path)
+
+    registry = {"classification": classification}
+    monkeypatch.setattr("model.registry._load_registry", lambda: registry)
+
+    class _Stub:
+        def predict(self, audio_tensor):
+            return (1, 0.9)
+
+    def fake_load_classifier(class_name, path):
+        if class_name not in canonical:
+            raise ValueError(f"Unknown dysfluency class: {class_name}")
+        return _Stub()
+
+    monkeypatch.setattr("model.registry._load_classifier", fake_load_classifier)
+
+    clf = Classifier()
+    clf._load()
+
+    assert set(clf._models) == canonical
+    assert "cluttering" not in clf._models
+    out = clf.predict_all(np.zeros(16000, dtype=np.float32))
+    assert set(out) == canonical

@@ -231,8 +231,16 @@ class Classifier:
                     f"Missing classification models in registry: {missing}"
                 )
 
+            from model.config.defaults import DYSFLUENCY_CLASSES
+
             self._models = {}
             for name, entry in classification.items():
+                if name not in DYSFLUENCY_CLASSES:
+                    print(
+                        f"WARNING: ignoring unknown classification entry '{name}' "
+                        f"in registry (expected one of {sorted(DYSFLUENCY_CLASSES)})"
+                    )
+                    continue
                 path = _resolve_path(entry)
                 self._models[name] = _load_classifier(name, path)
 
