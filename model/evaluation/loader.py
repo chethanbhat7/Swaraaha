@@ -87,7 +87,8 @@ def load_localizer(localizer_type: str, model_path: str):
             return CNNSpectrogramLocalizer.from_pretrained(model_path)
 
         # Training-format checkpoint (model_state_dict, no config keys).
-        instance = CNNSpectrogramLocalizer(n_mels=128)
+        n_mels = checkpoint.get("args", {}).get("n_mels", 128)
+        instance = CNNSpectrogramLocalizer(n_mels=n_mels)
         state_dict = _strip_compile_prefix(checkpoint["model_state_dict"])
         instance.model.load_state_dict(state_dict, strict=True)
         return instance
