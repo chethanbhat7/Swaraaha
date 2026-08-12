@@ -81,6 +81,24 @@ def multitask_loss(logits: Dict[str, "torch.Tensor"], labels: "torch.Tensor",
     return total
 
 
+def _partition_model_params(model) -> Tuple[List, List]:
+    """Split the shared-backbone model into head vs backbone parameters.
+
+    Head params live under ``model.model.heads.*``. The check uses a
+    substring match (not ``startswith``) because ``torch.compile`` renames
+    every parameter with an ``_orig_mod.`` prefix; the heads must still be
+    found after compilation (regression: optimizer got an empty list).
+    """
+    backbone_params = []
+    head_params = []
+    for name, param in model.model.named_parameters():
+        if "heads." in name:
+            head_params.append(param)
+        else:
+            backbone_params.append(param)
+    return backbone_params, head_params
+
+
 def stratified_split(
     dataset,
     val_ratio: float = 0.2,
@@ -358,13 +376,7 @@ def train(args) -> Dict:
     print(f"  Total parameters: {total_params:,}")
 
     # ---- Freeze backbone setup ----
-    backbone_params = []
-    head_params = []
-    for name, param in model.model.named_parameters():
-        if name.startswith("heads."):
-            head_params.append(param)
-        else:
-            backbone_params.append(param)
+    backbone_params, head_params = _partition_model_params(model)
 
     backbone_frozen = args.freeze_backbone_epochs > 0
     if backbone_frozen:

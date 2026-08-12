@@ -61,3 +61,26 @@ def test_parse_args_has_multitask_defaults():
     assert args.hidden_dim == 768
     assert args.class_names == CLASS_NAMES
     assert args.freeze_backbone_epochs == 3
+
+
+def test_partition_finds_heads_after_torch_compile_prefix():
+    """torch.compile renames params with an _orig_mod. prefix; heads must
+    still be found (regression: startswith('heads.') matched nothing)."""
+
+    class _FakeCompiled(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            inner = torch.nn.Module()
+            inner.heads = torch.nn.ModuleDict(
+                {n: torch.nn.Linear(2, 2) for n in CLASS_NAMES}
+            )
+            inner.wav2vec2 = torch.nn.Linear(2, 2)
+            self._orig_mod = inner
+
+    model = _FakeModel()
+    model.model = _FakeCompiled()
+
+    backbone_params, head_params = tmc._partition_model_params(model)
+    assert len(head_params) == 2 * len(CLASS_NAMES)  # weight + bias per head
+    assert len(backbone_params) == 2  # weight + bias of the backbone
+    assert head_params  # must be non-empty (the optimizer crash we fixed)
