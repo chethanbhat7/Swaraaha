@@ -79,10 +79,10 @@ class AudioAugmentor:
         factor = 2 ** (semitones / 12.0)
         return self._resample(audio, 1.0 / factor)
 
-    def time_shift(self, audio: np.ndarray) -> np.ndarray:
+    def time_shift(self, audio: np.ndarray, sample_rate: int = 16000) -> np.ndarray:
         """Shift audio in time by rolling samples."""
         shift_sec = random.uniform(*self.shift_range)
-        shift_samples = int(shift_sec * 16000)
+        shift_samples = int(shift_sec * sample_rate)
         return np.roll(audio, shift_samples)
 
     def scale(self, audio: np.ndarray) -> np.ndarray:
@@ -146,7 +146,7 @@ class AudioAugmentor:
         audio = self.add_noise(audio)
         audio = self.time_stretch(audio)
         audio = self.pitch_shift(audio, sample_rate)
-        audio = self.time_shift(audio)
+        audio = self.time_shift(audio, sample_rate)
         audio = self.scale(audio)
         return audio.astype(np.float32)
 
