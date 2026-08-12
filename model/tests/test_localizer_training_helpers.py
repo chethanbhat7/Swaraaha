@@ -70,16 +70,17 @@ def test_compute_frame_pos_weight_no_audio_load(tmp_path):
 
 def test_compute_frame_pos_weight_inverse_frequency(tmp_path):
     samples = _samples_with_labels(tmp_path, [("dys", [(1.0, 2.0)])])
-    # sr=16000, hop=512: interval (1.0,2.0) -> frames 31..62 => 31 positive of 100
-    assert compute_frame_pos_weight(samples, num_frames=100) == round(69 / 31, 4)
+    # sr=16000, hop=512: interval (1.0,2.0) -> frames 31..62 => 32 positive of 100
+    # (end frame is ceiled so the final partial frame is covered)
+    assert compute_frame_pos_weight(samples, num_frames=100) == round(68 / 32, 4)
 
 
 def test_compute_frame_pos_weight_aggregates_across_samples(tmp_path):
     samples = _samples_with_labels(
         tmp_path, [("clean", []), ("dys", [(1.0, 2.0)])]
     )
-    # 200 total frames, 31 positive -> 169/31
-    assert compute_frame_pos_weight(samples, num_frames=100) == round(169 / 31, 4)
+    # 200 total frames, 32 positive -> 168/32
+    assert compute_frame_pos_weight(samples, num_frames=100) == round(168 / 32, 4)
 
 
 def test_extract_regions_single_contiguous_run():
