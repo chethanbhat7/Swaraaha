@@ -63,6 +63,26 @@ def _flag_repetitions(words: List[Dict[str, Any]]) -> None:
             w["stutter_type"] = "soundrep"
 
 
+def _configure_generation_config(pipe, language_code: str) -> None:
+    """Best-effort: force the decoder's language/task and word timestamps.
+
+    Failures are reported via a warning rather than silently swallowed, since
+    an unset generation config silently degrades the output (wrong language,
+    missing timestamps) and is hard to debug without the message.
+    """
+    try:
+        pipe.model.generation_config.forced_decoder_ids = pipe.tokenizer.get_decoder_prompt_ids(
+            language=language_code, task="transcribe"
+        )
+        no_timestamps_token_id = pipe.tokenizer.convert_tokens_to_ids("<|notimestamps|>")
+        pipe.model.generation_config.no_timestamps_token_id = no_timestamps_token_id
+    except Exception as e:
+        print(
+            f"WARNING: could not set Whisper generation config for '{language_code}' "
+            f"({type(e).__name__}: {e}); continuing with defaults."
+        )
+
+
 def get_pipeline(language: str = "english"):
     """Lazily initialize (and cache) the Whisper ASR pipeline for a language."""
     lang = language.lower()
@@ -73,14 +93,7 @@ def get_pipeline(language: str = "english"):
         pipe = pipeline("automatic-speech-recognition", model=model_id, device="cpu")
 
         lang_code = WHISPER_LANG_CODES.get(lang, "en")
-        try:
-            pipe.model.generation_config.forced_decoder_ids = pipe.tokenizer.get_decoder_prompt_ids(
-                language=lang_code, task="transcribe"
-            )
-            no_timestamps_token_id = pipe.tokenizer.convert_tokens_to_ids("<|notimestamps|>")
-            pipe.model.generation_config.no_timestamps_token_id = no_timestamps_token_id
-        except Exception:
-            pass
+        _configure_generation_config(pipe, lang_code)
 
         _pipelines[lang] = pipe
     return _pipelines[lang]

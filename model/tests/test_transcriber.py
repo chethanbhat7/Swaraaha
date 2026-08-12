@@ -123,3 +123,75 @@ def test_transcribe_array_44k_stays_16k(monkeypatch):
     result = Transcriber().transcribe(audio, sample_rate=44100)
     assert len(seen[0]) == 16000
     assert result["duration_sec"] == 1.0
+
+
+def test_get_pipeline_warns_when_generation_config_fails(monkeypatch, capsys):
+    """Failing to set the Whisper generation config must log a warning instead
+    of being silently swallowed (otherwise language/timestamp prompts silently
+    default, which is hard to debug)."""
+    from model.transcription import _configure_generation_config
+
+    class _GenConfig:
+        def __init__(self):
+            self.no_timestamps_token_id = None
+
+        @property
+        def forced_decoder_ids(self):
+            return None
+
+        @forced_decoder_ids.setter
+        def forced_decoder_ids(self, value):
+            raise RuntimeError("decoder prompt ids unavailable")
+
+    class _Tok:
+        def get_decoder_prompt_ids(self, language=None, task=None):
+            return [(1, language), (2, task)]
+
+        def convert_tokens_to_ids(self, token):
+            return 42
+
+    pipe = type(
+        "P",
+        (),
+        {
+            "model": type("M", (), {"generation_config": _GenConfig()})(),
+            "tokenizer": _Tok(),
+        },
+    )()
+
+    _configure_generation_config(pipe, "en")
+    captured = capsys.readouterr().out
+    assert "WARNING" in captured
+    assert "decoder prompt ids unavailable" in captured
+
+
+def test_configure_generation_config_sets_prompts():
+    from model.transcription import _configure_generation_config
+
+    class _GenConfig:
+        def __init__(self):
+            self.forced_decoder_ids = None
+            self.no_timestamps_token_id = None
+
+    class _Tok:
+        def get_decoder_prompt_ids(self, language=None, task=None):
+            return [(1, language), (2, task)]
+
+        def convert_tokens_to_ids(self, token):
+            return 42
+
+    pipe = type(
+        "P",
+        (),
+        {
+            "model": type("M", (), {"generation_config": _GenConfig()})(),
+            "tokenizer": _Tok(),
+        },
+    )()
+
+    _configure_generation_config(pipe, "en")
+    assert pipe.model.generation_config.forced_decoder_ids == [
+        (1, "en"),
+        (2, "transcribe"),
+    ]
+    assert pipe.model.generation_config.no_timestamps_token_id == 42
