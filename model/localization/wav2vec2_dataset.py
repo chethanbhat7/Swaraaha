@@ -94,6 +94,11 @@ class Wav2Vec2LocalizationDataset:
             if not os.path.isfile(label_path):
                 continue
 
+            # Skip header-only WAV files (no audio data) — same guard as
+            # ClassificationDataset, so training never runs on empty silence.
+            if os.path.getsize(audio_path) <= 44:
+                continue
+
             if self.sources is not None and self._source_map:
                 if self._source_map.get(clip_id) not in self.sources:
                     continue

@@ -57,3 +57,19 @@ def test_wav2vec2_frame_labels_align_with_leading_silence(tmp_path):
     assert len(pos) > 0
     assert len(voiced) > 0
     assert np.array_equal(pos, voiced), f"pos {pos} vs voiced {voiced}"
+
+
+def test_wav2vec2_dataset_skips_header_only_wav(tmp_path):
+    """Header-only WAV stubs (44-byte, no audio data) must be excluded from the
+    sample list; otherwise training would silently run on empty silence."""
+    data = tmp_path / "data"
+    (data / "audio").mkdir(parents=True)
+    (data / "labels").mkdir(parents=True)
+    (data / "audio" / "empty.wav").write_bytes(b"\x00" * 44)
+    _write_label(data / "labels" / "empty.csv")
+    _write_wav_with_leading_silence(data / "audio" / "valid.wav")
+    _write_label(data / "labels" / "valid.csv")
+
+    ds = Wav2Vec2LocalizationDataset(data_dir=str(data), max_length_seconds=1.0)
+    assert len(ds) == 1
+    assert ds.get_sample_info(0)["clip_id"] == "valid"
