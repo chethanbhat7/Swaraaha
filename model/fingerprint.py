@@ -93,6 +93,55 @@ def parse_fingerprint_from_path(path: str) -> Dict:
     return parse_fingerprint(base)
 
 
+# Args that must match for multitask checkpoint resume
+MULTITASK_RESUME_KEYS = [
+    "data_dir", "model_name", "lr", "batch_size",
+    "max_length_seconds", "warmup_steps", "weight_decay",
+    "freeze_backbone_epochs", "focal_gamma", "seed",
+    "gradient_accumulation_steps", "epochs",
+]
+
+MULTITASK_FINGERPRINT_FMT = (
+    "multi_e{epochs}_b{batch_size}_lr{lr}_frz{freeze_backbone_epochs}"
+    "_focal_g{focal_gamma}_ga{gradient_accumulation_steps}_wu{warmup_steps}"
+    "_wd{weight_decay}_ml{max_length_seconds}_s{seed}_{data_short}_{model_short}"
+)
+
+
+def multitask_fingerprint(args) -> str:
+    """Build a fingerprint string for the multitask classifier pipeline."""
+    values = {k: _fmt_fp(getattr(args, k)) for k in MULTITASK_RESUME_KEYS}
+    values["data_short"] = os.path.basename(args.data_dir.rstrip("/"))
+    values["model_short"] = MODEL_ALIASES.get(
+        args.model_name, args.model_name.replace("/", "_")
+    )
+    return MULTITASK_FINGERPRINT_FMT.format(**values)
+
+
+def parse_multitask_fingerprint(fp: str) -> dict:
+    """Parse a multitask fingerprint string back into a dict of params."""
+    pattern = (
+        r'^multi_e(?P<epochs>\d+)_b(?P<batch_size>\d+)_lr(?P<lr>[\d.e\-]+)'
+        r'_frz(?P<freeze_backbone_epochs>\d+)_focal_g(?P<focal_gamma>[\d.e\-]+)'
+        r'_ga(?P<gradient_accumulation_steps>\d+)_wu(?P<warmup_steps>\d+)'
+        r'_wd(?P<weight_decay>[\d.e\-]+)_ml(?P<max_length_seconds>[\d.e\-]+)'
+        r'_s(?P<seed>\d+)_(?P<data_short>\w+)_(?P<model_short>\w+)$'
+    )
+    m = re.match(pattern, fp)
+    if not m:
+        raise ValueError(f"Cannot parse multitask fingerprint: {fp}")
+    d = m.groupdict()
+    for k in ("epochs", "batch_size", "freeze_backbone_epochs",
+              "gradient_accumulation_steps", "warmup_steps", "seed"):
+        d[k] = int(d[k])
+    for k in ("lr", "focal_gamma", "weight_decay", "max_length_seconds"):
+        d[k] = float(d[k])
+    ms = d.pop("model_short")
+    d["model_name"] = MODEL_SHORT_TO_NAME.get(ms, ms)
+    d.pop("data_short", None)
+    return d
+
+
 CNN_LOCALIZER_RESUME_KEYS = [
     "data_dir", "epochs", "batch_size", "lr", "n_mels", "hop_length",
     "max_length_seconds", "dropout", "patience", "weight_decay", "seed",
