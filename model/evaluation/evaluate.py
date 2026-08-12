@@ -40,7 +40,7 @@ import numpy as np
 def parse_args():
     parser = argparse.ArgumentParser(description="Evaluate trained Swaraaha models.")
     parser.add_argument("--model_type", type=str, required=True,
-                        choices=["classifier", "localizer"],
+                        choices=["classifier", "localizer", "multitask"],
                         help="Type of model to evaluate.")
     parser.add_argument("--class_name", type=str, default=None,
                         help="Dysfluency class (required for classifier type).")
@@ -482,6 +482,78 @@ def evaluate_localizer(args) -> Dict:
     return metrics
 
 
+def evaluate_multitask(args) -> Dict:
+    """Evaluate the shared-backbone multitask classifier on all five heads."""
+    import torch
+
+    from model.classification import DYSFLUENCY_CLASSES
+    from model.evaluation import loader
+    from model.evaluation.metrics import (
+        compute_binary_metrics,
+        print_binary_report,
+        save_report,
+    )
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    print(f"\n  Evaluating multitask classifier")
+    print(f"  Model: {args.model_path}")
+    print(f"  Data: {args.data_dir}")
+
+    eval_dataset, eval_loader, _ = _build_classification_eval(args)
+    print(f"  Eval samples: {len(eval_dataset)}")
+
+    model = loader.load_multitask(args.model_path)
+    _move_model(model, device)
+
+    all_true = {name: [] for name in DYSFLUENCY_CLASSES}
+    all_scores = {name: [] for name in DYSFLUENCY_CLASSES}
+
+    with torch.no_grad():
+        for audio, labels in eval_loader:
+            audio = audio.to(device)
+            logits = model.forward(audio)
+            for i, name in enumerate(DYSFLUENCY_CLASSES):
+                y_true = labels[:, i].cpu().numpy()
+                probs = torch.softmax(logits[name], dim=-1).cpu().numpy()
+                all_true[name].extend(y_true.tolist())
+                all_scores[name].extend(probs[:, 1].tolist())
+
+    results: Dict[str, Dict] = {}
+    for name in DYSFLUENCY_CLASSES:
+        y_true = np.array(all_true[name])
+        y_scores = np.array(all_scores[name])
+        binary = compute_binary_metrics(y_true, y_scores, threshold=args.threshold)
+        print_binary_report(binary, name)
+        results[name] = {
+            "class_name": name,
+            "model_path": args.model_path,
+            "num_samples": len(eval_dataset),
+            "threshold": args.threshold,
+            "binary": binary,
+            "support": int(y_true.sum()),
+        }
+
+    macro_f1 = float(np.mean([results[n]["binary"]["f1"] for n in DYSFLUENCY_CLASSES]))
+
+    print("\n  Aggregate multitask summary:")
+    for name in DYSFLUENCY_CLASSES:
+        print(f"  {name:>15s}  F1={results[name]['binary']['f1']:.3f}  "
+              f"AUROC={results[name]['binary']['auroc']:.3f}")
+    print(f"  {'macro avg':>15s}  F1={macro_f1:.3f}")
+
+    os.makedirs(args.output_dir, exist_ok=True)
+    report_path = os.path.join(args.output_dir, "multitask_report.json")
+    save_report(
+        {"per_class": results, "macro_f1": round(macro_f1, 4),
+         "model_path": args.model_path},
+        report_path,
+    )
+    print(f"\n  Report saved: {report_path}")
+
+    return {"per_class": results, "macro_f1": macro_f1}
+
+
 if __name__ == "__main__":
     args = parse_args()
 
@@ -492,3 +564,5 @@ if __name__ == "__main__":
             evaluate_classifier(args)
     elif args.model_type == "localizer":
         evaluate_localizer(args)
+    elif args.model_type == "multitask":
+        evaluate_multitask(args)
