@@ -92,6 +92,41 @@ def _load_classifier(class_name: str, path: str):
     return instance
 
 
+def _audio_is_empty(audio) -> bool:
+    """True when the input carries no samples (None or an empty ndarray).
+
+    Mirrors Transcriber.transcribe's empty-audio guard so Classifier/Localizer
+    analyze return a well-formed empty result instead of crashing on
+    np.abs(audio).max() over a zero-size array.
+    """
+    import numpy as np
+
+    return audio is None or (isinstance(audio, np.ndarray) and audio.size == 0)
+
+
+def _empty_classifier_output(include_logits: bool) -> Dict[str, float]:
+    """Well-formed 'not present' result for empty audio (no model run)."""
+    result: Dict[str, float] = {
+        "label": 0,
+        "confidence": 0.0,
+        "prob_present": 0.0,
+        "prob_not_present": 1.0,
+    }
+    if include_logits:
+        result["logits"] = {"not_present": 0.0, "present": 0.0}
+    return result
+
+
+def _registry_classification_names() -> List[str]:
+    """Canonical classification model names from the registry (M1 filtering)."""
+    from model.config.defaults import DYSFLUENCY_CLASSES
+
+    registry = _load_registry()
+    return [
+        name for name in registry.get("classification", {}) if name in DYSFLUENCY_CLASSES
+    ]
+
+
 def _preprocess_audio(
     audio, sr: int = 16000, max_length_seconds: float = 10.0
 ) -> "torch.Tensor":
@@ -299,6 +334,8 @@ class Classifier:
         return thresholds
 
     def _run_single(self, audio, threshold: Optional[float], include_logits: bool) -> Dict[str, Any]:
+        if _audio_is_empty(audio):
+            return _empty_classifier_output(include_logits)
         if self._model is None:
             self._load()
         tensor = _preprocess_audio(audio)
@@ -307,6 +344,16 @@ class Classifier:
         return _classifier_output(self._model, tensor, thr, include_logits)
 
     def _run_all(self, audio, threshold: Optional[float], include_logits: bool) -> Dict[str, Any]:
+        if _audio_is_empty(audio):
+            names = list(self._models) if self._models else _registry_classification_names()
+            results: Dict[str, Any] = {
+                name: _empty_classifier_output(include_logits) for name in names
+            }
+            results["summary"] = {
+                "detected": [],
+                "primary": names[0] if names else None,
+            }
+            return results
         if not self._models:
             self._load()
         tensor = _preprocess_audio(audio)
@@ -418,6 +465,14 @@ class Localizer:
             Single-type: {regions, [words], [syllables]}.
             All-types: {type: {...}} keyed by localizer type.
         """
+        if _audio_is_empty(audio):
+            types = [self.model_type] if self.model_type else list(self._models.keys())
+            empty: Dict[str, Any] = {"regions": []}
+            results = {lt: dict(empty) for lt in types}
+            if self.model_type is not None:
+                return results.get(self.model_type, empty)
+            return results
+
         if not self._models:
             self._load()
 
