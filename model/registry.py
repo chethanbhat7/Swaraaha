@@ -127,6 +127,13 @@ def _registry_classification_names() -> List[str]:
     ]
 
 
+def _load_multitask_classifier(path: str):
+    """Load a shared-backbone multitask classifier from its save format."""
+    from model.classification.multitask import MultiTaskWav2VecClassifier
+
+    return MultiTaskWav2VecClassifier.from_pretrained(path)
+
+
 def _preprocess_audio(
     audio, sr: int = 16000, max_length_seconds: float = 10.0
 ) -> "torch.Tensor":
@@ -389,6 +396,89 @@ class Classifier:
         return self._model is not None or bool(self._models)
 
 
+class MultiTaskClassifier:
+    """Registry wrapper for the shared-backbone multitask classifier.
+
+    analyze() runs ONE forward pass and returns per-class
+    {label, confidence, prob_present, prob_not_present} plus a summary.
+    """
+
+    def __init__(self):
+        self._model = None
+
+    def _load(self) -> None:
+        registry = _load_registry()
+        entry = registry.get("classification_multitask")
+        if not entry:
+            raise FileNotFoundError(
+                "No 'classification_multitask' entry in registry. "
+                "Add model/registry.json classification_multitask.path."
+            )
+        path = _resolve_path(entry["path"])
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"Model file not found: {path}")
+        self._model = _load_multitask_classifier(path)
+
+    @staticmethod
+    def _empty_result(names: List[str]) -> Dict[str, Any]:
+        results: Dict[str, Any] = {
+            name: _empty_classifier_output(False) for name in names
+        }
+        results["summary"] = {
+            "detected": [],
+            "primary": names[0] if names else None,
+        }
+        return results
+
+    def analyze(self, audio, threshold: float = 0.5) -> Dict[str, Any]:
+        """Run one forward pass and classify every class.
+
+        Returns:
+            {class_name: {label, confidence, prob_present, prob_not_present},
+             summary: {detected, primary}}
+        """
+        import torch
+
+        if _audio_is_empty(audio):
+            names = (
+                list(self._model.class_names)
+                if self._model is not None
+                else _registry_classification_names()
+            )
+            return self._empty_result(names)
+
+        if self._model is None:
+            self._load()
+
+        tensor = _preprocess_audio(audio)
+        self._model.model.eval()
+        with torch.no_grad():
+            logits = self._model.forward(tensor)
+
+        results: Dict[str, Any] = {}
+        for name, lg in logits.items():
+            probs = torch.softmax(lg, dim=-1)
+            prob_present = probs[0, 1].item()
+            prob_not_present = probs[0, 0].item()
+            label = 1 if prob_present >= threshold else 0
+            confidence = prob_present if label == 1 else prob_not_present
+            results[name] = {
+                "label": label,
+                "confidence": confidence,
+                "prob_present": prob_present,
+                "prob_not_present": prob_not_present,
+            }
+
+        detected = [name for name, r in results.items() if r["label"] == 1]
+        primary = max(results.items(), key=lambda kv: kv[1]["prob_present"])[0]
+        results["summary"] = {"detected": detected, "primary": primary}
+        return results
+
+    @property
+    def is_loaded(self) -> bool:
+        return self._model is not None
+
+
 class Localizer:
     def __init__(self, model_type: Optional[str] = None):
         self.model_type = model_type
@@ -528,6 +618,7 @@ class ModelRegistry:
         self.classifier = Classifier()
         self.localizer = Localizer()
         self.transcriber = Transcriber()
+        self.multitask_classifier = MultiTaskClassifier()
 
     def run_all(
         self,

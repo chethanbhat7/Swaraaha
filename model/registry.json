@@ -6,9 +6,13 @@
     "wordrep": "model/weights/wordrep_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml10_s42_train_w2v2base_best.pt",
     "interjection": "model/weights/interjection_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml10_s42_train_w2v2base_best.pt"
   },
+  "classification_multitask": {
+    "path": "model/weights/multi_e20_b16_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml10_s42_train_w2v2base_best.pt",
+    "model_name": "facebook/wav2vec2-base"
+  },
   "localization": {
-    "cnn": "model/weights/cnnloc_e30_b8_lr0.001_n128_h512_ml10_d0.4_pa7_wd0.0001_vr0.2_s42_train_final.pt",
-    "wav2vec2": "model/weights/w2v2loc_e20_b4_lr3e-5_frz5_wu500_hd256_d0.3_wd0.01_ml10_pa5_vr0.2_s42_train_w2v2base_final.pt"
+    "cnn": "model/weights/cnnloc_e30_b8_lr0.001_n128_h512_ml10_d0.4_pa7_wd0.0001_vr0.2_s42_train_best.pt",
+    "wav2vec2": "model/weights/w2v2loc_e20_b4_lr3e-5_frz5_wu500_hd256_d0.3_wd0.01_ml10_pa5_vr0.2_s42_train_w2v2base_best.pt"
   },
   "thresholds": {
     "prolongation": 0.5,

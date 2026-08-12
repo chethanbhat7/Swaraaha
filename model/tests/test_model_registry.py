@@ -225,3 +225,81 @@ def test_classifier_predict_all_honors_thresholds(monkeypatch, tmp_path):
     out2 = clf.predict_all(audio, threshold=0.6)
     assert out2["prolongation"][0] == 1
     assert out2["block"][0] == 1
+
+
+def test_multitask_classifier_analyze_returns_per_class_output(tmp_path, monkeypatch):
+    """MultiTaskClassifier.analyze returns per-class dicts + summary."""
+    import torch
+
+    from model.registry import MultiTaskClassifier
+
+    class _FakeHeads(torch.nn.Module):
+        def forward(self, pooled):
+            out = {}
+            for i, name in enumerate(
+                ["prolongation", "block", "soundrep", "wordrep", "interjection"]
+            ):
+                out[name] = torch.tensor([[0.0, -3.0]]) if i != 1 else torch.tensor([[0.0, 3.0]])
+            return out
+
+    class _FakeBackbone(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.heads = _FakeHeads()
+            self.config = type("C", (), {"hidden_size": 8})()
+
+        def forward(self, input_values):
+            return self.heads(input_values)
+
+    class _FakeModel:
+        def __init__(self):
+            self.model = _FakeBackbone()
+
+        def forward(self, input_values):
+            return self.model(input_values)
+
+    import model.classification.multitask as mt
+
+    monkeypatch.setattr(mt, "_wav2vec2_model_class", lambda: type("F", (), {
+        "from_pretrained": staticmethod(lambda model_name: _FakeBackbone())
+    }))
+
+    # Point registry at a dummy checkpoint and stub the loader.
+    import json
+
+    reg_path = str(tmp_path / "registry.json")
+    with open(reg_path, "w") as f:
+        json.dump({"classification_multitask": {"path": "weights/mt.pt",
+                                                 "model_name": "fake"}}, f)
+    monkeypatch.setattr("model.registry._REGISTRY_PATH", reg_path)
+    monkeypatch.setattr("model.registry._resolve_path", lambda p: str(tmp_path / "mt.pt"))
+    (tmp_path / "mt.pt").write_bytes(b"dummy")
+    monkeypatch.setattr("model.registry._load_multitask_classifier",
+                        lambda path: _FakeModel())
+
+    clf = MultiTaskClassifier()
+    out = clf.analyze(np.zeros(1600, dtype=np.float32))
+
+    assert out["block"]["label"] == 1
+    assert out["prolongation"]["label"] == 0
+    assert out["summary"]["detected"] == ["block"]
+    assert out["summary"]["primary"] == "block"
+
+
+def test_multitask_classifier_analyze_empty_audio_returns_empty_result(tmp_path, monkeypatch):
+    """Empty audio must not load models or crash (mirrors M19 guards)."""
+    from model.registry import MultiTaskClassifier
+
+    called = {"loads": 0}
+
+    def fake_load():
+        called["loads"] += 1
+        raise AssertionError("model should not be loaded for empty audio")
+
+    clf = MultiTaskClassifier()
+    monkeypatch.setattr(clf, "_load", fake_load)
+
+    out = clf.analyze(None)
+    assert called["loads"] == 0
+    assert out["summary"] == {"detected": [], "primary": "prolongation"}
+    assert all(r["label"] == 0 for r in out.values() if r != out["summary"])
