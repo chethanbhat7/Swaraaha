@@ -26,12 +26,24 @@ Then run the full setup:
 
 ```bash
 python -m model.data.setup
+
+# Show available flags
+python -m model.data.setup --help
+
+# Re-run merge + prepare, overwriting existing labels
+python -m model.data.setup --force
 ```
 
 This runs three steps sequentially:
 1. **Download** — fetches all datasets from Kaggle/Git
 2. **Merge** — normalizes labels and writes per-clip interval CSVs
 3. **Prepare** — creates train/val/test splits with symlinks
+
+`--force` is forwarded to the **merge** and **prepare** steps so re-running
+setup regenerates interval CSVs and overwrites existing split labels
+(otherwise prepare skips files that already exist). Any extra flags after
+`--` are forwarded to every step, e.g.
+`python -m model.data.setup -- --some-flag value`.
 
 ---
 

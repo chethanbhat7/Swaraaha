@@ -686,3 +686,25 @@ audio-only (classifier saliency). Transcription is display-only.
 
 **Fix:** wrap the pipeline in a `_Proxy` instance that stashes raw output on a
 side channel.
+
+---
+
+## 17. M13 labels reached `data/labels` but never the training splits
+
+**Symptom:** After re-running `python -m model.data.setup`, retraining produced
+the same inflated positive ratios as before the M13 (SEP-28K majority-vote)
+fix — training results looked unchanged.
+
+**Root cause:** `setup.py` ran `merge` and `prepare` as subprocesses with no
+flags. The re-merge DID write majority-vote labels to `data/labels`, but
+`prepare` only copies a label when the destination is missing or `--force` is
+given — so existing `data/train/labels` kept the old single-annotator labels.
+The new ground truth never reached the training splits.
+
+**Fix (operational):** `python -m model.data.prepare --force`, which
+re-copied all 36,674 labels into the splits (verified: block positive ratio
+dropped 0.401 → 0.141).
+
+**Fix (code):** `setup.py` now accepts `--force` (forwarded to merge +
+prepare) and forwards any `--` extra args to every step, so re-running setup
+with `python -m model.data.setup --force` regenerates and propagates labels.

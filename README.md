@@ -114,7 +114,16 @@ Then run the full setup:
 ```bash
 pip install -r model/requirements.txt
 python -m model.data.setup
+
+# Show available flags
+python -m model.data.setup --help
+
+# Force regeneration: re-merge labels and overwrite existing split labels
+python -m model.data.setup --force
 ```
+
+Any extra flags after `--` are forwarded to every step (download, merge,
+prepare), e.g. `python -m model.data.setup -- --some-flag value`.
 
 See [`model/data/README.md`](model/data/README.md) for detailed instructions and manual setup options.
 
