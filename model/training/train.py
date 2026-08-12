@@ -61,6 +61,12 @@ class SystemInfo:
             elif self.has_gpu:
                 return 2
             return 1
+        elif pipeline == "mt":
+            if self.has_gpu and self.gpu_memory_gb >= 8:
+                return 16
+            elif self.has_gpu:
+                return 8
+            return 4
         return 4
 
     def optimal_num_workers(self) -> int:
