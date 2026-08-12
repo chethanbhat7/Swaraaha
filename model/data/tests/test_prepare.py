@@ -5,6 +5,7 @@ Tests for training-data preparation (model/data/prepare.py).
 import json
 
 import pandas as pd
+import pytest
 
 from model.data.prepare import create_training_data
 
@@ -61,6 +62,53 @@ def test_create_training_data_copies_sources_csv(tmp_path, monkeypatch):
         copied = pd.read_csv(sources_path)
         assert set(copied["clip_id"]) <= {"A_1", "B_1", "C_1", "D_1", "E_1"}
         assert "source" in copied.columns
+
+
+def test_create_training_data_refuses_empty_splits(tmp_path, monkeypatch):
+    """When every clip is filtered out (e.g. missing audio files), the command
+    must exit non-zero instead of silently writing empty splits."""
+    merged = tmp_path / "merged"
+    merged.mkdir()
+    df = pd.DataFrame({
+        "clip_file": [str(merged / "missing.wav")],
+        "Prolongation": [1],
+        "Block": [0],
+        "SoundRep": [0],
+        "WordRep": [0],
+        "Interjection": [0],
+        "source": ["sep28k"],
+    })
+    df.to_csv(merged / "combined_labels.csv", index=False)
+    monkeypatch.setattr("model.data.prepare.COMBINED_DATASET_PATH", str(merged / "combined_labels.csv"))
+
+    with pytest.raises(SystemExit) as exc:
+        create_training_data(output_dir=tmp_path / "out")
+    assert exc.value.code == 1
+    assert not (tmp_path / "out" / "splits.json").exists()
+
+
+def test_create_training_data_refuses_when_all_clips_header_only(tmp_path, monkeypatch):
+    """Header-only WAVs (44-byte stubs) are filtered; if that leaves nothing,
+    the command must exit non-zero rather than create empty splits."""
+    merged = tmp_path / "merged"
+    audio = merged / "audio"
+    audio.mkdir(parents=True)
+    (audio / "A.wav").write_bytes(b"\x00" * 44)
+    df = pd.DataFrame({
+        "clip_file": [str(audio / "A.wav")],
+        "Prolongation": [1],
+        "Block": [0],
+        "SoundRep": [0],
+        "WordRep": [0],
+        "Interjection": [0],
+        "source": ["sep28k"],
+    })
+    df.to_csv(merged / "combined_labels.csv", index=False)
+    monkeypatch.setattr("model.data.prepare.COMBINED_DATASET_PATH", str(merged / "combined_labels.csv"))
+
+    with pytest.raises(SystemExit) as exc:
+        create_training_data(output_dir=tmp_path / "out")
+    assert exc.value.code == 1
 
 
 def _make_merged_with_boli(tmp_path):
