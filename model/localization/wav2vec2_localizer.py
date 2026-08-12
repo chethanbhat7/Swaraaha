@@ -5,7 +5,7 @@ Uses Wav2Vec 2.0 contextual embeddings as backbone, with a temporal
 localization head that predicts per-frame dysfluency probabilities.
 
 Architecture:
-    Wav2Vec2Model → Temporal Attention Pooling → Classifier → (B, 1, T_frames)
+    Wav2Vec2Model → Classifier → (B, 1, T_frames)
 
 Input:  (B, max_samples,)  — raw waveform at 16kHz
 Output: (B, 1, T_frames)  — per-frame dysfluency logits
@@ -19,6 +19,13 @@ from typing import List, Tuple, Optional
 import numpy as np
 import torch
 import torch.nn as nn
+
+
+def _wav2vec2_model_class():
+    """Resolve the Wav2Vec2 backbone class (lazily, to avoid a heavy import)."""
+    from transformers import Wav2Vec2Model
+
+    return Wav2Vec2Model
 
 
 class Wav2Vec2Localizer:
@@ -51,8 +58,6 @@ class Wav2Vec2Localizer:
 
     def _build_model(self):
         """Lazy-build the PyTorch model on first use."""
-        from transformers import Wav2Vec2Model
-
         model_name = self.model_name
         drop = self.dropout_rate
         hdim = self.hidden_dim
@@ -60,15 +65,8 @@ class Wav2Vec2Localizer:
         class _Wav2Vec2Backbone(nn.Module):
             def __init__(self):
                 super().__init__()
-                self.wav2vec2 = Wav2Vec2Model.from_pretrained(model_name)
+                self.wav2vec2 = _wav2vec2_model_class().from_pretrained(model_name)
                 w2v2_dim = self.wav2vec2.config.hidden_size  # 768 for base
-
-                # Temporal attention pooling
-                self.temporal_attention = nn.Sequential(
-                    nn.Linear(w2v2_dim, hdim),
-                    nn.Tanh(),
-                    nn.Linear(hdim, 1),
-                )
 
                 # Temporal classifier
                 self.classifier = nn.Sequential(
@@ -92,9 +90,6 @@ class Wav2Vec2Localizer:
                 outputs = self.wav2vec2(waveforms)
                 # outputs.last_hidden_state: (B, T_frames, w2v2_dim)
                 hidden = outputs.last_hidden_state
-
-                # Temporal attention weights: (B, T_frames, 1)
-                attn_weights = torch.softmax(self.temporal_attention(hidden), dim=1)
 
                 # Per-frame classification: (B, T_frames, 1) → (B, 1, T_frames)
                 logits = self.classifier(hidden)  # (B, T_frames, 1)

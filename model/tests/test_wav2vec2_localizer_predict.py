@@ -64,3 +64,45 @@ def test_predict_long_audio_truncated_to_max_length():
     start, end, conf = regions[0]
     assert (start, end) == (8.0, 10.0)
     assert conf == pytest.approx(0.9)
+
+
+class _FakeW2V2(torch.nn.Module):
+    """Fake backbone: no download, exposes config.hidden_size + last_hidden_state."""
+
+    def __init__(self):
+        super().__init__()
+        self.config = type("C", (), {"hidden_size": 768})()
+
+    def forward(self, waveforms):
+        B, L = waveforms.shape
+        T = L // 320
+        return type("O", (), {"last_hidden_state": torch.zeros(B, T, 768)})()
+
+
+def _fake_backbone_factory():
+    return type("F", (), {"from_pretrained": staticmethod(lambda name: _FakeW2V2())})
+
+
+def _build_localizer(monkeypatch):
+    from model.localization import wav2vec2_localizer as mod
+
+    monkeypatch.setattr(mod, "_wav2vec2_model_class", _fake_backbone_factory)
+    return mod.Wav2Vec2Localizer(model_name="fake", hidden_dim=32)
+
+
+def test_wav2vec2_localizer_has_no_temporal_attention(monkeypatch):
+    """temporal_attention is dead: computed but never used, so its params get
+    no gradient and only bloat the checkpoint. It must be removed."""
+    loc = _build_localizer(monkeypatch)
+    model = loc.model
+    assert not hasattr(model, "temporal_attention")
+    keys = model.state_dict().keys()
+    assert not any("temporal_attention" in k for k in keys)
+    assert any(k.startswith("classifier.") for k in keys)
+
+
+def test_wav2vec2_localizer_forward_shape_unchanged(monkeypatch):
+    """Removing the dead head must not change the (B, 1, T) logit shape."""
+    loc = _build_localizer(monkeypatch)
+    logits = loc.forward(torch.zeros(2, 16000))
+    assert logits.shape == (2, 1, 50)
