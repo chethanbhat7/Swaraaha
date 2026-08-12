@@ -71,13 +71,21 @@ def create_training_data(
         df = df[exists].reset_index(drop=True)
     print(f"  {len(df)} clips with valid audio")
 
-    # Filter out header-only WAV files (just 44-byte header, no audio data)
-    has_data = df["clip_file"].apply(lambda p: Path(p).stat().st_size > 44)
-    empty_hdr = (~has_data).sum()
-    if empty_hdr > 0:
-        print(f"  Skipping {empty_hdr} clips with empty audio (header-only)")
-        df = df[has_data].reset_index(drop=True)
+    # Filter out header-only WAV files (just 44-byte header, no audio data).
+    # Guarded against an already-empty df: `~series.sum()` on an empty
+    # object-dtype series yields a string, not an int.
+    if len(df) > 0:
+        has_data = df["clip_file"].apply(lambda p: Path(p).stat().st_size > 44)
+        empty_hdr = (~has_data).sum()
+        if empty_hdr > 0:
+            print(f"  Skipping {empty_hdr} clips with empty audio (header-only)")
+            df = df[has_data].reset_index(drop=True)
     print(f"  {len(df)} clips with usable audio")
+
+    if len(df) == 0:
+        print("Error: no clips with usable audio after filtering; "
+              "refusing to create empty splits.")
+        sys.exit(1)
 
     # Count interval CSVs available
     labels_dir = merged_path.parent / "labels"
