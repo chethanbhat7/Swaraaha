@@ -3,7 +3,11 @@
 import numpy as np
 import pytest
 
-from model.data.preprocessing import create_frame_labels
+from model.data.preprocessing import (
+    clean_audio,
+    create_frame_labels,
+    load_audio_from_array,
+)
 
 SR = 16000
 HOP = 512
@@ -35,3 +39,14 @@ def test_create_frame_labels_end_clamped_at_num_frames():
     labels = create_frame_labels([(0.0, 5.0)], num_frames=156, sr=SR, hop_length=HOP)
     assert labels.shape == (156,)
     assert labels.sum() == 156
+
+
+def test_load_audio_from_array_empty_does_not_crash():
+    audio, sr = load_audio_from_array(np.array([], dtype=np.float32), sr=16000)
+    assert audio.size == 0
+    assert sr == 16000
+
+
+def test_clean_audio_empty_does_not_crash():
+    cleaned = clean_audio(np.array([], dtype=np.float32), sr=16000)
+    assert cleaned.size == 0

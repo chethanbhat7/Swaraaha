@@ -91,6 +91,9 @@ def load_audio_from_array(audio: np.ndarray, sr: int = 16000) -> Tuple[np.ndarra
     if audio.ndim != 1:
         raise ValueError(f"Expected 1-D audio array, got shape {audio.shape}")
 
+    if len(audio) == 0:
+        return audio, sr
+
     audio = audio.astype(np.float32)
     if np.abs(audio).max() > 1.0:
         audio = audio / np.abs(audio).max()
@@ -768,6 +771,8 @@ def clean_audio(
         >>> audio = clean_audio(audio, sr=sr)
         >>> # audio is now DC-free, peak-normalized, silence-trimmed
     """
+    if audio is None or len(audio) == 0:
+        return audio
     if remove_dc:
         audio = remove_dc_offset(audio)
     if normalize:

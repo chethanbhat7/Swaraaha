@@ -138,6 +138,51 @@ class _ThresholdAwareStub:
         return (label, confidence)
 
 
+def test_classifier_analyze_empty_audio_returns_empty_result(monkeypatch):
+    """Classifier.analyze must not crash on empty audio; returns a well-formed
+    'not present' result instead, without loading any model (mirrors the
+    Transcriber's empty-audio guard)."""
+    def _raise(*a, **k):
+        raise AssertionError("must not load models for empty audio")
+
+    monkeypatch.setattr(Classifier, "_load", _raise)
+    clf = Classifier(class_name="prolongation")
+    out = clf.analyze(np.array([], dtype=np.float32))
+    assert out["label"] == 0
+    assert out["confidence"] == 0.0
+    assert out["prob_present"] == 0.0
+    assert out["prob_not_present"] == 1.0
+
+
+def test_classifier_analyze_none_audio_returns_empty_result(monkeypatch):
+    monkeypatch.setattr(Classifier, "_load", lambda self: None)
+    clf = Classifier(class_name="block")
+    out = clf.analyze(None)
+    assert out["label"] == 0
+    assert out["confidence"] == 0.0
+
+
+def test_classifier_analyze_raw_empty_includes_logits(monkeypatch):
+    monkeypatch.setattr(Classifier, "_load", lambda self: None)
+    clf = Classifier(class_name="block")
+    out = clf.analyze_raw(np.array([], dtype=np.float32))
+    assert out["logits"] == {"not_present": 0.0, "present": 0.0}
+
+
+def test_classifier_analyze_empty_audio_all_mode(monkeypatch):
+    registry = {"classification": {"prolongation": "x.pt", "block": "y.pt"}}
+    monkeypatch.setattr("model.registry._load_registry", lambda: registry)
+
+    clf = Classifier()
+    out = clf.analyze(np.array([], dtype=np.float32))
+    assert set(out) == {"prolongation", "block", "summary"}
+    assert out["summary"] == {"detected": [], "primary": "prolongation"}
+    for name in ("prolongation", "block"):
+        assert out[name]["label"] == 0
+        assert out[name]["prob_present"] == 0.0
+        assert out[name]["prob_not_present"] == 1.0
+
+
 def test_classifier_predict_honors_threshold(monkeypatch, tmp_path):
     path = tmp_path / "prolongation.pt"
     path.write_bytes(b"")
