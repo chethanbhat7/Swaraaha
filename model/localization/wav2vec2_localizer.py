@@ -152,10 +152,16 @@ class Wav2Vec2Localizer:
         """
         max_samples = int(max_length_seconds * sr)
 
+        actual_samples = len(audio)
         if len(audio) > max_samples:
             audio = audio[:max_samples]
+            actual_samples = max_samples
         else:
             audio = np.pad(audio, (0, max_samples - len(audio)))
+
+        # Real audio spans only the first `actual_sec`; everything after it is
+        # zero-padding and must never produce reported regions.
+        actual_sec = actual_samples / sr
 
         # To tensor: (1, max_samples)
         tensor = torch.tensor(audio, dtype=torch.float32).unsqueeze(0)
@@ -189,7 +195,13 @@ class Wav2Vec2Localizer:
             end_sec = len(probs_np) * frame_duration
             regions.append((start_sec, end_sec, float(max_conf)))
 
-        return regions
+        # Clamp regions to the real audio: drop those starting in the padded
+        # tail, and truncate any that extend past the audio's true end.
+        return [
+            (start, min(end, actual_sec), conf)
+            for start, end, conf in regions
+            if start < actual_sec
+        ]
 
     def freeze_backbone(self):
         """Freeze Wav2Vec2 backbone parameters."""
