@@ -82,6 +82,7 @@ CLASS_NAMES = ["prolongation", "block", "soundrep", "wordrep", "interjection"]
 
 PIPELINE_SCRIPTS = {
     "cls": "model.training.train_classifier",
+    "mt": "model.training.train_multitask_classifier",
     "loc": "model.training.train_localizer",
     "wav2vec": "model.training.train_wav2vec2_localizer",
 }
