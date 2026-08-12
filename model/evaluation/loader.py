@@ -65,6 +65,21 @@ def load_classifier(class_name: str, model_path: str):
     return instance
 
 
+def load_multitask(model_path: str):
+    """Load a shared-backbone multitask classifier checkpoint.
+
+    Args:
+        model_path: Path to the ``.pt`` checkpoint (saved by
+            ``MultiTaskWav2VecClassifier.save`` or ``save_checkpoint``).
+
+    Returns:
+        A ``MultiTaskWav2VecClassifier`` instance with weights loaded.
+    """
+    from model.classification.multitask import MultiTaskWav2VecClassifier
+
+    return MultiTaskWav2VecClassifier.from_pretrained(model_path)
+
+
 def load_localizer(localizer_type: str, model_path: str):
     """
     Load a localization model in either its own or the training format.

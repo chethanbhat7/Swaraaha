@@ -213,3 +213,81 @@ def test_localizer_sweep_all_negative_perfect_consistent():
     sweep = _run_localizer_sweep(y_true, y_pred, sr=16000, hop_length=512)
     assert len(sweep["sweep"]) == len(THRESHOLD_SWEEP)
     assert sweep["best_f1"]["f1"] == 1.0
+
+
+def test_evaluate_multitask_reports_per_class_and_macro(tmp_path, monkeypatch, capsys):
+    """--multitask eval loads the multitask model and reports per-class F1."""
+    import json
+
+    import torch
+
+    import model.evaluation.evaluate as ev
+
+    CLASS_NAMES = ["prolongation", "block", "soundrep", "wordrep", "interjection"]
+
+    class _FakeEval:
+        def __len__(self):
+            return 2
+
+    class _FakeHead(torch.nn.Module):
+        def __init__(self, offset):
+            super().__init__()
+            self.offset = offset
+
+        def forward(self, pooled):
+            return torch.full((pooled.shape[0], 2), self.offset)
+
+    class _FakeBackbone(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.heads = torch.nn.ModuleDict({
+                n: _FakeHead(1.0 if i % 2 == 0 else -1.0)
+                for i, n in enumerate(CLASS_NAMES)
+            })
+            self.config = type("C", (), {"hidden_size": 8})()
+
+        def forward(self, audio):
+            return {n: self.heads[n](audio) for n in CLASS_NAMES}
+
+    class _FakeModel:
+        def __init__(self):
+            self.model = _FakeBackbone()
+            self.class_names = list(CLASS_NAMES)
+
+        def forward(self, audio):
+            return self.model(audio)
+
+    def fake_build(args):
+        labels = torch.zeros(2, 5, dtype=torch.uint8)
+        labels[0, 0] = 1
+        labels[1, 1] = 1
+        audio = torch.randn(2, 16000)
+        loader = [(audio, labels)]
+        return _FakeEval(), loader, [0, 1]
+
+    def fake_load(path):
+        return _FakeModel()
+
+    monkeypatch.setattr(ev, "_build_classification_eval", fake_build)
+    from model.evaluation import loader as eval_loader
+
+    monkeypatch.setattr(eval_loader, "load_multitask", fake_load)
+
+    out_dir = tmp_path / "reports"
+    out_dir.mkdir()
+    args = _args(
+        model_type="multitask",
+        model_path="weights/mt.pt",
+        output_dir=str(out_dir),
+    )
+    ev.evaluate_multitask(args)
+
+    captured = capsys.readouterr().out
+    assert "mac avg" in captured or "macro avg" in captured
+
+    report_path = out_dir / "multitask_report.json"
+    assert report_path.exists()
+    with open(report_path) as f:
+        report = json.load(f)
+    assert set(report["per_class"].keys()) == set(CLASS_NAMES)
+    assert 0.0 <= report["macro_f1"] <= 1.0
