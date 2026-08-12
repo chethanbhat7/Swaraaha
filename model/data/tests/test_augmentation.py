@@ -15,6 +15,34 @@ from model.data.augmentation import (
 )
 
 
+def test_time_shift_uses_sample_rate():
+    """time_shift must convert seconds to samples using the given sample rate,
+    not a hardcoded 16000."""
+    aug = AudioAugmentor(shift_range=(1.0, 1.0))
+    audio = np.arange(20000, dtype=np.float32)
+    shifted_8k = aug.time_shift(audio, sample_rate=8000)
+    assert np.array_equal(shifted_8k, np.roll(audio, 8000))
+    shifted_16k = aug.time_shift(audio, sample_rate=16000)
+    assert np.array_equal(shifted_16k, np.roll(audio, 16000))
+
+
+def test_call_passes_sample_rate_to_time_shift(monkeypatch):
+    """AudioAugmentor.__call__ must forward its sample_rate to time_shift."""
+    aug = AudioAugmentor()
+    seen = {}
+
+    def fake_time_shift(audio, sample_rate=16000):
+        seen["sr"] = sample_rate
+        return audio
+
+    for name in ("add_noise", "time_stretch", "scale"):
+        monkeypatch.setattr(aug, name, lambda audio: audio)
+    monkeypatch.setattr(aug, "pitch_shift", lambda audio, sample_rate: audio)
+    monkeypatch.setattr(aug, "time_shift", fake_time_shift)
+    aug(np.zeros(100, dtype=np.float32), sample_rate=8000)
+    assert seen["sr"] == 8000
+
+
 class _FakeSpectrogramDataset:
     """Mimics LocalizationDataset: (spec (1, n_mels, T), frame_labels (T,))."""
 
