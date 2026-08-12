@@ -65,3 +65,61 @@ def test_transcribe_accepts_audio_bytes(monkeypatch):
     sf.write(buf, np.zeros(16000, dtype=np.float32), 16000, format="WAV")
     result = tr.transcribe(buf.getvalue())
     assert result["text"] == "hello world"
+
+
+def _capture_pipe(monkeypatch):
+    """Fake Whisper pipeline that records the audio array it receives."""
+    from model import transcription as mod
+
+    seen = []
+
+    class _Pipe:
+        def __call__(self, audio, return_timestamps="word"):
+            seen.append(np.array(audio))
+            return {"text": "hello world", "chunks": []}
+
+    monkeypatch.setattr(mod, "get_pipeline", lambda language="english": _Pipe())
+    return seen
+
+
+def _write_wav_44k(path):
+    import soundfile as sf
+
+    sf.write(path, np.zeros(44100, dtype=np.float32), 44100, format="WAV")
+
+
+def test_transcribe_path_44k_resampled_to_16k_for_whisper(monkeypatch, tmp_path):
+    """Whisper requires 16 kHz audio: a 44.1 kHz path input must be resampled
+    before hitting the model and duration computed at the real rate."""
+    seen = _capture_pipe(monkeypatch)
+    wav = tmp_path / "in_44k.wav"
+    _write_wav_44k(wav)
+
+    result = Transcriber().transcribe(str(wav), sample_rate=44100)
+    assert len(seen[0]) == 16000
+    assert result["duration_sec"] == 1.0
+
+
+def test_transcribe_bytes_44k_resampled_to_16k_for_whisper(monkeypatch):
+    import io
+
+    import soundfile as sf
+
+    seen = _capture_pipe(monkeypatch)
+    buf = io.BytesIO()
+    sf.write(buf, np.zeros(44100, dtype=np.float32), 44100, format="WAV")
+
+    result = Transcriber().transcribe(buf.getvalue(), sample_rate=44100)
+    assert len(seen[0]) == 16000
+    assert result["duration_sec"] == 1.0
+
+
+def test_transcribe_array_44k_stays_16k(monkeypatch):
+    """ndarray input is already resampled to 16 kHz by load_audio_input, so
+    transcribe must not double-resample it or misreport duration."""
+    seen = _capture_pipe(monkeypatch)
+    audio = np.zeros(44100, dtype=np.float32)
+
+    result = Transcriber().transcribe(audio, sample_rate=44100)
+    assert len(seen[0]) == 16000
+    assert result["duration_sec"] == 1.0

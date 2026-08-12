@@ -117,6 +117,18 @@ class Transcriber:
         if len(audio_array) == 0:
             return {"text": "", "words": [], "duration_sec": 0.0}
 
+        # Whisper and the forced aligner both require 16 kHz audio. Path/bytes
+        # inputs are resampled to sample_rate by load_audio_input, so bring
+        # non-16k input back down; ndarray input is already 16 kHz
+        # (load_audio_from_array always targets 16000) and must not be
+        # double-resampled.
+        if sample_rate != 16000 and not isinstance(audio, np.ndarray):
+            import librosa
+
+            audio_array = librosa.resample(
+                audio_array, orig_sr=sample_rate, target_sr=16000
+            )
+
         duration_sec = len(audio_array) / 16000
 
         transcript_text = None
