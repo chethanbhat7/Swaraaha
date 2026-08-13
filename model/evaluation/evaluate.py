@@ -489,7 +489,9 @@ def evaluate_multitask(args) -> Dict:
     from model.classification import DYSFLUENCY_CLASSES
     from model.evaluation import loader
     from model.evaluation.metrics import (
+        THRESHOLD_SWEEP,
         compute_binary_metrics,
+        find_optimal_threshold,
         print_binary_report,
         save_report,
     )
@@ -520,6 +522,7 @@ def evaluate_multitask(args) -> Dict:
                 all_scores[name].extend(probs[:, 1].tolist())
 
     results: Dict[str, Dict] = {}
+    macro_f1_at_optimal = 0.0
     for name in DYSFLUENCY_CLASSES:
         y_true = np.array(all_true[name])
         y_scores = np.array(all_scores[name])
@@ -534,24 +537,63 @@ def evaluate_multitask(args) -> Dict:
             "support": int(y_true.sum()),
         }
 
+        if args.sweep_thresholds:
+            print("\n  --- Threshold Sweep ---")
+            sweep_rows = []
+            for t in THRESHOLD_SWEEP:
+                m = compute_binary_metrics(y_true, y_scores, threshold=t)
+                sweep_rows.append({
+                    "threshold": float(t),
+                    "f1": m["f1"],
+                    "precision": m["precision"],
+                    "recall": m["recall"],
+                    "specificity": m["specificity"],
+                })
+                print(f"  t={t:.2f}  F1={m['f1']:.3f}  P={m['precision']:.3f}  "
+                      f"R={m['recall']:.3f}  Spec={m['specificity']:.3f}")
+            best_f1_t, best_f1_val = find_optimal_threshold(y_true, y_scores, metric="f1")
+            best_youden_t, best_youden_val = find_optimal_threshold(
+                y_true, y_scores, metric="youden"
+            )
+            print(f"  Optimal: F1 t={best_f1_t:.2f} (F1={best_f1_val:.3f})  "
+                  f"Youden t={best_youden_t:.2f} (J={best_youden_val:.3f})")
+            results[name]["threshold_sweep"] = {
+                "best_f1": {"threshold": best_f1_t, "f1": round(best_f1_val, 4)},
+                "best_youden": {"threshold": best_youden_t, "youden": round(best_youden_val, 4)},
+                "f1_at_default": binary["f1"],
+                "sweep": sweep_rows,
+            }
+            macro_f1_at_optimal += round(best_f1_val, 4)
+
     macro_f1 = float(np.mean([results[n]["binary"]["f1"] for n in DYSFLUENCY_CLASSES]))
+    if args.sweep_thresholds:
+        macro_f1_at_optimal = float(macro_f1_at_optimal / len(DYSFLUENCY_CLASSES))
 
     print("\n  Aggregate multitask summary:")
     for name in DYSFLUENCY_CLASSES:
         print(f"  {name:>15s}  F1={results[name]['binary']['f1']:.3f}  "
               f"AUROC={results[name]['binary']['auroc']:.3f}")
     print(f"  {'macro avg':>15s}  F1={macro_f1:.3f}")
+    if args.sweep_thresholds:
+        print(f"  {'macro @ opt':>15s}  F1={macro_f1_at_optimal:.3f}")
+
+    report = {
+        "per_class": results,
+        "macro_f1": round(macro_f1, 4),
+        "model_path": args.model_path,
+    }
+    if args.sweep_thresholds:
+        report["macro_f1_at_optimal"] = round(macro_f1_at_optimal, 4)
 
     os.makedirs(args.output_dir, exist_ok=True)
     report_path = os.path.join(args.output_dir, "multitask_report.json")
-    save_report(
-        {"per_class": results, "macro_f1": round(macro_f1, 4),
-         "model_path": args.model_path},
-        report_path,
-    )
+    save_report(report, report_path)
     print(f"\n  Report saved: {report_path}")
 
-    return {"per_class": results, "macro_f1": macro_f1}
+    result = {"per_class": results, "macro_f1": macro_f1}
+    if args.sweep_thresholds:
+        result["macro_f1_at_optimal"] = macro_f1_at_optimal
+    return result
 
 
 if __name__ == "__main__":

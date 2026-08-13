@@ -291,3 +291,101 @@ def test_evaluate_multitask_reports_per_class_and_macro(tmp_path, monkeypatch, c
         report = json.load(f)
     assert set(report["per_class"].keys()) == set(CLASS_NAMES)
     assert 0.0 <= report["macro_f1"] <= 1.0
+
+
+def test_evaluate_multitask_sweep_reports_per_class_optimum(tmp_path, monkeypatch, capsys):
+    """--sweep_thresholds must report per-class optimal F1/Youden thresholds
+    on the multitask path and a macro_f1_at_optimal headline."""
+    import json
+
+    import torch
+
+    import model.evaluation.evaluate as ev
+
+    CLASS_NAMES = ["prolongation", "block", "soundrep", "wordrep", "interjection"]
+
+    class _FakeEval:
+        def __len__(self):
+            return 2
+
+    class _FakeHead(torch.nn.Module):
+        def __init__(self, offset):
+            super().__init__()
+            self.offset = offset
+
+        def forward(self, pooled):
+            return torch.full((pooled.shape[0], 2), self.offset)
+
+    class _FakeBackbone(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.heads = torch.nn.ModuleDict({
+                n: _FakeHead(1.0 if i % 2 == 0 else -1.0)
+                for i, n in enumerate(CLASS_NAMES)
+            })
+            self.config = type("C", (), {"hidden_size": 8})()
+
+        def forward(self, audio):
+            return {n: self.heads[n](audio) for n in CLASS_NAMES}
+
+    class _FakeModel:
+        def __init__(self):
+            self.model = _FakeBackbone()
+            self.class_names = list(CLASS_NAMES)
+
+        def forward(self, audio):
+            return self.model(audio)
+
+    def fake_build(args):
+        labels = torch.zeros(2, 5, dtype=torch.uint8)
+        labels[0, 0] = 1
+        labels[1, 1] = 1
+        audio = torch.randn(2, 16000)
+        loader = [(audio, labels)]
+        return _FakeEval(), loader, [0, 1]
+
+    monkeypatch.setattr(ev, "_build_classification_eval", fake_build)
+    from model.evaluation import loader as eval_loader
+
+    monkeypatch.setattr(eval_loader, "load_multitask", lambda path: _FakeModel())
+
+    out_dir = tmp_path / "reports"
+    out_dir.mkdir()
+    args = _args(
+        model_type="multitask",
+        model_path="weights/mt.pt",
+        output_dir=str(out_dir),
+        sweep_thresholds=True,
+    )
+    result = ev.evaluate_multitask(args)
+
+    for name in CLASS_NAMES:
+        sweep = result["per_class"][name]["threshold_sweep"]
+        assert "best_f1" in sweep
+        assert "best_youden" in sweep
+        assert 0.0 <= sweep["best_f1"]["f1"] <= 1.0
+        assert 0.0 < sweep["best_f1"]["threshold"] < 1.0
+        assert sweep["f1_at_default"] == result["per_class"][name]["binary"]["f1"]
+        assert len(sweep["sweep"]) == len(THRESHOLD_SWEEP)
+
+    for name in CLASS_NAMES:
+        sweep = result["per_class"][name]["threshold_sweep"]
+        row_f1s = [row["f1"] for row in sweep["sweep"]]
+        assert sweep["best_f1"]["f1"] == max(row_f1s)
+
+    assert result["macro_f1_at_optimal"] >= result["macro_f1"]
+
+    with open(out_dir / "multitask_report.json") as f:
+        report = json.load(f)
+    assert "macro_f1_at_optimal" in report
+    assert report["macro_f1_at_optimal"] >= report["macro_f1"]
+
+    args_plain = _args(
+        model_type="multitask",
+        model_path="weights/mt.pt",
+        output_dir=str(out_dir),
+    )
+    result_plain = ev.evaluate_multitask(args_plain)
+    assert "macro_f1_at_optimal" not in result_plain
+    for name in CLASS_NAMES:
+        assert "threshold_sweep" not in result_plain["per_class"][name]
