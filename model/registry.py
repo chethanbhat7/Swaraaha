@@ -128,10 +128,15 @@ def _registry_classification_names() -> List[str]:
 
 
 def _load_multitask_classifier(path: str):
-    """Load a shared-backbone multitask classifier from its save format."""
-    from model.classification.multitask import MultiTaskWav2VecClassifier
+    """Load a shared-backbone multitask classifier from either save format.
 
-    return MultiTaskWav2VecClassifier.from_pretrained(path)
+    Handles the model's own save format (``model_name`` key) and the training
+    format produced by ``save_checkpoint`` (``model_state_dict``, no
+    ``model_name``); see ``model.evaluation.loader.load_multitask``.
+    """
+    from model.evaluation.loader import load_multitask
+
+    return load_multitask(path)
 
 
 def _preprocess_audio(
@@ -425,10 +430,14 @@ class MultiTaskClassifier:
         """Load per-class thresholds for the multitask classifier.
 
         Resolution order:
-          1. registry entry ``classification_multitask.thresholds_path``
-          2. sibling file ``multitask_thresholds.json`` next to the model file
-          3. empty dict (callers fall back to the single threshold arg)
+          1. inline ``classification_multitask.thresholds`` dict in the registry
+          2. registry entry ``classification_multitask.thresholds_path`` -> file
+          3. sibling file ``multitask_thresholds.json`` next to the model file
+          4. empty dict (callers fall back to the single threshold arg)
         """
+        inline = entry.get("thresholds")
+        if inline:
+            return {name: float(t) for name, t in inline.items()}
         thresholds_path = entry.get("thresholds_path")
         if thresholds_path is not None:
             thresholds_path = _resolve_path(thresholds_path)
