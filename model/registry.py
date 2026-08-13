@@ -405,6 +405,7 @@ class MultiTaskClassifier:
 
     def __init__(self):
         self._model = None
+        self._thresholds: Dict[str, float] = {}
 
     def _load(self) -> None:
         registry = _load_registry()
@@ -418,6 +419,33 @@ class MultiTaskClassifier:
         if not os.path.exists(path):
             raise FileNotFoundError(f"Model file not found: {path}")
         self._model = _load_multitask_classifier(path)
+        self._thresholds = self._resolve_thresholds(entry, path)
+
+    def _resolve_thresholds(self, entry: Dict, model_path: str) -> Dict[str, float]:
+        """Load per-class thresholds for the multitask classifier.
+
+        Resolution order:
+          1. registry entry ``classification_multitask.thresholds_path``
+          2. sibling file ``multitask_thresholds.json`` next to the model file
+          3. empty dict (callers fall back to the single threshold arg)
+        """
+        thresholds_path = entry.get("thresholds_path")
+        if thresholds_path is not None:
+            thresholds_path = _resolve_path(thresholds_path)
+        else:
+            candidate = os.path.join(
+                os.path.dirname(model_path), "multitask_thresholds.json"
+            )
+            if os.path.exists(candidate):
+                thresholds_path = candidate
+        if thresholds_path is None:
+            return {}
+        with open(thresholds_path) as f:
+            data = json.load(f)
+        return {
+            name: spec["f1_threshold"]
+            for name, spec in data.get("thresholds", {}).items()
+        }
 
     @staticmethod
     def _empty_result(names: List[str]) -> Dict[str, Any]:
@@ -460,7 +488,8 @@ class MultiTaskClassifier:
             probs = torch.softmax(lg, dim=-1)
             prob_present = probs[0, 1].item()
             prob_not_present = probs[0, 0].item()
-            label = 1 if prob_present >= threshold else 0
+            thr = self._thresholds.get(name, threshold)
+            label = 1 if prob_present >= thr else 0
             confidence = prob_present if label == 1 else prob_not_present
             results[name] = {
                 "label": label,

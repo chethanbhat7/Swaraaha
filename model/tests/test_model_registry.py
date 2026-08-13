@@ -303,3 +303,174 @@ def test_multitask_classifier_analyze_empty_audio_returns_empty_result(tmp_path,
     assert called["loads"] == 0
     assert out["summary"] == {"detected": [], "primary": "prolongation"}
     assert all(r["label"] == 0 for r in out.values() if r != out["summary"])
+
+
+def test_multitask_classifier_analyze_uses_per_class_thresholds(tmp_path, monkeypatch):
+    """MultiTaskClassifier.analyze applies per-class thresholds from a sibling
+    multitask_thresholds.json next to the model file (not global 0.5)."""
+    import json
+    import math
+
+    import torch
+
+    from model.registry import MultiTaskClassifier
+
+    # softmax([0, x]) -> prob_present 0.30 for x=log(0.3/0.7), 0.70 for x=log(0.7/0.3)
+    logit_lo = math.log(0.3 / 0.7)
+    logit_hi = math.log(0.7 / 0.3)
+
+    class _FakeHeads(torch.nn.Module):
+        def forward(self, pooled):
+            return {
+                "prolongation": torch.tensor([[0.0, logit_lo]]),
+                "block": torch.tensor([[0.0, logit_hi]]),
+                "soundrep": torch.tensor([[0.0, logit_lo]]),
+                "wordrep": torch.tensor([[0.0, logit_lo]]),
+                "interjection": torch.tensor([[0.0, logit_lo]]),
+            }
+
+    class _FakeModel:
+        def __init__(self):
+            self.model = _FakeHeads()
+            self.class_names = [
+                "prolongation", "block", "soundrep", "wordrep", "interjection"
+            ]
+
+        def forward(self, input_values):
+            return self.model(input_values)
+
+    reg_path = str(tmp_path / "registry.json")
+    with open(reg_path, "w") as f:
+        json.dump({"classification_multitask": {"path": "weights/mt.pt",
+                                                 "model_name": "fake"}}, f)
+    monkeypatch.setattr("model.registry._REGISTRY_PATH", reg_path)
+    monkeypatch.setattr("model.registry._resolve_path", lambda p: str(tmp_path / "mt.pt"))
+    (tmp_path / "mt.pt").write_bytes(b"dummy")
+    monkeypatch.setattr("model.registry._load_multitask_classifier",
+                        lambda path: _FakeModel())
+
+    (tmp_path / "multitask_thresholds.json").write_text(json.dumps({
+        "thresholds": {
+            "prolongation": {"f1_threshold": 0.25},
+            "block": {"f1_threshold": 0.75},
+        },
+    }))
+
+    clf = MultiTaskClassifier()
+    out = clf.analyze(np.zeros(1600, dtype=np.float32))
+
+    assert out["prolongation"]["label"] == 1    # 0.30 >= 0.25
+    assert out["block"]["label"] == 0           # 0.70 <  0.75
+    assert out["summary"]["detected"] == ["prolongation"]
+    assert out["summary"]["primary"] == "block"  # highest prob_present
+
+
+def test_multitask_classifier_analyze_uses_registry_thresholds_path(tmp_path, monkeypatch):
+    """A thresholds_path key in the registry entry takes precedence over the
+    sibling-file default."""
+    import json
+    import math
+
+    import torch
+
+    from model.registry import MultiTaskClassifier
+
+    logit_lo = math.log(0.3 / 0.7)
+    logit_hi = math.log(0.7 / 0.3)
+
+    class _FakeHeads(torch.nn.Module):
+        def forward(self, pooled):
+            return {
+                "prolongation": torch.tensor([[0.0, logit_lo]]),
+                "block": torch.tensor([[0.0, logit_hi]]),
+                "soundrep": torch.tensor([[0.0, logit_lo]]),
+                "wordrep": torch.tensor([[0.0, logit_lo]]),
+                "interjection": torch.tensor([[0.0, logit_lo]]),
+            }
+
+    class _FakeModel:
+        def __init__(self):
+            self.model = _FakeHeads()
+            self.class_names = [
+                "prolongation", "block", "soundrep", "wordrep", "interjection"
+            ]
+
+        def forward(self, input_values):
+            return self.model(input_values)
+
+    (tmp_path / "weights").mkdir()
+    (tmp_path / "weights" / "mt.pt").write_bytes(b"dummy")
+    (tmp_path / "weights" / "custom_thresholds.json").write_text(json.dumps({
+        "thresholds": {
+            "prolongation": {"f1_threshold": 0.25},
+            "block": {"f1_threshold": 0.75},
+        },
+    }))
+
+    reg_path = str(tmp_path / "registry.json")
+    with open(reg_path, "w") as f:
+        json.dump({"classification_multitask": {
+            "path": "weights/mt.pt",
+            "model_name": "fake",
+            "thresholds_path": "weights/custom_thresholds.json",
+        }}, f)
+    monkeypatch.setattr("model.registry._REGISTRY_PATH", reg_path)
+    monkeypatch.setattr("model.registry._resolve_path", lambda p: str(tmp_path / p))
+    monkeypatch.setattr("model.registry._load_multitask_classifier",
+                        lambda path: _FakeModel())
+
+    clf = MultiTaskClassifier()
+    out = clf.analyze(np.zeros(1600, dtype=np.float32))
+
+    assert out["prolongation"]["label"] == 1    # 0.30 >= 0.25
+    assert out["block"]["label"] == 0           # 0.70 <  0.75
+
+
+def test_multitask_classifier_analyze_falls_back_to_single_threshold(tmp_path, monkeypatch):
+    """No thresholds file -> the single threshold argument governs (backward
+    compatible with the pre-threshold behavior)."""
+    import json
+    import math
+
+    import torch
+
+    from model.registry import MultiTaskClassifier
+
+    logit_lo = math.log(0.3 / 0.7)
+    logit_hi = math.log(0.7 / 0.3)
+
+    class _FakeHeads(torch.nn.Module):
+        def forward(self, pooled):
+            return {
+                "prolongation": torch.tensor([[0.0, logit_lo]]),
+                "block": torch.tensor([[0.0, logit_hi]]),
+                "soundrep": torch.tensor([[0.0, logit_lo]]),
+                "wordrep": torch.tensor([[0.0, logit_lo]]),
+                "interjection": torch.tensor([[0.0, logit_lo]]),
+            }
+
+    class _FakeModel:
+        def __init__(self):
+            self.model = _FakeHeads()
+            self.class_names = [
+                "prolongation", "block", "soundrep", "wordrep", "interjection"
+            ]
+
+        def forward(self, input_values):
+            return self.model(input_values)
+
+    reg_path = str(tmp_path / "registry.json")
+    with open(reg_path, "w") as f:
+        json.dump({"classification_multitask": {"path": "weights/mt.pt",
+                                                 "model_name": "fake"}}, f)
+    monkeypatch.setattr("model.registry._REGISTRY_PATH", reg_path)
+    monkeypatch.setattr("model.registry._resolve_path", lambda p: str(tmp_path / "mt.pt"))
+    (tmp_path / "mt.pt").write_bytes(b"dummy")
+    monkeypatch.setattr("model.registry._load_multitask_classifier",
+                        lambda path: _FakeModel())
+
+    clf = MultiTaskClassifier()
+    out = clf.analyze(np.zeros(1600, dtype=np.float32), threshold=0.6)
+
+    assert out["block"]["label"] == 1           # 0.70 >= 0.60
+    assert out["prolongation"]["label"] == 0    # 0.30 <  0.60
