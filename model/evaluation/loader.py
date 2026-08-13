@@ -75,9 +75,27 @@ def load_multitask(model_path: str):
     Returns:
         A ``MultiTaskWav2VecClassifier`` instance with weights loaded.
     """
+    import torch
+
     from model.classification.multitask import MultiTaskWav2VecClassifier
 
-    return MultiTaskWav2VecClassifier.from_pretrained(model_path)
+    checkpoint = torch.load(model_path, map_location="cpu", weights_only=False)
+
+    if "model_name" in checkpoint:
+        return MultiTaskWav2VecClassifier.from_pretrained(model_path)
+
+    # Training-format checkpoint (model_state_dict, no architecture keys).
+    from model.fingerprint import model_name_from_path
+
+    model_name = model_name_from_path(model_path)
+    instance = MultiTaskWav2VecClassifier(
+        model_name=model_name,
+        hidden_dim=768,
+        class_names=None,
+    )
+    state_dict = _strip_compile_prefix(checkpoint["model_state_dict"])
+    instance.model.load_state_dict(state_dict, strict=True)
+    return instance
 
 
 def load_localizer(localizer_type: str, model_path: str):
