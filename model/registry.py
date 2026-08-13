@@ -424,9 +424,9 @@ class MultiTaskClassifier:
         if not os.path.exists(path):
             raise FileNotFoundError(f"Model file not found: {path}")
         self._model = _load_multitask_classifier(path)
-        self._thresholds = self._resolve_thresholds(entry, path)
+        self._thresholds = self._resolve_multitask_thresholds(entry, path)
 
-    def _resolve_thresholds(self, entry: Dict, model_path: str) -> Dict[str, float]:
+    def _resolve_multitask_thresholds(self, entry: Dict, model_path: str) -> Dict[str, float]:
         """Load per-class thresholds for the multitask classifier.
 
         Resolution order:
@@ -472,20 +472,24 @@ class MultiTaskClassifier:
         }
         return results
 
-    def analyze(self, audio, threshold: float = 0.5) -> Dict[str, Any]:
+    def analyze(self, audio, threshold: Optional[float] = None) -> Dict[str, Any]:
         """Run one forward pass and classify every class.
 
-        When per-class thresholds are loaded (registry
-        ``classification_multitask.thresholds_path`` or a sibling
-        ``multitask_thresholds.json`` next to the model file), those take
-        precedence over ``threshold`` for the classes they cover; ``threshold``
-        remains the fallback for uncovered classes.
+        Mirrors ``Classifier.analyze``: an explicit ``threshold`` overrides
+        the loaded per-class thresholds for every class. When ``threshold``
+        is None (the default), the loaded per-class thresholds apply
+        (registry ``classification_multitask.thresholds``, ``thresholds_path``,
+        or a sibling ``multitask_thresholds.json`` next to the model file),
+        falling back to 0.5 for any class without a configured threshold.
 
         Returns:
             {class_name: {label, confidence, prob_present, prob_not_present},
              summary: {detected, primary}}
         """
         import torch
+
+        if threshold is not None and not 0.0 <= threshold <= 1.0:
+            raise ValueError(f"threshold must be in [0, 1], got {threshold}")
 
         if _audio_is_empty(audio):
             names = (
@@ -508,7 +512,7 @@ class MultiTaskClassifier:
             probs = torch.softmax(lg, dim=-1)
             prob_present = probs[0, 1].item()
             prob_not_present = probs[0, 0].item()
-            thr = self._thresholds.get(name, threshold)
+            thr = threshold if threshold is not None else self._thresholds.get(name, 0.5)
             label = 1 if prob_present >= thr else 0
             confidence = prob_present if label == 1 else prob_not_present
             results[name] = {
