@@ -474,3 +474,98 @@ def test_multitask_classifier_analyze_falls_back_to_single_threshold(tmp_path, m
 
     assert out["block"]["label"] == 1           # 0.70 >= 0.60
     assert out["prolongation"]["label"] == 0    # 0.30 <  0.60
+
+
+def test_multitask_classifier_analyze_uses_inline_registry_thresholds(tmp_path, monkeypatch):
+    """Inline classification_multitask.thresholds in the registry are the
+    canonical per-class thresholds and take effect in analyze()."""
+    import json
+    import math
+
+    import torch
+
+    from model.registry import MultiTaskClassifier
+
+    logit_lo = math.log(0.3 / 0.7)
+    logit_hi = math.log(0.7 / 0.3)
+
+    class _FakeHeads(torch.nn.Module):
+        def forward(self, pooled):
+            return {
+                "prolongation": torch.tensor([[0.0, logit_lo]]),
+                "block": torch.tensor([[0.0, logit_hi]]),
+                "soundrep": torch.tensor([[0.0, logit_lo]]),
+                "wordrep": torch.tensor([[0.0, logit_lo]]),
+                "interjection": torch.tensor([[0.0, logit_lo]]),
+            }
+
+    class _FakeModel:
+        def __init__(self):
+            self.model = _FakeHeads()
+            self.class_names = [
+                "prolongation", "block", "soundrep", "wordrep", "interjection"
+            ]
+
+        def forward(self, input_values):
+            return self.model(input_values)
+
+    reg_path = str(tmp_path / "registry.json")
+    with open(reg_path, "w") as f:
+        json.dump({"classification_multitask": {
+            "path": "weights/mt.pt",
+            "model_name": "fake",
+            "thresholds": {
+                "prolongation": 0.25,
+                "block": 0.75,
+            },
+        }}, f)
+    monkeypatch.setattr("model.registry._REGISTRY_PATH", reg_path)
+    monkeypatch.setattr("model.registry._resolve_path", lambda p: str(tmp_path / "mt.pt"))
+    (tmp_path / "mt.pt").write_bytes(b"dummy")
+    monkeypatch.setattr("model.registry._load_multitask_classifier",
+                        lambda path: _FakeModel())
+
+    clf = MultiTaskClassifier()
+    out = clf.analyze(np.zeros(1600, dtype=np.float32))
+
+    assert out["prolongation"]["label"] == 1    # 0.30 >= 0.25
+    assert out["block"]["label"] == 0           # 0.70 <  0.75
+
+
+def test_multitask_loader_handles_training_format(tmp_path, monkeypatch):
+    """The registry multitask loader must accept training-format checkpoints
+    (saved by save_checkpoint: model_state_dict, no model_name key), not just
+    the model's own save format (regression)."""
+    import torch
+
+    from model.classification import multitask as mt_module
+
+    from model.config.defaults import DYSFLUENCY_CLASSES
+
+    class _FakeMT:
+        def __init__(self, model_name, hidden_dim, class_names):
+            self.model_name = model_name
+            self.hidden_dim = hidden_dim
+            self.class_names = list(class_names or DYSFLUENCY_CLASSES)
+            self._fake = torch.nn.Module()
+
+        @property
+        def model(self):
+            return self._fake
+
+    monkeypatch.setattr(mt_module, "MultiTaskWav2VecClassifier", _FakeMT)
+
+    ckpt_path = tmp_path / (
+        "multi_e20_b16_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml10"
+        "_s42_train_w2v2base_best.pt"
+    )
+    torch.save(
+        {"model_state_dict": {}, "epoch": 11, "metrics": {"macro_f1": 0.365}},
+        ckpt_path,
+    )
+
+    from model.registry import _load_multitask_classifier
+
+    instance = _load_multitask_classifier(str(ckpt_path))
+    assert instance.model_name == "facebook/wav2vec2-base"
+    assert list(instance.class_names) == DYSFLUENCY_CLASSES
