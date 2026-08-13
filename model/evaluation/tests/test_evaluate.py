@@ -469,4 +469,6 @@ def test_evaluate_multitask_sweep_writes_thresholds_file(tmp_path, monkeypatch):
         }
         assert 0.0 <= spec["f1_threshold"] <= 1.0
         assert 0.0 <= spec["youden_threshold"] <= 1.0
+        assert round(spec["f1_threshold"], 2) == spec["f1_threshold"]
+        assert round(spec["youden_threshold"], 2) == spec["youden_threshold"]
     assert data["macro_f1_at_optimal"] >= data["macro_f1_at_0_5"]
