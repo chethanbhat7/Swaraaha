@@ -708,3 +708,147 @@ dropped 0.401 → 0.141).
 **Fix (code):** `setup.py` now accepts `--force` (forwarded to merge +
 prepare) and forwards any `--` extra args to every step, so re-running setup
 with `python -m model.data.setup --force` regenerates and propagates labels.
+
+---
+
+## 18. Multitask classifier: `load_multitask` crashed on training-format checkpoints
+
+**Symptom:** `--model_type multitask` eval crashed with
+`KeyError: 'model_name'` in `MultiTaskWav2VecClassifier.from_pretrained`
+(model/classification/multitask.py:135).
+
+**Root cause:** Format mismatch. Training scripts save via `save_checkpoint`
+(model/training/utils.py:17-56) → `{epoch, model_state_dict,
+optimizer_state_dict, metrics, scheduler_state_dict}` with **no `model_name`**.
+The model class's own `save()` writes `{model_state_dict, model_name,
+class_names, hidden_dim}`. `load_multitask` (model/evaluation/loader.py)
+unconditionally called `from_pretrained`, which requires `model_name`.
+`load_classifier` already handled both formats (checks `"model_name" in
+checkpoint`); `load_multitask` did not.
+
+**Fix:** `load_multitask` now checks for `"model_name"` in the checkpoint. If
+absent, it infers the HF model name via `model_name_from_path`
+(model/fingerprint.py:77, maps `w2v2base` → `facebook/wav2vec2-base`; the
+`multi_` fingerprint parses fine), builds `MultiTaskWav2VecClassifier(
+model_name=..., hidden_dim=768, class_names=None)`, strips `_orig_mod.`
+prefixes, `load_state_dict(strict=True)`.
+
+**Test:** `model/evaluation/tests/test_loader.py:test_load_multitask_training_format_without_model_name`
+(monkeypatched model class). Full suite: 296 passed.
+
+---
+
+## 19. First multitask training run — results (freeze=3, focal, 20 epochs)
+
+**Fingerprint:** `multi_e20_b16_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml10_s42_train_w2v2base`
+**Artifacts:** `model/weights/{fp}_{best,final,checkpoint}.pt`, `_log.csv`, `_training.log`.
+
+**Result:** 11 epochs (early stop, patience 5, best = epoch 6). val macro-F1
+0 → 0.3651 (best), 0.357 at ep11. val_acc 0.87–0.90. Train Focal loss 0.51→0.34.
+Backbone frozen 3 epochs, unfroze ep4 (head LR 3e-5, backbone 3e-6). 7395.7s total.
+
+**Decision: `val_loss` (1.7–2.6) is NOT a real problem.** It's a
+metric-mismatch artifact: val loss = CrossEntropy summed over 5 heads
+(train_multitask_classifier.py:211), train loss = FocalLoss γ=2 summed (:354).
+Focal downweights easy examples, so it is systematically ~5× lower.
+val_loss was actually decreasing across epochs.
+
+**Decision: MT beats the single-classifier approach on hard classes.** Earlier
+b16 single-classifier runs collapsed to all-negative (F1 0.0). MT reaches 0.365
+macro. Old single-class block classifier had AUROC 0.499 (≈random,
+always-positive); MT block head gets AUROC 0.752 — the shared backbone fixes
+the hard classes.
+
+**Eval on best.pt** (data/train, 20% stratified split seed 42, 5857 val
+samples, @t=0.5):
+
+| class        | F1    | AUROC | support |
+|--------------|-------|-------|---------|
+| prolongation | 0.422 | 0.820 | 568     |
+| block        | 0.147 | 0.752 | ~832    |
+| soundrep     | 0.281 | 0.832 | ~715    |
+| wordrep      | 0.249 | 0.756 | ~562    |
+| interjection | 0.725 | 0.916 | 1259    |
+| **macro avg**| **0.365** |      |         |
+
+Positive ratios (train): prolongation 0.095, block 0.142, soundrep 0.122,
+wordrep 0.096, interjection 0.218.
+
+**Observation:** AUROC ≫ F1@0.5 for every class ⇒ threshold mis-calibration is
+the bottleneck, not ranking quality. Drives section 20.
+
+---
+
+## 20. Threshold tuning phase (current)
+
+**Decision:** Focus on proving and capturing the per-class threshold gap for the
+multitask classifier before any retraining. Rationale: AUROC (0.75–0.92) is far
+above what a single fixed 0.5 threshold produces (macro F1 0.365), so the model
+ranks well — the operating point is wrong.
+
+**Scope (all in):**
+1. `evaluate_multitask` honors `--sweep_thresholds`.
+2. Per-class optimal thresholds persisted to `multitask_thresholds.json`.
+3. `MultiTaskClassifier.analyze` (registry) applies per-class thresholds.
+
+**Design doc:** `docs/superpowers/specs/2026-08-13-multitask-threshold-tuning-design.md`
+
+**Note:** `evaluate_multitask` (evaluate.py:485-554) currently ignores
+`--sweep_thresholds` — only the classifier/localizer paths use it. The machinery
+to reuse already exists: `THRESHOLD_SWEEP = np.arange(0.1, 0.91, 0.05)`
+(metrics.py:15) and `find_optimal_threshold` (metrics.py:274).
+
+---
+
+## 21. Threshold tuning results (done)
+
+**Symptom (resolved):** macro F1 stuck at 0.365 with a global 0.5 threshold
+despite AUROC 0.75–0.92 — the operating point, not the ranking, was the
+bottleneck.
+
+**Fix (implemented, TDD):**
+1. `evaluate_multitask` honors `--sweep_thresholds` (per-class `threshold_sweep`
+   with `best_f1`/`best_youden`/`f1_at_default`/`sweep` rows; headline
+   `macro_f1_at_optimal`).
+2. Sweep optima persisted to `<output_dir>/multitask_thresholds.json`
+   (`f1_threshold`/`youden_threshold` per class, rounded to 2dp).
+3. `MultiTaskClassifier` (registry) resolves per-class thresholds — registry
+   `thresholds_path` → sibling `multitask_thresholds.json` next to the model
+   file → single-threshold fallback.
+
+**Real run** (best.pt, data/train, 20% stratified val split seed 42, 5857
+samples, batch 16): macro F1 **0.365 → 0.467** at per-class optimal thresholds.
+
+| class        | F1@0.5 | F1@opt | f1_thr | youden_thr | AUROC |
+|--------------|--------|--------|--------|------------|-------|
+| prolongation | 0.422  | 0.422  | 0.50   | 0.40       | 0.820 |
+| block        | 0.147  | 0.391  | 0.40   | 0.35       | 0.752 |
+| soundrep     | 0.281  | 0.459  | 0.35   | 0.25       | 0.832 |
+| wordrep      | 0.249  | 0.337  | 0.40   | 0.35       | 0.756 |
+| interjection | 0.725  | 0.725  | 0.50   | 0.40       | 0.916 |
+| **macro avg**| **0.365** | **0.467** |      |            |      |
+
+Biggest winners: block +0.24, soundrep +0.18, wordrep +0.09. Interjection and
+prolongation peak at 0.50 (already at their optimum).
+
+**Artifacts:** the sweep writes `model/evaluation/reports/multitask_thresholds.json`
+as a report artifact; the per-class thresholds are baked into `model/registry.json`
+under `classification_multitask.thresholds` (inline, tracked with the registry), so
+`MultiTaskClassifier` reads them at load time. The `thresholds_path`/sibling-file
+mechanisms remain as fallbacks for unregistered setups.
+
+**Caveats:**
+- Thresholds are tuned on the same 20% val split used for the headline numbers
+  — optimistic. Held-out validation is next-phase work.
+- `f1_at_0_5`/`macro_f1_at_0_5` keys are mislabeled when `--threshold` is
+  overridden (they're really "at args.threshold"). Harmless with the default
+  0.5; noted for the retrain phase.
+
+**Bonus bug found by the sanity check:** the registry's `_load_multitask_classifier`
+used `MultiTaskWav2VecClassifier.from_pretrained` only — crashes with
+`KeyError: 'model_name'` on training-format checkpoints (saved by
+`save_checkpoint`, no `model_name` key). Fixed by delegating to the robust
+`model.evaluation.loader.load_multitask` (same dual-format handling as §18,
+which covered the evaluation loader). Test:
+`test_multitask_loader_handles_training_format`.
+
