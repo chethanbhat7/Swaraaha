@@ -432,6 +432,11 @@ class MultiTaskClassifier:
         thresholds_path = entry.get("thresholds_path")
         if thresholds_path is not None:
             thresholds_path = _resolve_path(thresholds_path)
+            if not os.path.exists(thresholds_path):
+                raise FileNotFoundError(
+                    "classification_multitask.thresholds_path file not found: "
+                    f"{thresholds_path}"
+                )
         else:
             candidate = os.path.join(
                 os.path.dirname(model_path), "multitask_thresholds.json"
@@ -460,6 +465,12 @@ class MultiTaskClassifier:
 
     def analyze(self, audio, threshold: float = 0.5) -> Dict[str, Any]:
         """Run one forward pass and classify every class.
+
+        When per-class thresholds are loaded (registry
+        ``classification_multitask.thresholds_path`` or a sibling
+        ``multitask_thresholds.json`` next to the model file), those take
+        precedence over ``threshold`` for the classes they cover; ``threshold``
+        remains the fallback for uncovered classes.
 
         Returns:
             {class_name: {label, confidence, prob_present, prob_not_present},
