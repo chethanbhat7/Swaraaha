@@ -596,8 +596,12 @@ def evaluate_multitask(args) -> Dict:
             "source": "val_split (20%, seed 42)",
             "thresholds": {
                 name: {
-                    "f1_threshold": results[name]["threshold_sweep"]["best_f1"]["threshold"],
-                    "youden_threshold": results[name]["threshold_sweep"]["best_youden"]["threshold"],
+                    "f1_threshold": round(
+                        results[name]["threshold_sweep"]["best_f1"]["threshold"], 2
+                    ),
+                    "youden_threshold": round(
+                        results[name]["threshold_sweep"]["best_youden"]["threshold"], 2
+                    ),
                     "f1_at_optimal": results[name]["threshold_sweep"]["best_f1"]["f1"],
                     "f1_at_0_5": results[name]["binary"]["f1"],
                 }
