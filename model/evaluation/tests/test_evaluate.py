@@ -389,3 +389,84 @@ def test_evaluate_multitask_sweep_reports_per_class_optimum(tmp_path, monkeypatc
     assert "macro_f1_at_optimal" not in result_plain
     for name in CLASS_NAMES:
         assert "threshold_sweep" not in result_plain["per_class"][name]
+
+
+def test_evaluate_multitask_sweep_writes_thresholds_file(tmp_path, monkeypatch):
+    """--sweep_thresholds must persist per-class optimal thresholds to
+    multitask_thresholds.json with the documented schema."""
+    import json
+
+    import torch
+
+    import model.evaluation.evaluate as ev
+
+    CLASS_NAMES = ["prolongation", "block", "soundrep", "wordrep", "interjection"]
+
+    class _FakeEval:
+        def __len__(self):
+            return 2
+
+    class _FakeHead(torch.nn.Module):
+        def __init__(self, offset):
+            super().__init__()
+            self.offset = offset
+
+        def forward(self, pooled):
+            return torch.full((pooled.shape[0], 2), self.offset)
+
+    class _FakeBackbone(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.heads = torch.nn.ModuleDict({
+                n: _FakeHead(1.0 if i % 2 == 0 else -1.0)
+                for i, n in enumerate(CLASS_NAMES)
+            })
+            self.config = type("C", (), {"hidden_size": 8})()
+
+        def forward(self, audio):
+            return {n: self.heads[n](audio) for n in CLASS_NAMES}
+
+    class _FakeModel:
+        def __init__(self):
+            self.model = _FakeBackbone()
+            self.class_names = list(CLASS_NAMES)
+
+        def forward(self, audio):
+            return self.model(audio)
+
+    def fake_build(args):
+        labels = torch.zeros(2, 5, dtype=torch.uint8)
+        labels[0, 0] = 1
+        labels[1, 1] = 1
+        audio = torch.randn(2, 16000)
+        return _FakeEval(), [(audio, labels)], [0, 1]
+
+    monkeypatch.setattr(ev, "_build_classification_eval", fake_build)
+    from model.evaluation import loader as eval_loader
+
+    monkeypatch.setattr(eval_loader, "load_multitask", lambda path: _FakeModel())
+
+    out_dir = tmp_path / "reports"
+    out_dir.mkdir()
+    args = _args(
+        model_type="multitask",
+        model_path="weights/mt.pt",
+        output_dir=str(out_dir),
+        sweep_thresholds=True,
+    )
+    ev.evaluate_multitask(args)
+
+    path = out_dir / "multitask_thresholds.json"
+    assert path.exists()
+    with open(path) as f:
+        data = json.load(f)
+    assert data["model_path"] == "weights/mt.pt"
+    assert set(data["thresholds"].keys()) == set(CLASS_NAMES)
+    for name in CLASS_NAMES:
+        spec = data["thresholds"][name]
+        assert set(spec.keys()) == {
+            "f1_threshold", "youden_threshold", "f1_at_optimal", "f1_at_0_5"
+        }
+        assert 0.0 <= spec["f1_threshold"] <= 1.0
+        assert 0.0 <= spec["youden_threshold"] <= 1.0
+    assert data["macro_f1_at_optimal"] >= data["macro_f1_at_0_5"]

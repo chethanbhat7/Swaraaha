@@ -590,6 +590,26 @@ def evaluate_multitask(args) -> Dict:
     save_report(report, report_path)
     print(f"\n  Report saved: {report_path}")
 
+    if args.sweep_thresholds:
+        thresholds_report = {
+            "model_path": args.model_path,
+            "source": "val_split (20%, seed 42)",
+            "thresholds": {
+                name: {
+                    "f1_threshold": results[name]["threshold_sweep"]["best_f1"]["threshold"],
+                    "youden_threshold": results[name]["threshold_sweep"]["best_youden"]["threshold"],
+                    "f1_at_optimal": results[name]["threshold_sweep"]["best_f1"]["f1"],
+                    "f1_at_0_5": results[name]["binary"]["f1"],
+                }
+                for name in DYSFLUENCY_CLASSES
+            },
+            "macro_f1_at_0_5": round(macro_f1, 4),
+            "macro_f1_at_optimal": round(macro_f1_at_optimal, 4),
+        }
+        thresholds_path = os.path.join(args.output_dir, "multitask_thresholds.json")
+        save_report(thresholds_report, thresholds_path)
+        print(f"  Thresholds saved: {thresholds_path}")
+
     result = {"per_class": results, "macro_f1": macro_f1}
     if args.sweep_thresholds:
         result["macro_f1_at_optimal"] = macro_f1_at_optimal
