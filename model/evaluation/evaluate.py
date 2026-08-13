@@ -199,6 +199,40 @@ def _save_misclassified(args, misclassified, class_name):
 # Classification
 # ---------------------------------------------------------------------------
 
+def _run_binary_sweep(y_true, y_scores) -> Dict:
+    """Grid-search binary thresholds; return sweep rows and optimal points.
+
+    ``sweep`` rows carry ``compute_binary_metrics`` precision (4dp). The
+    ``best_*`` points are returned at full ``find_optimal_threshold``
+    precision; callers round for storage if needed.
+    """
+    from model.evaluation.metrics import (
+        THRESHOLD_SWEEP,
+        compute_binary_metrics,
+        find_optimal_threshold,
+    )
+
+    sweep = []
+    for t in THRESHOLD_SWEEP:
+        m = compute_binary_metrics(y_true, y_scores, threshold=t)
+        sweep.append({
+            "threshold": float(t),
+            "f1": m["f1"],
+            "precision": m["precision"],
+            "recall": m["recall"],
+            "specificity": m["specificity"],
+        })
+    best_f1_t, best_f1_val = find_optimal_threshold(y_true, y_scores, metric="f1")
+    best_spec_t, best_spec_val = find_optimal_threshold(y_true, y_scores, metric="specificity")
+    best_youden_t, best_youden_val = find_optimal_threshold(y_true, y_scores, metric="youden")
+    return {
+        "sweep": sweep,
+        "best_f1": {"threshold": float(best_f1_t), "f1": best_f1_val},
+        "best_specificity": {"threshold": float(best_spec_t), "specificity": best_spec_val},
+        "best_youden": {"threshold": float(best_youden_t), "youden": best_youden_val},
+    }
+
+
 def _finalize_classifier_report(args, class_name, model_path, y_true, y_scores,
                                 num_samples) -> Dict:
     from model.evaluation.metrics import (
@@ -227,26 +261,23 @@ def _finalize_classifier_report(args, class_name, model_path, y_true, y_scores,
     metrics["model"] = model_info_from_path(model_path)
 
     if args.sweep_thresholds:
-        from model.evaluation.metrics import THRESHOLD_SWEEP, find_optimal_threshold
-
         print("\n  --- Threshold Sweep ---")
-        sweep_results = []
-        for t in THRESHOLD_SWEEP:
-            m = compute_binary_metrics(y_true, y_scores, threshold=t)
-            sweep_results.append(m)
-            print(f"  t={t:.2f}  F1={m['f1']:.3f}  P={m['precision']:.3f}  "
-                  f"R={m['recall']:.3f}  Spec={m['specificity']:.3f}")
-        best_f1_t, best_f1_val = find_optimal_threshold(y_true, y_scores, metric="f1")
-        best_spec_t, best_spec_val = find_optimal_threshold(y_true, y_scores, metric="specificity")
-        best_youden_t, best_youden_val = find_optimal_threshold(y_true, y_scores, metric="youden")
+        sweep = _run_binary_sweep(y_true, y_scores)
+        for row in sweep["sweep"]:
+            print(f"  t={row['threshold']:.2f}  F1={row['f1']:.3f}  "
+                  f"P={row['precision']:.3f}  R={row['recall']:.3f}  "
+                  f"Spec={row['specificity']:.3f}")
         print("\n  Optimal thresholds:")
-        print(f"    Best F1:          t={best_f1_t:.2f}  (F1={best_f1_val:.3f})")
-        print(f"    Best Specificity: t={best_spec_t:.2f}  (Spec={best_spec_val:.3f})")
-        print(f"    Best Youden's J:  t={best_youden_t:.2f}  (J={best_youden_val:.3f})")
+        print(f"    Best F1:          t={sweep['best_f1']['threshold']:.2f}  "
+              f"(F1={sweep['best_f1']['f1']:.3f})")
+        print(f"    Best Specificity: t={sweep['best_specificity']['threshold']:.2f}  "
+              f"(Spec={sweep['best_specificity']['specificity']:.3f})")
+        print(f"    Best Youden's J:  t={sweep['best_youden']['threshold']:.2f}  "
+              f"(J={sweep['best_youden']['youden']:.3f})")
         metrics["threshold_sweep"] = {
-            "best_f1": {"threshold": best_f1_t, "f1": best_f1_val},
-            "best_specificity": {"threshold": best_spec_t, "specificity": best_spec_val},
-            "best_youden": {"threshold": best_youden_t, "youden": best_youden_val},
+            "best_f1": sweep["best_f1"],
+            "best_specificity": sweep["best_specificity"],
+            "best_youden": sweep["best_youden"],
         }
 
     cm = confusion_matrix(y_true, (y_scores >= args.threshold).astype(int), num_classes=2)
@@ -489,9 +520,7 @@ def evaluate_multitask(args) -> Dict:
     from model.classification import DYSFLUENCY_CLASSES
     from model.evaluation import loader
     from model.evaluation.metrics import (
-        THRESHOLD_SWEEP,
         compute_binary_metrics,
-        find_optimal_threshold,
         print_binary_report,
         save_report,
     )
@@ -539,31 +568,28 @@ def evaluate_multitask(args) -> Dict:
 
         if args.sweep_thresholds:
             print("\n  --- Threshold Sweep ---")
-            sweep_rows = []
-            for t in THRESHOLD_SWEEP:
-                m = compute_binary_metrics(y_true, y_scores, threshold=t)
-                sweep_rows.append({
-                    "threshold": float(t),
-                    "f1": m["f1"],
-                    "precision": m["precision"],
-                    "recall": m["recall"],
-                    "specificity": m["specificity"],
-                })
-                print(f"  t={t:.2f}  F1={m['f1']:.3f}  P={m['precision']:.3f}  "
-                      f"R={m['recall']:.3f}  Spec={m['specificity']:.3f}")
-            best_f1_t, best_f1_val = find_optimal_threshold(y_true, y_scores, metric="f1")
-            best_youden_t, best_youden_val = find_optimal_threshold(
-                y_true, y_scores, metric="youden"
-            )
-            print(f"  Optimal: F1 t={best_f1_t:.2f} (F1={best_f1_val:.3f})  "
-                  f"Youden t={best_youden_t:.2f} (J={best_youden_val:.3f})")
+            sweep = _run_binary_sweep(y_true, y_scores)
+            for row in sweep["sweep"]:
+                print(f"  t={row['threshold']:.2f}  F1={row['f1']:.3f}  "
+                      f"P={row['precision']:.3f}  R={row['recall']:.3f}  "
+                      f"Spec={row['specificity']:.3f}")
+            print(f"  Optimal: F1 t={sweep['best_f1']['threshold']:.2f} "
+                  f"(F1={sweep['best_f1']['f1']:.3f})  "
+                  f"Youden t={sweep['best_youden']['threshold']:.2f} "
+                  f"(J={sweep['best_youden']['youden']:.3f})")
             results[name]["threshold_sweep"] = {
-                "best_f1": {"threshold": best_f1_t, "f1": round(best_f1_val, 4)},
-                "best_youden": {"threshold": best_youden_t, "youden": round(best_youden_val, 4)},
+                "best_f1": {
+                    "threshold": sweep["best_f1"]["threshold"],
+                    "f1": round(sweep["best_f1"]["f1"], 4),
+                },
+                "best_youden": {
+                    "threshold": sweep["best_youden"]["threshold"],
+                    "youden": round(sweep["best_youden"]["youden"], 4),
+                },
                 "f1_at_default": binary["f1"],
-                "sweep": sweep_rows,
+                "sweep": sweep["sweep"],
             }
-            macro_f1_at_optimal += round(best_f1_val, 4)
+            macro_f1_at_optimal += round(sweep["best_f1"]["f1"], 4)
 
     macro_f1 = float(np.mean([results[n]["binary"]["f1"] for n in DYSFLUENCY_CLASSES]))
     if args.sweep_thresholds:
