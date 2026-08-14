@@ -65,36 +65,47 @@ def load_classifier(class_name: str, model_path: str):
     return instance
 
 
-def load_multitask(model_path: str):
-    """Load a shared-backbone multitask classifier checkpoint.
+def load_multitask(model_path):
+    """Load a multitask classifier checkpoint.
 
-    Args:
-        model_path: Path to the ``.pt`` checkpoint (saved by
-            ``MultiTaskWav2VecClassifier.save`` or ``save_checkpoint``).
-
-    Returns:
-        A ``MultiTaskWav2VecClassifier`` instance with weights loaded.
+    Dispatch order:
+      1. CNN own format (``aggregator`` key in checkpoint)
+      2. wav2vec2 own format (``model_name`` key in checkpoint)
+      3. training-format resume checkpoints (``args`` in checkpoint)
     """
     import torch
 
     from model.classification.multitask import MultiTaskWav2VecClassifier
 
-    checkpoint = torch.load(model_path, map_location="cpu", weights_only=False)
-
-    if "model_name" in checkpoint:
+    checkpoint = torch.load(model_path, map_location='cpu', weights_only=False)
+    if 'aggregator' in checkpoint:
+        from model.classification.cnn_multitask import CNNMultitaskClassifier
+        return CNNMultitaskClassifier.from_pretrained(model_path)
+    if 'model_name' in checkpoint:
         return MultiTaskWav2VecClassifier.from_pretrained(model_path)
-
-    # Training-format checkpoint (model_state_dict, no architecture keys).
+    args_ckpt = checkpoint.get('args', {})
+    if args_ckpt.get('aggregator') is not None:
+        from model.classification.cnn_multitask import CNNMultitaskClassifier
+        instance = CNNMultitaskClassifier(
+            n_mels=args_ckpt.get('n_mels', 128),
+            hop_length=args_ckpt.get('hop_length', 512),
+            hidden_dim=args_ckpt.get('hidden_dim', 128),
+            dropout=args_ckpt.get('dropout', 0.4),
+            class_names=args_ckpt.get('class_names'),
+            aggregator=args_ckpt['aggregator'],
+            num_lstm_layers=args_ckpt.get('num_lstm_layers', 1),
+            num_transformer_layers=args_ckpt.get('num_transformer_layers', 1),
+        )
+        _strip_compile_prefix(checkpoint['model_state_dict'])
+        instance.model.load_state_dict(checkpoint['model_state_dict'], strict=True)
+        return instance
     from model.fingerprint import model_name_from_path
 
     model_name = model_name_from_path(model_path)
-    instance = MultiTaskWav2VecClassifier(
-        model_name=model_name,
-        hidden_dim=768,
-        class_names=None,
-    )
-    state_dict = _strip_compile_prefix(checkpoint["model_state_dict"])
-    instance.model.load_state_dict(state_dict, strict=True)
+    instance = MultiTaskWav2VecClassifier(model_name=model_name, hidden_dim=768,
+                                          class_names=None)
+    _strip_compile_prefix(checkpoint['model_state_dict'])
+    instance.model.load_state_dict(checkpoint['model_state_dict'], strict=True)
     return instance
 
 

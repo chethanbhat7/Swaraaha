@@ -67,6 +67,8 @@ def _args(**overrides):
         threshold=0.5,
         save_misclassified=False,
         sweep_thresholds=False,
+        thresholds_path=None,
+        sources=None,
     )
     base.update(overrides)
     return argparse.Namespace(**base)
@@ -472,3 +474,62 @@ def test_evaluate_multitask_sweep_writes_thresholds_file(tmp_path, monkeypatch):
         assert round(spec["f1_threshold"], 2) == spec["f1_threshold"]
         assert round(spec["youden_threshold"], 2) == spec["youden_threshold"]
     assert data["macro_f1_at_optimal"] >= data["macro_f1_at_0_5"]
+
+
+def test_parse_args_sources_and_thresholds_path():
+    from model.evaluation import evaluate
+
+    args = evaluate.parse_args([
+        '--model_type', 'multitask', '--model_path', 'x.pt',
+        '--sources', 'boli,sep28k', '--thresholds_path', 't.json',
+    ])
+    assert args.sources == ['boli', 'sep28k']
+    assert args.thresholds_path == 't.json'
+
+
+def test_build_spectrogram_classification_eval_full(tmp_path):
+    from model.evaluation import evaluate
+
+    data_dir = _make_data(tmp_path)
+    args = _args(data_dir=str(data_dir), n_mels=8, hop_length=256,
+                 max_length_seconds=1.0, full=True)
+    dataset, loader, indices = evaluate._build_spectrogram_classification_eval(args)
+    assert len(dataset) == 5
+    spec, labels = next(iter(loader))
+    assert spec.shape == (2, 1, 8, 63)
+    assert labels.shape == (2, 5)
+
+
+def test_build_classification_eval_sources_filter(tmp_path):
+    from model.evaluation import evaluate
+
+    data_dir = _make_data(tmp_path)
+    sources_csv = data_dir / 'sources.csv'
+    with open(sources_csv, 'w', encoding='utf-8') as f:
+        f.write('clip_id,source\n')
+        for i in range(5):
+            f.write(f'clip_{i:02d},sep28k\n')
+        f.write('clip_00,boli\n')
+    args = _args(data_dir=str(data_dir), max_length_seconds=2.0,
+                 full=True, sources=['boli'])
+    dataset, loader, indices = evaluate._build_classification_eval(args)
+    assert len(dataset) == 1
+
+
+def test_classifier_report_honors_thresholds_path(tmp_path):
+    import json
+
+    from model.evaluation import evaluate
+
+    thresholds_json = tmp_path / 'thr.json'
+    thresholds_json.write_text(json.dumps({
+        'thresholds': {'block': {'f1_threshold': 0.65}},
+    }))
+    args = _args(data_dir='data/train', output_dir=str(tmp_path),
+                 thresholds_path=str(thresholds_json))
+    y_true = np.array([0, 1, 1, 1, 1])
+    y_scores = np.array([0.1, 0.6, 0.7, 0.8, 0.9])
+    metrics = evaluate._finalize_classifier_report(
+        args, 'block', 'model.pt', y_true, y_scores, num_samples=5)
+    assert metrics['threshold_tuned']['threshold'] == 0.65
+    assert metrics['binary']['f1'] != metrics['threshold_tuned']['f1']
