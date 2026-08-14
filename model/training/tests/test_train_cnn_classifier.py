@@ -1,0 +1,41 @@
+import torch
+from torch.utils.data import DataLoader, TensorDataset
+
+from model.classification.cnn_multitask import CNNMultitaskClassifier
+from model.config.defaults import DYSFLUENCY_CLASSES
+from model.training import train_cnn_classifier as tcc
+from model.training import train_multitask_classifier as tmc
+from model.training.utils import FocalLoss
+
+CLASS_NAMES = list(DYSFLUENCY_CLASSES)
+
+
+def test_parse_args_cnn_defaults():
+    args = tcc.parse_args([])
+    assert args.aggregator == 'pool'
+    assert args.n_mels == 128
+    assert args.hop_length == 512
+    assert args.hidden_dim == 128
+    assert args.dropout == 0.4
+    assert args.num_lstm_layers == 1
+    assert args.num_transformer_layers == 1
+    assert args.class_names == CLASS_NAMES
+
+
+def test_parse_args_single_class():
+    args = tcc.parse_args(['--class_names', 'block'])
+    assert args.class_names == ['block']
+
+
+def test_train_one_epoch_with_subset_class_names():
+    model = CNNMultitaskClassifier(n_mels=8, hidden_dim=8, class_names=['block'],
+                                   aggregator='pool')
+    criterion = FocalLoss(gamma=2.0)
+    optimizer = torch.optim.AdamW(model.model.parameters(), lr=1e-3)
+    loader = DataLoader(TensorDataset(
+        torch.randn(4, 1, 8, 8),
+        torch.zeros(4, 5, dtype=torch.float32),
+    ), batch_size=2)
+    loss = tmc.train_one_epoch(model, loader, optimizer, None, criterion,
+                               torch.device('cpu'), class_names=['block'])
+    assert loss > 0
