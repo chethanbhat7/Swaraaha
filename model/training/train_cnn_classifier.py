@@ -81,6 +81,16 @@ def parse_args(argv=None):
     return args
 
 
+def _strip_compile_prefix_if_needed(state_dict, live_state_dict):
+    """Strip the ``_orig_mod.`` torch.compile prefix from checkpoint keys when
+    the live model is uncompiled (cross-device resume, e.g. CUDA->CPU)."""
+    has_prefix = any(k.startswith('_orig_mod.') for k in state_dict)
+    live_has_prefix = any(k.startswith('_orig_mod.') for k in live_state_dict)
+    if has_prefix and not live_has_prefix:
+        return {k.replace('_orig_mod.', '', 1): v for k, v in state_dict.items()}
+    return state_dict
+
+
 def train(args):
     set_seed(args.seed)
     fp = cnn_classifier_fingerprint(args)
@@ -154,7 +164,9 @@ def train(args):
     best_f1 = -float('inf')
     history = {'train_loss': [], 'val_loss': [], 'val_acc': [], 'macro_f1': []}
     if resume_ckpt is not None:
-        model.model.load_state_dict(resume_ckpt['model_state_dict'])
+        state_dict = _strip_compile_prefix_if_needed(
+            resume_ckpt['model_state_dict'], model.model.state_dict())
+        model.model.load_state_dict(state_dict)
         start_epoch = resume_ckpt['epoch'] + 1
         best_f1 = resume_ckpt['best_f1']
         history = resume_ckpt['history']
