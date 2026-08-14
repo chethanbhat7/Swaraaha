@@ -1,0 +1,72 @@
+{
+  "per_class": {
+    "not_present": {
+      "precision": 0.6189,
+      "recall": 0.062,
+      "f1": 0.1127,
+      "support": 3485
+    },
+    "present": {
+      "precision": 0.4064,
+      "recall": 0.9439,
+      "f1": 0.5682,
+      "support": 2371
+    }
+  },
+  "macro": {
+    "precision": 0.5127,
+    "recall": 0.5029,
+    "f1": 0.3404
+  },
+  "accuracy": 0.4191,
+  "binary": {
+    "auroc": 0.499,
+    "auprc": 0.3991,
+    "threshold": 0.5,
+    "precision": 0.4064,
+    "recall": 0.9439,
+    "f1": 0.5682,
+    "specificity": 0.062,
+    "accuracy": 0.4191,
+    "support": 2371,
+    "tn": 216,
+    "fp": 3269,
+    "fn": 133,
+    "tp": 2238
+  },
+  "class_name": "block",
+  "model_path": "/home/kshku/Git/Swaraaha/model/weights/block_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml10_s42_train_w2v2base_best.pt",
+  "num_samples": 5856,
+  "threshold": 0.5,
+  "model": {
+    "fingerprint": "block_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml10_s42_train_w2v2base",
+    "class_name": "block",
+    "epochs": 20,
+    "batch_size": 8,
+    "lr": 3e-05,
+    "freeze_backbone_epochs": 3,
+    "loss_type": "focal",
+    "focal_gamma": 2.0,
+    "gradient_accumulation_steps": 1,
+    "warmup_steps": 500,
+    "weight_decay": 0.01,
+    "max_length_seconds": 10.0,
+    "seed": 42,
+    "data_short": "train",
+    "model_name": "facebook/wav2vec2-base"
+  },
+  "threshold_sweep": {
+    "best_f1": {
+      "threshold": 0.05,
+      "f1": 0.5763947976176006
+    },
+    "best_specificity": {
+      "threshold": 0.55,
+      "specificity": 1.0
+    },
+    "best_youden": {
+      "threshold": 0.5,
+      "youden": 0.005885439011682925
+    }
+  }
+}

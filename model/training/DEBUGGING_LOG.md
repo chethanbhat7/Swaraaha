@@ -837,9 +837,40 @@ under `classification_multitask.thresholds` (inline, tracked with the registry),
 `MultiTaskClassifier` reads them at load time. The `thresholds_path`/sibling-file
 mechanisms remain as fallbacks for unregistered setups.
 
+**Held-out validation (DONE, §21 follow-up):** the repo ships a genuinely held-out
+split — `data/train` / `data/val` / `data/test` built by `create_training_data`
+(80/10/10, `boli` source pinned to test; disjoint clip sets, verified via
+`sources.csv` overlap). Training/eval never touch it by default. Final numbers
+must come from the held-out split:
+```
+python -m model.evaluation.evaluate --model_type multitask \
+    --model_path <ckpt> --data_dir data/test --batch_size 16 \
+    --full --sweep_thresholds --output_dir model/evaluation/reports
+```
+(`--full` = evaluate ENTIRE data_dir, no 20% split; explicitly designed for
+`--data_dir data/test`.) Results on the current best model (3715 test clips):
+
+| Class | val F1@0.5 | test F1@0.5 | val F1@opt | test F1@opt | test AUROC |
+|---|---|---|---|---|---|
+| prolongation | 0.422 | 0.399 | 0.422 | 0.435 | 0.802 |
+| block | 0.147 | 0.111 | 0.391 | 0.368 | 0.703 |
+| soundrep | 0.281 | 0.214 | 0.459 | 0.453 | 0.819 |
+| wordrep | 0.249 | 0.194 | 0.337 | 0.326 | 0.759 |
+| interjection | 0.725 | 0.724 | 0.725 | 0.724 | 0.908 |
+| **macro** | **0.365** | **0.328** | **0.467** | **0.461** | — |
+
+Interpretation: ~4pt optimism at the fixed 0.5 threshold (mild overfit to the
+val split), but optimal-threshold macro holds up (0.467 → 0.461) and the
+test-optimal thresholds {0.45, 0.35, 0.30, 0.40, 0.50} nearly match the
+val-tuned registry values {0.5, 0.4, 0.35, 0.4, 0.5} — thresholds transfer well.
+
 **Caveats:**
-- Thresholds are tuned on the same 20% val split used for the headline numbers
-  — optimistic. Held-out validation is next-phase work.
+- Thresholds tuned on the val split and applied to held-out test are the honest
+  headline; tuning on test itself would be optimism (only done above to verify
+  threshold stability).
+- `f1_at_0_5`/`macro_f1_at_0_5` keys are mislabeled when `--threshold` is
+  overridden (they're really "at args.threshold"). Harmless with the default
+  0.5; noted for the retrain phase.
 - `f1_at_0_5`/`macro_f1_at_0_5` keys are mislabeled when `--threshold` is
   overridden (they're really "at args.threshold"). Harmless with the default
   0.5; noted for the retrain phase.

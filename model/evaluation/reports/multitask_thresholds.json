@@ -1,0 +1,38 @@
+{
+  "model_path": "model/weights/multi_e20_b16_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml10_s42_train_w2v2base_best.pt",
+  "source": "val_split (20%, seed 42)",
+  "thresholds": {
+    "prolongation": {
+      "f1_threshold": 0.45,
+      "youden_threshold": 0.4,
+      "f1_at_optimal": 0.4353,
+      "f1_at_0_5": 0.3994
+    },
+    "block": {
+      "f1_threshold": 0.35,
+      "youden_threshold": 0.35,
+      "f1_at_optimal": 0.368,
+      "f1_at_0_5": 0.1109
+    },
+    "soundrep": {
+      "f1_threshold": 0.3,
+      "youden_threshold": 0.2,
+      "f1_at_optimal": 0.4533,
+      "f1_at_0_5": 0.2137
+    },
+    "wordrep": {
+      "f1_threshold": 0.4,
+      "youden_threshold": 0.35,
+      "f1_at_optimal": 0.3258,
+      "f1_at_0_5": 0.1935
+    },
+    "interjection": {
+      "f1_threshold": 0.5,
+      "youden_threshold": 0.4,
+      "f1_at_optimal": 0.7238,
+      "f1_at_0_5": 0.7238
+    }
+  },
+  "macro_f1_at_0_5": 0.3283,
+  "macro_f1_at_optimal": 0.4612
+}
