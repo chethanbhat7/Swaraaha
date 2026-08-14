@@ -70,13 +70,15 @@ def set_seed(seed: int) -> None:
 
 
 def multitask_loss(logits: Dict[str, "torch.Tensor"], labels: "torch.Tensor",
-                   criterion, device="cpu") -> "torch.Tensor":
+                   criterion, device="cpu", class_names=None) -> "torch.Tensor":
     """Sum of per-head losses over the (5,) multi-hot label vector."""
     import torch
 
+    if class_names is None:
+        class_names = DYSFLUENCY_CLASSES
     total = torch.zeros((), dtype=torch.float32, device=device)
-    for i, name in enumerate(DYSFLUENCY_CLASSES):
-        target = labels[:, i].long().to(device)
+    for name in class_names:
+        target = labels[:, DYSFLUENCY_CLASSES.index(name)].long().to(device)
         total = total + criterion(logits[name], target)
     return total
 
@@ -104,37 +106,40 @@ def stratified_split(
     val_ratio: float = 0.2,
     seed: int = 42,
 ) -> Tuple[List[int], List[int]]:
-    """Create stratified train/val splits from a ClassificationDataset.
+    """Stratified split by the first positive class.
 
-    Each sample's label_vector is reduced to a single class index for
-    stratification. If a sample has multiple classes, the first positive
-    class is used (same as train_classifier.stratified_split).
+    Uses ``dataset.label_vectors`` when available (cheap: reads label files
+    only) instead of materialising samples via ``__getitem__``.
     """
     rng = np.random.RandomState(seed)
-
+    label_vectors = getattr(dataset, 'label_vectors', None)
     labels = []
-    for i in range(len(dataset)):
-        _, label_vec = dataset[i]
-        label_vec = np.asarray(label_vec)
-        positives = np.where(label_vec > 0)[0]
-        labels.append(int(positives[0]) if len(positives) > 0 else -1)
+    if label_vectors is not None:
+        for label_vec in label_vectors:
+            label_vec = np.asarray(label_vec)
+            positives = np.where(label_vec > 0)[0]
+            labels.append(int(positives[0]) if len(positives) > 0 else -1)
+    else:
+        for i in range(len(dataset)):
+            _, label_vec = dataset[i]
+            label_vec = np.asarray(label_vec)
+            positives = np.where(label_vec > 0)[0]
+            labels.append(int(positives[0]) if len(positives) > 0 else -1)
 
-    labels = np.array(labels)
-    indices = np.arange(len(dataset))
-
-    train_indices, val_indices = [], []
-
-    for cls_label in np.unique(labels):
-        cls_indices = indices[labels == cls_label]
-        rng.shuffle(cls_indices)
-        n_val = max(1, int(len(cls_indices) * val_ratio))
-        val_indices.extend(cls_indices[:n_val].tolist())
-        train_indices.extend(cls_indices[n_val:].tolist())
-
-    rng.shuffle(train_indices)
-    rng.shuffle(val_indices)
-
-    return train_indices, val_indices
+    groups = {}
+    for idx, label in enumerate(labels):
+        groups.setdefault(label, []).append(idx)
+    train_idx: list = []
+    val_idx: list = []
+    for label, indices in groups.items():
+        indices = list(indices)
+        rng.shuffle(indices)
+        n_val = max(1, int(len(indices) * val_ratio))
+        val_idx.extend(indices[:n_val])
+        train_idx.extend(indices[n_val:])
+    rng.shuffle(train_idx)
+    rng.shuffle(val_idx)
+    return train_idx, val_idx
 
 
 class SubsetDataset:
@@ -151,7 +156,7 @@ class SubsetDataset:
         return self.dataset[self.indices[idx]]
 
 
-def train_one_epoch(model, dataloader, optimizer, scheduler, criterion, device, accumulation_steps=1):
+def train_one_epoch(model, dataloader, optimizer, scheduler, criterion, device, accumulation_steps=1, class_names=None):
     """Train for one epoch. Returns average loss."""
     import warnings
     import torch
@@ -170,7 +175,8 @@ def train_one_epoch(model, dataloader, optimizer, scheduler, criterion, device, 
 
         with torch.amp.autocast("cuda", enabled=use_amp):
             logits = model.forward(audio)
-            loss = multitask_loss(logits, labels, criterion, device)
+            loss = multitask_loss(logits, labels, criterion, device,
+                                  class_names=class_names)
             loss = loss / accumulation_steps
 
         loss.backward()
@@ -193,7 +199,7 @@ def train_one_epoch(model, dataloader, optimizer, scheduler, criterion, device, 
     return total_loss / max(num_batches, 1)
 
 
-def evaluate_multitask(model, dataloader, device) -> Tuple[float, float, float]:
+def evaluate_multitask(model, dataloader, device, class_names=None) -> Tuple[float, float, float]:
     """Evaluate all heads.
 
     Returns:
@@ -202,9 +208,12 @@ def evaluate_multitask(model, dataloader, device) -> Tuple[float, float, float]:
     import torch
     from tqdm import tqdm
 
+    if class_names is None:
+        class_names = DYSFLUENCY_CLASSES
+
     model.model.eval()
-    all_true = {name: [] for name in DYSFLUENCY_CLASSES}
-    all_pred = {name: [] for name in DYSFLUENCY_CLASSES}
+    all_true = {name: [] for name in class_names}
+    all_pred = {name: [] for name in class_names}
     total_loss = 0.0
     num_batches = 0
 
@@ -215,8 +224,8 @@ def evaluate_multitask(model, dataloader, device) -> Tuple[float, float, float]:
             audio = audio.to(device)
             logits = model.forward(audio)
 
-            for i, name in enumerate(DYSFLUENCY_CLASSES):
-                target = labels[:, i].long().to(device)
+            for name in class_names:
+                target = labels[:, DYSFLUENCY_CLASSES.index(name)].long().to(device)
                 total_loss += criterion(logits[name], target).item()
 
                 probs = torch.softmax(logits[name], dim=-1)
@@ -227,7 +236,7 @@ def evaluate_multitask(model, dataloader, device) -> Tuple[float, float, float]:
             num_batches += 1
 
     per_class_f1 = {}
-    for name in DYSFLUENCY_CLASSES:
+    for name in class_names:
         y_true = np.array(all_true[name])
         y_pred = np.array(all_pred[name])
         tp = np.sum((y_true == 1) & (y_pred == 1))
@@ -240,8 +249,8 @@ def evaluate_multitask(model, dataloader, device) -> Tuple[float, float, float]:
 
     macro_f1 = float(np.mean(list(per_class_f1.values())))
 
-    all_true_flat = np.concatenate([np.array(all_true[n]) for n in DYSFLUENCY_CLASSES])
-    all_pred_flat = np.concatenate([np.array(all_pred[n]) for n in DYSFLUENCY_CLASSES])
+    all_true_flat = np.concatenate([np.array(all_true[n]) for n in class_names])
+    all_pred_flat = np.concatenate([np.array(all_pred[n]) for n in class_names])
     accuracy = float(np.mean(all_true_flat == all_pred_flat)) if len(all_true_flat) > 0 else 0.0
 
     avg_loss = total_loss / max(num_batches, 1)
