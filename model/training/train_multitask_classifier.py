@@ -131,7 +131,7 @@ def stratified_split(
         groups.setdefault(label, []).append(idx)
     train_idx: list = []
     val_idx: list = []
-    for label, indices in groups.items():
+    for label, indices in sorted(groups.items()):
         indices = list(indices)
         rng.shuffle(indices)
         n_val = max(1, int(len(indices) * val_ratio))

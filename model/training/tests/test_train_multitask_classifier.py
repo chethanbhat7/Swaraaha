@@ -163,3 +163,28 @@ def test_stratified_split_uses_label_vectors_fast_path():
     train_idx, val_idx = tmc.stratified_split(ds, val_ratio=0.5, seed=42)
     assert _SlowDataset.calls == 0
     assert sorted(train_idx + val_idx) == [0, 1]
+
+
+def test_stratified_split_preserves_legacy_partition():
+    """Regression: the label-vectors fast path must produce the SAME split as
+    the pre-existing algorithm (classes processed in sorted order), so legacy
+    wav2vec2 checkpoints stay comparable to the new CNN arms."""
+    class _Dataset:
+        label_vectors = [
+            np.array([0, 1, 0, 0, 0]),  # first-positive class 1
+            np.array([1, 0, 0, 0, 0]),  # class 0
+            np.array([0, 1, 0, 0, 0]),  # class 1
+            np.array([0, 0, 0, 0, 1]),  # class 4
+            np.array([0, 1, 0, 0, 0]),  # class 1
+            np.array([1, 0, 0, 0, 0]),  # class 0
+        ]
+
+        def __len__(self):
+            return 6
+
+        def __getitem__(self, i):
+            raise AssertionError('fast path must not call __getitem__')
+
+    train_idx, val_idx = tmc.stratified_split(_Dataset(), val_ratio=0.5, seed=42)
+    assert sorted(train_idx) == [0, 1, 4]
+    assert sorted(val_idx) == [2, 3, 5]

@@ -39,3 +39,19 @@ def test_train_one_epoch_with_subset_class_names():
     loss = tmc.train_one_epoch(model, loader, optimizer, None, criterion,
                                torch.device('cpu'), class_names=['block'])
     assert loss > 0
+
+
+def test_strip_compile_prefix_when_live_uncompiled():
+    ckpt = {'_orig_mod.heads.block.weight': torch.ones(2, 8),
+            '_orig_mod.heads.block.bias': torch.zeros(2)}
+    live = {'heads.block.weight': torch.zeros(2, 8),
+            'heads.block.bias': torch.ones(2)}
+    stripped = tcc._strip_compile_prefix_if_needed(ckpt, live)
+    assert '_orig_mod.heads.block.weight' not in stripped
+    assert stripped['heads.block.weight'].equal(torch.ones(2, 8))
+
+
+def test_strip_compile_prefix_preserves_compiled_live():
+    ckpt = {'_orig_mod.heads.block.weight': torch.ones(2, 8)}
+    live = {'_orig_mod.heads.block.weight': torch.zeros(2, 8)}
+    assert tcc._strip_compile_prefix_if_needed(ckpt, live) is ckpt
