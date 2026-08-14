@@ -9,7 +9,12 @@ import wave
 import numpy as np
 import pytest
 
-from model.data.dataset import ClassificationDataset, LocalizationDataset
+from model.data.dataset import (
+    CLASS_TO_IDX,
+    ClassificationDataset,
+    LocalizationDataset,
+    SpectrogramClassificationDataset,
+)
 
 
 def _write_wav(path, seconds=1.0, sr=16000, freq=440.0):
@@ -219,3 +224,45 @@ def test_localization_frame_labels_align_with_leading_silence(tmp_path):
     )
     assert mask.shape[0] == ds.max_frames
     assert np.array_equal(mask, expected[: ds.max_frames])
+
+
+def test_classification_dataset_sources_filter_keeps_only_matching(tmp_path):
+    data_dir = _make_data_dir(tmp_path)
+    dataset = ClassificationDataset(str(data_dir), sr=16000,
+                                    max_length_seconds=1.0, sources=['sep28k'])
+    clip_ids = {s['clip_id'] for s in dataset.samples}
+    assert clip_ids == {'FluencyBank_010_0'}
+
+
+def test_spectrogram_classification_dataset_shape(tmp_path):
+    data_dir = _make_data_dir(tmp_path)
+    dataset = SpectrogramClassificationDataset(str(data_dir), sr=16000,
+                                               n_mels=8, hop_length=256,
+                                               max_length_seconds=1.0)
+    assert len(dataset) == 2
+    spec, label_vector = dataset[0]
+    assert spec.shape == (1, 8, 63)
+    assert spec.dtype == np.float32
+    assert label_vector.shape == (5,)
+    assert label_vector.dtype == np.uint8
+    assert label_vector[CLASS_TO_IDX['block']] == 1
+
+
+def test_spectrogram_classification_dataset_sources_filter(tmp_path):
+    data_dir = _make_data_dir(tmp_path)
+    dataset = SpectrogramClassificationDataset(str(data_dir), sr=16000,
+                                               n_mels=8, hop_length=256,
+                                               max_length_seconds=1.0, sources=['uclass'])
+    clip_ids = {s['clip_id'] for s in dataset.samples}
+    assert clip_ids == {'M_0001_dysfluent_000'}
+
+
+def test_spectrogram_classification_label_vectors_skip_audio(tmp_path):
+    data_dir = _make_data_dir(tmp_path)
+    dataset = SpectrogramClassificationDataset(str(data_dir), sr=16000,
+                                               n_mels=8, hop_length=256,
+                                               max_length_seconds=1.0)
+    vectors = dataset.label_vectors
+    assert len(vectors) == 2
+    assert all(v.shape == (5,) for v in vectors)
+    assert vectors[0][CLASS_TO_IDX['block']] == 1

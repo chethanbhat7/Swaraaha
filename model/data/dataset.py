@@ -28,6 +28,7 @@ import pickle
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
+from torch.utils.data import Dataset
 
 from model.config.defaults import DYSFLUENCY_CLASSES
 
@@ -88,6 +89,20 @@ def intervals_to_frame_mask(
     )
 
 
+def _load_source_map(data_dir):
+    csv_path = os.path.join(data_dir, 'sources.csv')
+    if not os.path.exists(csv_path):
+        return {}
+    source_map = {}
+    with open(csv_path, 'r', encoding='utf-8') as f:
+        for row in csv.DictReader(f):
+            clip_id = (row.get('clip_id') or '').strip()
+            source = (row.get('source') or '').strip()
+            if clip_id and source:
+                source_map[clip_id] = source
+    return source_map
+
+
 class LocalizationDataset:
     """
     PyTorch Dataset for dysfluency localization.
@@ -138,19 +153,8 @@ class LocalizationDataset:
 
         self.samples = self._scan_samples()
 
-    def _load_source_map(self) -> Dict[str, str]:
-        """Load clip_id -> source mapping from sources.csv (if present)."""
-        path = os.path.join(self.data_dir, "sources.csv")
-        if not os.path.isfile(path):
-            return {}
-        source_map = {}
-        with open(path, "r") as f:
-            for row in csv.DictReader(f):
-                clip_id = row.get("clip_id", "").strip()
-                source = row.get("source", "").strip()
-                if clip_id and source:
-                    source_map[clip_id] = source
-        return source_map
+    def _load_source_map(self):
+        return _load_source_map(self.data_dir)
 
     def _scan_samples(self) -> List[Dict]:
         """Scan the data directory and build a list of available samples."""
@@ -259,29 +263,20 @@ class ClassificationDataset:
         (same as localization — we aggregate to multi-label here)
     """
 
-    def __init__(
-        self,
-        data_dir: str,
-        sr: int = 16000,
-        max_length_seconds: float = 10.0,
-        cache_dir: Optional[str] = None,
-    ):
+    def __init__(self, data_dir, sr=16000, max_length_seconds=10.0, cache_dir=None,
+                 sources=None):
         self.data_dir = data_dir
         self.sr = sr
+        self.max_length_seconds = max_length_seconds
         self.max_samples = int(max_length_seconds * sr)
         self.use_cache = cache_dir is not None
-
         if self.use_cache:
-            self.cache_dir = cache_dir
-            os.makedirs(self.cache_dir, exist_ok=True)
-            self._cache_index: Optional[Dict[str, str]] = None
-        else:
-            self.cache_dir = None
-            self._cache_index = None
-
-        self.audio_dir = os.path.join(data_dir, "audio")
-        self.labels_dir = os.path.join(data_dir, "labels")
-
+            os.makedirs(cache_dir, exist_ok=True)
+        self.cache_dir = cache_dir
+        self.audio_dir = os.path.join(data_dir, 'audio')
+        self.labels_dir = os.path.join(data_dir, 'labels')
+        self.sources = set(sources) if sources else None
+        self._source_map = _load_source_map(data_dir)
         self.samples = self._scan_samples()
 
     def _scan_samples(self) -> List[Dict]:
@@ -302,6 +297,10 @@ class ClassificationDataset:
             # Skip header-only WAV files (no audio data)
             if os.path.getsize(audio_path) <= 44:
                 continue
+
+            if self.sources is not None and self._source_map:
+                if self._source_map.get(clip_id) not in self.sources:
+                    continue
 
             samples.append({
                 "clip_id": clip_id,
@@ -435,3 +434,86 @@ class ClassificationDataset:
 
     def get_sample_info(self, idx: int) -> Dict:
         return self.samples[idx].copy()
+
+
+class SpectrogramClassificationDataset(Dataset):
+    """Classification dataset that materialises mel-spectrograms on the fly.
+
+    Mirrors ``ClassificationDataset`` but returns ``(1, n_mels, n_frames)``
+    spectrogram tensors instead of waveforms, so a CNN classifier can consume
+    the same label format. Supports the same ``sources.csv`` filtering.
+    """
+
+    def __init__(self, data_dir, sr=16000, n_mels=128, hop_length=512,
+                 max_length_seconds=10.0, sources=None):
+        self.data_dir = data_dir
+        self.sr = sr
+        self.n_mels = n_mels
+        self.hop_length = hop_length
+        self.max_length_seconds = max_length_seconds
+        self.max_samples = int(max_length_seconds * sr)
+        self.max_frames = int(self.max_samples // hop_length) + 1
+        self.sources = set(sources) if sources else None
+        self._source_map = _load_source_map(data_dir)
+        self.samples = self._scan_samples()
+
+    def _scan_samples(self):
+        audio_dir = os.path.join(self.data_dir, 'audio')
+        labels_dir = os.path.join(self.data_dir, 'labels')
+        if not os.path.isdir(audio_dir):
+            return []
+        samples = []
+        for fname in sorted(os.listdir(audio_dir)):
+            if not fname.endswith(('.wav', '.flac', '.mp3')):
+                continue
+            clip_id = os.path.splitext(fname)[0]
+            label_path = os.path.join(labels_dir, f'{clip_id}.csv')
+            if not os.path.exists(label_path):
+                continue
+            audio_path = os.path.join(audio_dir, fname)
+            if os.path.getsize(audio_path) <= 44:
+                continue
+            if self.sources is not None and self._source_map:
+                if self._source_map.get(clip_id) not in self.sources:
+                    continue
+            samples.append({'clip_id': clip_id, 'audio_path': audio_path,
+                            'label_path': label_path})
+        return samples
+
+    @property
+    def label_vectors(self):
+        """Per-sample multi-hot label vectors (reads label files only).
+
+        Used by ``train_multitask_classifier.stratified_split`` so splitting
+        does not materialise 29k spectrograms just to read their labels.
+        """
+        return [self._label_vector(sample) for sample in self.samples]
+
+    def _label_vector(self, sample):
+        intervals = load_label_csv(sample['label_path'])
+        label_vector = np.zeros(NUM_CLASSES, dtype=np.uint8)
+        for _, _, dtype in intervals:
+            if dtype in CLASS_TO_IDX:
+                label_vector[CLASS_TO_IDX[dtype]] = 1
+        return label_vector
+
+    def __len__(self):
+        return len(self.samples)
+
+    def __getitem__(self, idx):
+        from model.data.preprocessing import (
+            clean_audio,
+            generate_mel_spectrogram,
+            load_audio,
+            pad_to_length,
+            spectrogram_to_image_array,
+        )
+
+        sample = self.samples[idx]
+        audio, _ = load_audio(sample['audio_path'], sr=self.sr)
+        audio = clean_audio(audio, sr=self.sr)
+        spec = generate_mel_spectrogram(audio, sr=self.sr, n_mels=self.n_mels,
+                                        hop_length=self.hop_length)
+        spec = pad_to_length(spec, self.max_frames, axis=1, pad_value=spec.min())
+        spec = spectrogram_to_image_array(spec)
+        return spec.astype(np.float32), self._label_vector(sample)
