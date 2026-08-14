@@ -37,7 +37,7 @@ from typing import Dict
 import numpy as np
 
 
-def parse_args():
+def parse_args(argv=None):
     parser = argparse.ArgumentParser(description="Evaluate trained Swaraaha models.")
     parser.add_argument("--model_type", type=str, required=True,
                         choices=["classifier", "localizer", "multitask"],
@@ -73,12 +73,30 @@ def parse_args():
     parser.add_argument("--full", action="store_true",
                         help="Evaluate the ENTIRE data_dir (no 20% split). "
                              "Use with a prepared test split, e.g. --data_dir data/test.")
-    return parser.parse_args()
+    parser.add_argument("--thresholds_path", type=str, default=None,
+                        help="Path to multitask_thresholds.json; applies the "
+                             "per-class f1_threshold values at eval time.")
+    parser.add_argument("--sources", type=str, default=None,
+                        help="Comma-separated list of dataset sources (from "
+                             "sources.csv) to keep, e.g. \"boli\".")
+    args = parser.parse_args(argv)
+    args.sources = ([s.strip() for s in args.sources.split(',') if s.strip()]
+                    if args.sources else None)
+    return args
 
 
 # ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------
+
+def _load_thresholds(path):
+    if not path or not os.path.exists(path):
+        return {}
+    with open(path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+    return {name: float(spec['f1_threshold'])
+            for name, spec in data.get('thresholds', {}).items()}
+
 
 def _build_classification_eval(args):
     """Build the classification eval dataset/loader (20% stratified split)."""
@@ -89,6 +107,7 @@ def _build_classification_eval(args):
 
     dataset = ClassificationDataset(
         data_dir=args.data_dir, sr=16000, max_length_seconds=args.max_length_seconds,
+        sources=getattr(args, 'sources', None),
     )
     if len(dataset) == 0:
         raise RuntimeError(f"No samples found in {args.data_dir}. "
@@ -99,6 +118,30 @@ def _build_classification_eval(args):
         indices = list(range(len(dataset)))
     else:
         indices = val_idx
+    eval_dataset = SubsetDataset(dataset, indices)
+    eval_loader = DataLoader(eval_dataset, batch_size=args.batch_size, shuffle=False)
+    return eval_dataset, eval_loader, indices
+
+
+def _build_spectrogram_classification_eval(args):
+    from torch.utils.data import DataLoader
+
+    from model.data.dataset import SpectrogramClassificationDataset
+    from model.training.train_multitask_classifier import SubsetDataset, stratified_split
+
+    dataset = SpectrogramClassificationDataset(
+        data_dir=args.data_dir,
+        sr=16000,
+        n_mels=args.n_mels,
+        hop_length=args.hop_length,
+        max_length_seconds=args.max_length_seconds,
+        sources=args.sources,
+    )
+    if len(dataset) == 0:
+        raise RuntimeError(f'No samples found in {args.data_dir}. '
+                           'Prepare the dataset first (see model/data/setup.py).')
+    _, val_idx = stratified_split(dataset, val_ratio=0.2, seed=42)
+    indices = list(range(len(dataset))) if args.full else val_idx
     eval_dataset = SubsetDataset(dataset, indices)
     eval_loader = DataLoader(eval_dataset, batch_size=args.batch_size, shuffle=False)
     return eval_dataset, eval_loader, indices
@@ -279,6 +322,13 @@ def _finalize_classifier_report(args, class_name, model_path, y_true, y_scores,
             "best_specificity": sweep["best_specificity"],
             "best_youden": sweep["best_youden"],
         }
+
+    if getattr(args, 'thresholds_path', None):
+        tuned_thresholds = _load_thresholds(args.thresholds_path)
+        if class_name in tuned_thresholds:
+            thr = tuned_thresholds[class_name]
+            tuned_binary = compute_binary_metrics(y_true, y_scores, threshold=thr)
+            metrics['threshold_tuned'] = {**tuned_binary, 'threshold': thr}
 
     cm = confusion_matrix(y_true, (y_scores >= args.threshold).astype(int), num_classes=2)
     print_classification_report(metrics)
@@ -513,8 +563,12 @@ def evaluate_localizer(args) -> Dict:
     return metrics
 
 
-def evaluate_multitask(args) -> Dict:
-    """Evaluate the shared-backbone multitask classifier on all five heads."""
+def evaluate_multitask(args):
+    """Evaluate a multitask classifier (wav2vec2 or CNN) over a data split.
+
+    The dataset builder is chosen from the loaded model: CNN models carry
+    ``n_mels``/``hop_length`` and are evaluated over mel-spectrograms.
+    """
     import torch
 
     from model.classification import DYSFLUENCY_CLASSES
@@ -526,33 +580,39 @@ def evaluate_multitask(args) -> Dict:
     )
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    print(f"\n  Evaluating multitask classifier")
+    print(f"\n  Evaluating multitask model on {device}")
     print(f"  Model: {args.model_path}")
-    print(f"  Data: {args.data_dir}")
-
-    eval_dataset, eval_loader, _ = _build_classification_eval(args)
-    print(f"  Eval samples: {len(eval_dataset)}")
+    print(f"  Data:  {args.data_dir}")
 
     model = loader.load_multitask(args.model_path)
     _move_model(model, device)
+    names = list(model.class_names)
 
-    all_true = {name: [] for name in DYSFLUENCY_CLASSES}
-    all_scores = {name: [] for name in DYSFLUENCY_CLASSES}
+    if hasattr(model, "n_mels"):
+        eval_dataset, eval_loader, _ = _build_spectrogram_classification_eval(args)
+    else:
+        eval_dataset, eval_loader, _ = _build_classification_eval(args)
+    print(f"  Eval samples: {len(eval_dataset)}")
 
+    tuned_thresholds = _load_thresholds(args.thresholds_path)
+
+    all_true = {name: [] for name in names}
+    all_scores = {name: [] for name in names}
     with torch.no_grad():
         for audio, labels in eval_loader:
             audio = audio.to(device)
             logits = model.forward(audio)
-            for i, name in enumerate(DYSFLUENCY_CLASSES):
-                y_true = labels[:, i].cpu().numpy()
+            for name in names:
+                y_true = labels[:, DYSFLUENCY_CLASSES.index(name)].cpu().numpy()
                 probs = torch.softmax(logits[name], dim=-1).cpu().numpy()
                 all_true[name].extend(y_true.tolist())
                 all_scores[name].extend(probs[:, 1].tolist())
 
-    results: Dict[str, Dict] = {}
+    results = {}
     macro_f1_at_optimal = 0.0
-    for name in DYSFLUENCY_CLASSES:
+    macro_f1_tuned = 0.0
+    for name in names:
+        print(f"\n  === {name} ===")
         y_true = np.array(all_true[name])
         y_scores = np.array(all_scores[name])
         binary = compute_binary_metrics(y_true, y_scores, threshold=args.threshold)
@@ -565,7 +625,6 @@ def evaluate_multitask(args) -> Dict:
             "binary": binary,
             "support": int(y_true.sum()),
         }
-
         if args.sweep_thresholds:
             print("\n  --- Threshold Sweep ---")
             sweep = _run_binary_sweep(y_true, y_scores)
@@ -573,36 +632,35 @@ def evaluate_multitask(args) -> Dict:
                 print(f"  t={row['threshold']:.2f}  F1={row['f1']:.3f}  "
                       f"P={row['precision']:.3f}  R={row['recall']:.3f}  "
                       f"Spec={row['specificity']:.3f}")
-            print(f"  Optimal: F1 t={sweep['best_f1']['threshold']:.2f} "
-                  f"(F1={sweep['best_f1']['f1']:.3f})  "
-                  f"Youden t={sweep['best_youden']['threshold']:.2f} "
+            print(f"  Best F1:          t={sweep['best_f1']['threshold']:.2f}  "
+                  f"(F1={sweep['best_f1']['f1']:.3f})")
+            print(f"  Best Youden's J:  t={sweep['best_youden']['threshold']:.2f}  "
                   f"(J={sweep['best_youden']['youden']:.3f})")
             results[name]["threshold_sweep"] = {
-                "best_f1": {
-                    "threshold": sweep["best_f1"]["threshold"],
-                    "f1": round(sweep["best_f1"]["f1"], 4),
-                },
-                "best_youden": {
-                    "threshold": sweep["best_youden"]["threshold"],
-                    "youden": round(sweep["best_youden"]["youden"], 4),
-                },
+                "best_f1": {"threshold": sweep["best_f1"]["threshold"],
+                            "f1": round(sweep["best_f1"]["f1"], 4)},
+                "best_youden": {"threshold": sweep["best_youden"]["threshold"],
+                                "youden": round(sweep["best_youden"]["youden"], 4)},
                 "f1_at_default": binary["f1"],
                 "sweep": sweep["sweep"],
             }
             macro_f1_at_optimal += round(sweep["best_f1"]["f1"], 4)
+        if name in tuned_thresholds:
+            thr = tuned_thresholds[name]
+            binary_tuned = compute_binary_metrics(y_true, y_scores, threshold=thr)
+            results[name]["threshold_tuned"] = {**binary_tuned, "threshold": thr}
+            macro_f1_tuned += binary_tuned["f1"]
 
-    macro_f1 = float(np.mean([results[n]["binary"]["f1"] for n in DYSFLUENCY_CLASSES]))
+    macro_f1 = float(np.mean([results[n]["binary"]["f1"] for n in names]))
     if args.sweep_thresholds:
-        macro_f1_at_optimal = float(macro_f1_at_optimal / len(DYSFLUENCY_CLASSES))
-
+        macro_f1_at_optimal = float(macro_f1_at_optimal / len(names))
     print("\n  Aggregate multitask summary:")
-    for name in DYSFLUENCY_CLASSES:
+    for name in names:
         print(f"  {name:>15s}  F1={results[name]['binary']['f1']:.3f}  "
               f"AUROC={results[name]['binary']['auroc']:.3f}")
     print(f"  {'macro avg':>15s}  F1={macro_f1:.3f}")
     if args.sweep_thresholds:
         print(f"  {'macro @ opt':>15s}  F1={macro_f1_at_optimal:.3f}")
-
     report = {
         "per_class": results,
         "macro_f1": round(macro_f1, 4),
@@ -610,6 +668,11 @@ def evaluate_multitask(args) -> Dict:
     }
     if args.sweep_thresholds:
         report["macro_f1_at_optimal"] = round(macro_f1_at_optimal, 4)
+        print(f"  Macro F1 at optimal per-class thresholds: {macro_f1_at_optimal:.4f}")
+    if tuned_thresholds:
+        macro_f1_tuned = float(macro_f1_tuned / len(names))
+        report["macro_f1_tuned"] = round(macro_f1_tuned, 4)
+        print(f"  Macro F1 at tuned thresholds: {macro_f1_tuned:.4f}")
 
     os.makedirs(args.output_dir, exist_ok=True)
     report_path = os.path.join(args.output_dir, "multitask_report.json")
@@ -622,16 +685,12 @@ def evaluate_multitask(args) -> Dict:
             "source": "val_split (20%, seed 42)",
             "thresholds": {
                 name: {
-                    "f1_threshold": round(
-                        results[name]["threshold_sweep"]["best_f1"]["threshold"], 2
-                    ),
-                    "youden_threshold": round(
-                        results[name]["threshold_sweep"]["best_youden"]["threshold"], 2
-                    ),
+                    "f1_threshold": round(results[name]["threshold_sweep"]["best_f1"]["threshold"], 2),
+                    "youden_threshold": round(results[name]["threshold_sweep"]["best_youden"]["threshold"], 2),
                     "f1_at_optimal": results[name]["threshold_sweep"]["best_f1"]["f1"],
                     "f1_at_0_5": results[name]["binary"]["f1"],
                 }
-                for name in DYSFLUENCY_CLASSES
+                for name in names
             },
             "macro_f1_at_0_5": round(macro_f1, 4),
             "macro_f1_at_optimal": round(macro_f1_at_optimal, 4),
@@ -640,10 +699,7 @@ def evaluate_multitask(args) -> Dict:
         save_report(thresholds_report, thresholds_path)
         print(f"  Thresholds saved: {thresholds_path}")
 
-    result = {"per_class": results, "macro_f1": macro_f1}
-    if args.sweep_thresholds:
-        result["macro_f1_at_optimal"] = macro_f1_at_optimal
-    return result
+    return report
 
 
 if __name__ == "__main__":
