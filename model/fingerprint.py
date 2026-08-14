@@ -9,6 +9,8 @@ import os
 import re
 from typing import Dict
 
+from model.config.defaults import DYSFLUENCY_CLASSES
+
 # Args that must match for checkpoint resume
 RESUME_KEYS = [
     "class_name", "data_dir", "model_name", "lr", "batch_size",
@@ -140,6 +142,102 @@ def parse_multitask_fingerprint(fp: str) -> dict:
     d["model_name"] = MODEL_SHORT_TO_NAME.get(ms, ms)
     d.pop("data_short", None)
     return d
+
+
+CNN_CLASSIFIER_RESUME_KEYS = [
+    'data_dir', 'epochs', 'batch_size', 'lr', 'n_mels', 'hop_length',
+    'max_length_seconds', 'hidden_dim', 'dropout', 'patience', 'warmup_steps',
+    'weight_decay', 'gradient_accumulation_steps', 'seed', 'aggregator',
+    'num_lstm_layers', 'num_transformer_layers', 'class_names',
+]
+
+CNN_CLASSIFIER_FINGERPRINT_FMT = (
+    'cnnclf_agg{aggregator_short}_e{epochs}_b{batch_size}_lr{lr}_n{n_mels}'
+    '_h{hop_length}_ml{max_length_seconds}_hd{hidden_dim}_d{dropout}'
+    '_pa{patience}_wu{warmup_steps}_wd{weight_decay}'
+    '_ga{gradient_accumulation_steps}_s{seed}_{data_short}_{classes_short}'
+)
+
+_CNN_CLASSIFIER_FP_PATTERN = re.compile(
+    r'^cnnclf_agg(?P<aggregator_short>[a-z]+\d*)_e(?P<epochs>\d+)_b(?P<batch_size>\d+)'
+    r'_lr(?P<lr>[\d.eE+-]+)_n(?P<n_mels>\d+)_h(?P<hop_length>\d+)'
+    r'_ml(?P<max_length_seconds>[\d.eE+-]+)_hd(?P<hidden_dim>\d+)_d(?P<dropout>[\d.eE+-]+)'
+    r'_pa(?P<patience>\d+)_wu(?P<warmup_steps>\d+)_wd(?P<weight_decay>[\d.eE+-]+)'
+    r'_ga(?P<gradient_accumulation_steps>\d+)_s(?P<seed>\d+)'
+    r'_(?P<data_short>\w+)_(?P<classes_short>\w+)$'
+)
+
+
+def _aggregator_short(aggregator, num_lstm_layers=1, num_transformer_layers=1):
+    if aggregator == 'pool':
+        return 'pool'
+    if aggregator == 'lstm':
+        return f'lstm{num_lstm_layers}'
+    if aggregator == 'transformer':
+        return f'tf{num_transformer_layers}'
+    return aggregator
+
+
+def cnn_classifier_fingerprint(args):
+    data_short = os.path.basename(args.data_dir.rstrip('/')) if args.data_dir else 'data'
+    class_names = getattr(args, 'class_names', None) or list(DYSFLUENCY_CLASSES)
+    classes_short = ('all' if set(class_names) == set(DYSFLUENCY_CLASSES)
+                     else '_'.join(class_names))
+    return CNN_CLASSIFIER_FINGERPRINT_FMT.format(
+        aggregator_short=_aggregator_short(
+            args.aggregator,
+            getattr(args, 'num_lstm_layers', 1),
+            getattr(args, 'num_transformer_layers', 1),
+        ),
+        epochs=args.epochs,
+        batch_size=args.batch_size,
+        lr=_fmt_fp(args.lr),
+        n_mels=args.n_mels,
+        hop_length=args.hop_length,
+        max_length_seconds=_fmt_fp(args.max_length_seconds),
+        hidden_dim=args.hidden_dim,
+        dropout=_fmt_fp(args.dropout),
+        patience=args.patience,
+        warmup_steps=args.warmup_steps,
+        weight_decay=_fmt_fp(args.weight_decay),
+        gradient_accumulation_steps=args.gradient_accumulation_steps,
+        seed=args.seed,
+        data_short=data_short,
+        classes_short=classes_short,
+    )
+
+
+def parse_cnn_classifier_fingerprint(fp):
+    match = _CNN_CLASSIFIER_FP_PATTERN.match(fp)
+    if not match:
+        raise ValueError(f'Invalid CNN classifier fingerprint: {fp}')
+    groups = dict(match.groupdict())
+    aggregator_short = groups.pop('aggregator_short')
+    data_short = groups.pop('data_short')
+    classes_short = groups.pop('classes_short')
+    params = {}
+    for key, value in groups.items():
+        if key in {'epochs', 'batch_size', 'n_mels', 'hop_length', 'hidden_dim',
+                   'patience', 'warmup_steps', 'gradient_accumulation_steps', 'seed'}:
+            params[key] = int(value)
+        else:
+            params[key] = float(value)
+    if aggregator_short.startswith('lstm'):
+        params['aggregator'] = 'lstm'
+        params['num_lstm_layers'] = int(aggregator_short[4:] or 1)
+        params['num_transformer_layers'] = 1
+    elif aggregator_short.startswith('tf'):
+        params['aggregator'] = 'transformer'
+        params['num_lstm_layers'] = 1
+        params['num_transformer_layers'] = int(aggregator_short[2:] or 1)
+    else:
+        params['aggregator'] = 'pool'
+        params['num_lstm_layers'] = 1
+        params['num_transformer_layers'] = 1
+    params['data_short'] = data_short
+    params['class_names'] = (list(DYSFLUENCY_CLASSES) if classes_short == 'all'
+                             else classes_short.split('_'))
+    return params
 
 
 CNN_LOCALIZER_RESUME_KEYS = [
