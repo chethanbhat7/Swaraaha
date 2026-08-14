@@ -54,6 +54,31 @@ def test_cnn_classifier_fingerprint_aggregator_shorts():
     assert cnn_classifier_fingerprint(args).startswith('cnnclf_aggtf2_')
 
 
+def test_cnn_classifier_fingerprint_multi_class_subset_roundtrip():
+    args = _Args()
+    args.class_names = ['block', 'wordrep']
+    fp = cnn_classifier_fingerprint(args)
+    params = parse_cnn_classifier_fingerprint(fp)
+    assert params['class_names'] == ['block', 'wordrep']
+    assert params['data_short'] == 'train'
+
+
+def test_parse_cnn_classifier_fingerprint_aggregator_roundtrip():
+    args = _Args()
+    args.aggregator = 'lstm'
+    args.num_lstm_layers = 2
+    params = parse_cnn_classifier_fingerprint(cnn_classifier_fingerprint(args))
+    assert params['aggregator'] == 'lstm'
+    assert params['num_lstm_layers'] == 2
+    assert params['num_transformer_layers'] == 1
+    args.aggregator = 'transformer'
+    args.num_transformer_layers = 2
+    params = parse_cnn_classifier_fingerprint(cnn_classifier_fingerprint(args))
+    assert params['aggregator'] == 'transformer'
+    assert params['num_transformer_layers'] == 2
+    assert params['num_lstm_layers'] == 1
+
+
 def test_parse_cnn_classifier_fingerprint_roundtrip():
     args = _Args()
     fp = cnn_classifier_fingerprint(args)

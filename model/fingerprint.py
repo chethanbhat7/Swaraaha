@@ -164,7 +164,7 @@ _CNN_CLASSIFIER_FP_PATTERN = re.compile(
     r'_ml(?P<max_length_seconds>[\d.eE+-]+)_hd(?P<hidden_dim>\d+)_d(?P<dropout>[\d.eE+-]+)'
     r'_pa(?P<patience>\d+)_wu(?P<warmup_steps>\d+)_wd(?P<weight_decay>[\d.eE+-]+)'
     r'_ga(?P<gradient_accumulation_steps>\d+)_s(?P<seed>\d+)'
-    r'_(?P<data_short>\w+)_(?P<classes_short>\w+)$'
+    r'_(?P<data_short>[^_]+)_(?P<classes_short>[a-z_]+)$'
 )
 
 
