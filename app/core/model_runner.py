@@ -1,25 +1,17 @@
 """Model inference wrapper — classification, localization and transcription.
 
-Uses model.registry (Classifier / Localizer) for real inference. When the
-trained weights are missing, falls back to mock results so the UI keeps working.
+Uses model.registry (MultiTaskClassifier / Localizer) for real inference.
+Classification errors propagate so the UI surfaces them instead of fabricating
+results.
 """
 
 import logging
 
 import numpy as np
-import torch
 
 from app.core.transcription import AudioTranscriber
 
 logger = logging.getLogger(__name__)
-
-MOCK_CLASSIFICATIONS = {
-    "prolongation": (False, 0.12),
-    "block": (True, 0.87),
-    "soundrep": (False, 0.08),
-    "wordrep": (False, 0.05),
-    "interjection": (True, 0.72),
-}
 
 
 class ModelRunner:
@@ -35,8 +27,8 @@ class ModelRunner:
 
     def _get_classifier(self):
         if self._classifier is None:
-            from model.registry import Classifier
-            self._classifier = Classifier()
+            from model.registry import MultiTaskClassifier
+            self._classifier = MultiTaskClassifier()
         return self._classifier
 
     def _get_localizer(self):
@@ -46,17 +38,16 @@ class ModelRunner:
         return self._localizer
 
     def _classify(self, audio: np.ndarray) -> dict:
-        """Per-class classification results as {name: (stutter_present, confidence)}."""
-        try:
-            audio_np = np.asarray(audio, dtype=np.float32)
-            if audio_np.ndim == 1:
-                audio_np = audio_np[np.newaxis, ...]
-            tensor = torch.tensor(audio_np)
-            raw = self._get_classifier().predict_all(tensor)
-            return {name: (bool(label), float(conf)) for name, (label, conf) in raw.items()}
-        except Exception as e:
-            logger.warning("Classification unavailable, using mock results: %s", e)
-            return dict(MOCK_CLASSIFICATIONS)
+        """Multi-task classification results as {name: (stutter_present, confidence)}."""
+        audio_np = np.asarray(audio, dtype=np.float32)
+        if audio_np.ndim > 1:
+            audio_np = audio_np.mean(axis=1)
+        raw = self._get_classifier().analyze(audio_np)
+        return {
+            name: (bool(result["label"]), float(result["confidence"]))
+            for name, result in raw.items()
+            if name != "summary"
+        }
 
     def _localize(self, audio: np.ndarray) -> list:
         """Dysfluency regions as [(start_sec, end_sec, confidence), ...]."""

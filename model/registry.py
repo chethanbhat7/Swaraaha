@@ -743,6 +743,13 @@ class ModelRegistry:
             results['cnn_multitask'] = {'error' : str(e)}
 
         try:
+            results['multitask'] = self.multitask_classifier.analyze(
+                audio, threshold=classify_threshold,
+            )
+        except Exception as e: # noqa: BLE001
+            results['multitask'] = {'error' : str(e)}
+
+        try:
             iso = WHISPER_LANG_CODES.get(language.lower(), "en")
             results["localization"] = self.localizer.analyze(
                 audio,
