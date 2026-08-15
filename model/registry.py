@@ -241,6 +241,41 @@ def _align_words_syllables(
         return [], []
 
 
+def _resolve_multitask_thresholds(entry, model_path):
+    if entry.get('thresholds'):
+        return {name: float(t) for name, t in entry['thresholds'].items()}
+    thresholds_path = entry.get('thresholds_path')
+    if thresholds_path:
+        thresholds_path = _resolve_path(thresholds_path)
+        if not os.path.exists(thresholds_path):
+            raise FileNotFoundError(f'Thresholds file not found: {thresholds_path}')
+    else:
+        candidate = os.path.join(os.path.dirname(model_path),
+                                 'multitask_thresholds.json')
+        thresholds_path = candidate if os.path.exists(candidate) else None
+    if not thresholds_path:
+        return {}
+    with open(thresholds_path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+    return {name: spec['f1_threshold']
+            for name, spec in data.get('thresholds', {}).items()}
+
+
+def _load_multitask_registry_entry(registry, entry_key):
+    entry = registry.get(entry_key)
+    if not entry:
+        raise FileNotFoundError(
+            f"No '{entry_key}' entry in registry. "
+            f"Add model/registry.json {entry_key}.path."
+        )
+    path = _resolve_path(entry['path'])
+    if not os.path.exists(path):
+        raise FileNotFoundError(f'Model file not found: {path}')
+    model = _load_multitask_classifier(path)
+    thresholds = _resolve_multitask_thresholds(entry, path)
+    return model, thresholds
+
+
 class Classifier:
     def __init__(self, class_name: Optional[str] = None):
         self.class_name = class_name
@@ -412,54 +447,13 @@ class MultiTaskClassifier:
         self._model = None
         self._thresholds: Dict[str, float] = {}
 
+    REGISTRY_KEY = "classification_multitask"
+
     def _load(self) -> None:
         registry = _load_registry()
-        entry = registry.get("classification_multitask")
-        if not entry:
-            raise FileNotFoundError(
-                "No 'classification_multitask' entry in registry. "
-                "Add model/registry.json classification_multitask.path."
-            )
-        path = _resolve_path(entry["path"])
-        if not os.path.exists(path):
-            raise FileNotFoundError(f"Model file not found: {path}")
-        self._model = _load_multitask_classifier(path)
-        self._thresholds = self._resolve_multitask_thresholds(entry, path)
-
-    def _resolve_multitask_thresholds(self, entry: Dict, model_path: str) -> Dict[str, float]:
-        """Load per-class thresholds for the multitask classifier.
-
-        Resolution order:
-          1. inline ``classification_multitask.thresholds`` dict in the registry
-          2. registry entry ``classification_multitask.thresholds_path`` -> file
-          3. sibling file ``multitask_thresholds.json`` next to the model file
-          4. empty dict (callers fall back to the single threshold arg)
-        """
-        inline = entry.get("thresholds")
-        if inline:
-            return {name: float(t) for name, t in inline.items()}
-        thresholds_path = entry.get("thresholds_path")
-        if thresholds_path is not None:
-            thresholds_path = _resolve_path(thresholds_path)
-            if not os.path.exists(thresholds_path):
-                raise FileNotFoundError(
-                    "classification_multitask.thresholds_path file not found: "
-                    f"{thresholds_path}"
-                )
-        else:
-            candidate = os.path.join(
-                os.path.dirname(model_path), "multitask_thresholds.json"
-            )
-            if os.path.exists(candidate):
-                thresholds_path = candidate
-        if thresholds_path is None:
-            return {}
-        with open(thresholds_path) as f:
-            data = json.load(f)
-        return {
-            name: spec["f1_threshold"]
-            for name, spec in data.get("thresholds", {}).items()
-        }
+        self._model, self._thresholds = _load_multitask_registry_entry(
+            registry, self.REGISTRY_KEY,
+        )
 
     @staticmethod
     def _empty_result(names: List[str]) -> Dict[str, Any]:
@@ -471,6 +465,9 @@ class MultiTaskClassifier:
             "primary": names[0] if names else None,
         }
         return results
+
+    def _preprocess(self, audio):
+        return _preprocess_audio(audio)
 
     def analyze(self, audio, threshold: Optional[float] = None) -> Dict[str, Any]:
         """Run one forward pass and classify every class.
@@ -502,7 +499,7 @@ class MultiTaskClassifier:
         if self._model is None:
             self._load()
 
-        tensor = _preprocess_audio(audio)
+        tensor = self._preprocess(audio)
         self._model.model.eval()
         with torch.no_grad():
             logits = self._model.forward(tensor)
@@ -530,6 +527,37 @@ class MultiTaskClassifier:
     @property
     def is_loaded(self) -> bool:
         return self._model is not None
+
+
+class CNNMultiTaskClassifier(MultiTaskClassifier):
+    """Registry-backed CNN multitask classifier.
+
+    Reuses ``MultiTaskClassifier.analyze``; only the preprocessing hook is
+    overridden to feed mel-spectrograms instead of raw waveforms.
+    """
+
+    REGISTRY_KEY = 'classification_multitask_cnn'
+
+    def _preprocess(self, audio):
+        import torch
+
+        from model.data.preprocessing import (
+            clean_audio,
+            generate_mel_spectrogram,
+            load_audio_input,
+            pad_to_length,
+            spectrogram_to_image_array,
+        )
+
+        max_frames = int(16000 * 10.0) // self._model.hop_length + 1
+        audio = clean_audio(load_audio_input(audio, sr=16000), sr=16000)
+        spec = generate_mel_spectrogram(
+            audio, sr=16000, n_mels=self._model.n_mels,
+            hop_length=self._model.hop_length,
+        )
+        spec = pad_to_length(spec, max_frames, axis=1, pad_value=float(spec.min()))
+        spec = spectrogram_to_image_array(spec)
+        return torch.from_numpy(spec).float().unsqueeze(0)
 
 
 class Localizer:
@@ -672,6 +700,7 @@ class ModelRegistry:
         self.localizer = Localizer()
         self.transcriber = Transcriber()
         self.multitask_classifier = MultiTaskClassifier()
+        self.cnn_multitask_classifier = CNNMultiTaskClassifier()
 
     def run_all(
         self,
@@ -704,6 +733,13 @@ class ModelRegistry:
             )
         except Exception as e:
             results["classification"] = {"error": str(e)}
+
+        try:
+            results['cnn_multitask'] = self.cnn_multitask_classifier.analyze(
+                audio, threshold=classify_threshold,
+            )
+        except Exception as e: # noqa: BLE001
+            results['cnn_multitask'] = {'error' : str(e)}
 
         try:
             iso = WHISPER_LANG_CODES.get(language.lower(), "en")

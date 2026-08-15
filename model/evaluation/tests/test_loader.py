@@ -89,3 +89,24 @@ def test_load_multitask_cnn_training_format(tmp_path):
     assert loaded.aggregator == 'lstm'
     for k, v in model.model.state_dict().items():
         assert torch.equal(v, loaded.model.state_dict()[k])
+
+
+def test_load_multitask_cnn_training_format_strips_compile_prefix(tmp_path):
+    model = CNNMultitaskClassifier(n_mels=16, hidden_dim=8, class_names=['block'],
+                                   aggregator='pool')
+    model.forward(torch.randn(2, 1, 16, 8))
+    prefixed = {f'_orig_mod.{k}': v for k, v in model.model.state_dict().items()}
+    path = str(tmp_path / 'cnnclf_aggpool1_checkpoint.pt')
+    torch.save({
+        'epoch': 3,
+        'model_state_dict': prefixed,
+        'args': {'aggregator': 'pool', 'n_mels': 16, 'hop_length': 256,
+                 'hidden_dim': 8, 'dropout': 0.4,
+                 'class_names': ['block'], 'num_lstm_layers': 1,
+                 'num_transformer_layers': 1},
+    }, path)
+    loaded = load_multitask(path)
+    assert isinstance(loaded, CNNMultitaskClassifier)
+    for k, v in model.model.state_dict().items():
+        assert torch.equal(v, loaded.model.state_dict()[k])
+

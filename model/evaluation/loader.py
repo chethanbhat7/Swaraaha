@@ -96,16 +96,16 @@ def load_multitask(model_path):
             num_lstm_layers=args_ckpt.get('num_lstm_layers', 1),
             num_transformer_layers=args_ckpt.get('num_transformer_layers', 1),
         )
-        _strip_compile_prefix(checkpoint['model_state_dict'])
-        instance.model.load_state_dict(checkpoint['model_state_dict'], strict=True)
+        state_dict = _strip_compile_prefix(checkpoint['model_state_dict'])
+        instance.model.load_state_dict(state_dict, strict=True)
         return instance
     from model.fingerprint import model_name_from_path
 
     model_name = model_name_from_path(model_path)
     instance = MultiTaskWav2VecClassifier(model_name=model_name, hidden_dim=768,
                                           class_names=None)
-    _strip_compile_prefix(checkpoint['model_state_dict'])
-    instance.model.load_state_dict(checkpoint['model_state_dict'], strict=True)
+    state_dict = _strip_compile_prefix(checkpoint['model_state_dict'])
+    instance.model.load_state_dict(state_dict, strict=True)
     return instance
 
 

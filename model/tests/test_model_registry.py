@@ -4,6 +4,8 @@ import pytest
 from model import ModelRegistry
 from model.registry import Classifier
 
+import torch
+
 
 def test_run_all_composes(monkeypatch):
     reg = ModelRegistry()
@@ -628,3 +630,61 @@ def test_multitask_loader_handles_training_format(tmp_path, monkeypatch):
     instance = _load_multitask_classifier(str(ckpt_path))
     assert instance.model_name == "facebook/wav2vec2-base"
     assert list(instance.class_names) == DYSFLUENCY_CLASSES
+
+
+def test_cnn_multitask_classifier_analyze_uses_spectogram(monkeypatch, tmp_path):
+    import numpy as np
+
+    from model.registry import CNNMultiTaskClassifier
+
+    class _FakeHeads:
+        def eval(self):
+            return self
+
+    class _FakeModel:
+        class_names = ["block"]
+        n_mels = 8
+        hop_length = 256
+
+        def __init__(self):
+            self.model = _FakeHeads()
+
+        def forward(self, x):
+            return {"block": torch.tensor([[0.1, 0.9]])}
+
+    monkeypatch.setattr("model.registry._load_registry", lambda: {
+        "classification_multitask_cnn": {
+            "path": "model.pt", "thresholds": {"block": 0.5},
+        },
+    })
+    monkeypatch.setattr("model.registry._resolve_path", lambda p: str(tmp_path / p))
+    (tmp_path / "model.pt").write_bytes(b"")
+    monkeypatch.setattr("model.registry._load_multitask_classifier", lambda path: _FakeModel())
+
+    cnn = CNNMultiTaskClassifier()
+    result = cnn.analyze(np.random.RandomState(0).randn(16000).astype(np.float32))
+    assert set(result) == {"block", "summary"}
+    assert result["block"]["label"] == 1
+    assert result["block"]["prob_present"] > 0.5
+    assert result["summary"]["detected"] == ["block"]
+
+
+def test_load_multitask_registry_entry_missing_key(monkeypatch):
+    from model.registry import _load_multitask_registry_entry
+
+    with pytest.raises(FileNotFoundError,
+                       match="No 'classification_multitask_cnn' entry"):
+        _load_multitask_registry_entry({}, "classification_multitask_cnn")
+
+
+def test_multitask_thresholds_resolve_via_shared_helper(monkeypatch, tmp_path):
+    from model.registry import _resolve_multitask_thresholds
+
+    entry = {"thresholds": {"block": 0.35}}
+    assert _resolve_multitask_thresholds(entry, "model.pt") == {"block": 0.35}
+    thresholds_json = tmp_path / "multitask_thresholds.json"
+    thresholds_json.write_text(
+        '{"thresholds": {"block": {"f1_threshold": 0.42}}}', encoding="utf-8")
+    entry = {"thresholds_path": str(thresholds_json)}
+    assert _resolve_multitask_thresholds(entry, "model.pt") == {"block": 0.42}
+
