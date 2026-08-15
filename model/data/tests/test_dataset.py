@@ -266,3 +266,116 @@ def test_spectrogram_classification_label_vectors_skip_audio(tmp_path):
     assert len(vectors) == 2
     assert all(v.shape == (5,) for v in vectors)
     assert vectors[0][CLASS_TO_IDX['block']] == 1
+
+
+def test_spectrogram_classification_cache_reused_when_unchanged(tmp_path, monkeypatch):
+    """Unchanged labels + audio + config must be served from the pickle cache,
+    so the second access never recomputes the mel spectrogram."""
+    data_dir = _make_data_dir(tmp_path)
+    cache = tmp_path / "cache"
+
+    import model.data.preprocessing as preprocessing
+
+    orig_load = preprocessing.load_audio
+    calls = {"n": 0}
+
+    def counting_load(*a, **k):
+        calls["n"] += 1
+        return orig_load(*a, **k)
+
+    monkeypatch.setattr(preprocessing, "load_audio", counting_load)
+
+    ds = SpectrogramClassificationDataset(str(data_dir), sr=16000, n_mels=8,
+                                          hop_length=256, max_length_seconds=1.0,
+                                          cache_dir=str(cache))
+    spec, labels = ds[0]
+    assert calls["n"] == 1
+
+    ds2 = SpectrogramClassificationDataset(str(data_dir), sr=16000, n_mels=8,
+                                           hop_length=256, max_length_seconds=1.0,
+                                           cache_dir=str(cache))
+    spec2, labels2 = ds2[0]
+    assert calls["n"] == 1  # second access must hit the cache
+    assert np.array_equal(spec, spec2)
+    assert np.array_equal(labels, labels2)
+
+
+def test_spectrogram_classification_cache_invalidates_on_config_change(tmp_path):
+    """A different hop_length changes the output shape; the config signature
+    must invalidate stale pickles."""
+    data_dir = _make_data_dir(tmp_path)
+    cache = tmp_path / "cache"
+    ds = SpectrogramClassificationDataset(str(data_dir), sr=16000, n_mels=8,
+                                          hop_length=256, max_length_seconds=1.0,
+                                          cache_dir=str(cache))
+    spec, _ = ds[0]
+    assert spec.shape == (1, 8, 63)
+
+    ds2 = SpectrogramClassificationDataset(str(data_dir), sr=16000, n_mels=8,
+                                           hop_length=128, max_length_seconds=1.0,
+                                           cache_dir=str(cache))
+    spec2, _ = ds2[0]
+    assert spec2.shape == (1, 8, 126)  # stale cache would return (1, 8, 63)
+
+
+def test_localization_cache_reused_when_unchanged(tmp_path, monkeypatch):
+    """Unchanged labels + audio + config must be served from the pickle cache."""
+    data = _make_data_dir(tmp_path)
+    cache = tmp_path / "cache"
+
+    import model.data.preprocessing as preprocessing
+
+    orig_load = preprocessing.load_audio
+    calls = {"n": 0}
+
+    def counting_load(*a, **k):
+        calls["n"] += 1
+        return orig_load(*a, **k)
+
+    monkeypatch.setattr(preprocessing, "load_audio", counting_load)
+
+    ds = LocalizationDataset(data_dir=str(data), max_length_seconds=1.0,
+                             cache_dir=str(cache))
+    spec, mask = ds[0]
+    assert calls["n"] == 1
+
+    ds2 = LocalizationDataset(data_dir=str(data), max_length_seconds=1.0,
+                              cache_dir=str(cache))
+    spec2, mask2 = ds2[0]
+    assert calls["n"] == 1  # second access must hit the cache
+    assert np.array_equal(spec, spec2)
+    assert np.array_equal(mask, mask2)
+
+
+def test_localization_cache_invalidates_on_label_change(tmp_path):
+    data = _make_data_dir(tmp_path)
+    clip = "M_0001_dysfluent_000"
+    cache = tmp_path / "cache"
+    ds = LocalizationDataset(data_dir=str(data), max_length_seconds=1.0,
+                             cache_dir=str(cache))
+    idx = next(i for i, s in enumerate(ds.samples) if s["clip_id"] == clip)
+    spec, mask = ds[idx]
+    assert mask.sum() > 0  # block interval present
+
+    _write_label(data / "labels" / f"{clip}.csv", [])
+    ds2 = LocalizationDataset(data_dir=str(data), max_length_seconds=1.0,
+                              cache_dir=str(cache))
+    idx2 = next(i for i, s in enumerate(ds2.samples) if s["clip_id"] == clip)
+    _, mask2 = ds2[idx2]
+    assert mask2.sum() == 0  # stale cache would keep the old frame mask
+
+
+def test_localization_cache_auto_derives_from_data_dir(tmp_path):
+    """With cache_dir omitted, the cache must default to the sibling
+    ``<data_dir parent>/cache/<basename>`` path and be enabled."""
+    data = _make_data_dir(tmp_path)
+    ds = LocalizationDataset(data_dir=str(data), max_length_seconds=1.0)
+    expected = os.path.join(
+        os.path.dirname(str(data)), "cache", os.path.basename(str(data)),
+    )
+    assert ds.use_cache
+    assert ds.cache_dir == expected
+    assert os.path.isdir(expected)
+
+    spec, mask = ds[0]
+    assert spec.shape == (1, 128, 31)

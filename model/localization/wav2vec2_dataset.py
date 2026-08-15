@@ -22,8 +22,10 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
+from model.data.dataset import _PickleCacheMixin, load_label_csv
 
-class Wav2Vec2LocalizationDataset:
+
+class Wav2Vec2LocalizationDataset(_PickleCacheMixin):
     """
     Dataset for Wav2Vec2-based localization.
 
@@ -41,6 +43,7 @@ class Wav2Vec2LocalizationDataset:
         max_length_seconds: float = 10.0,
         hop_samples: int = 320,  # Wav2Vec2 subsampling factor
         sources: Optional[List[str]] = None,
+        cache_dir: Optional[str] = None,
     ):
         """
         Args:
@@ -51,6 +54,8 @@ class Wav2Vec2LocalizationDataset:
             sources: If given, only include clips whose source (from
                 sources.csv) is in this list. Ignored when sources.csv is
                 missing.
+            cache_dir: Directory for the pickle cache of preprocessed items.
+                None (default) auto-derives <data_dir parent>/cache/<basename>.
         """
         self.data_dir = data_dir
         self.sr = sr
@@ -58,6 +63,7 @@ class Wav2Vec2LocalizationDataset:
         self.hop_samples = hop_samples
         self.max_frames = self.max_samples // hop_samples
         self.sources = set(sources) if sources else None
+        self._init_cache(cache_dir)
         self._source_map = self._load_source_map()
 
         self.audio_dir = os.path.join(data_dir, "audio")
@@ -123,9 +129,20 @@ class Wav2Vec2LocalizationDataset:
             frame_label: uint8 ndarray, shape (max_frames,).
         """
         from model.data.preprocessing import clean_audio, load_audio, pad_to_length
-        from model.data.dataset import load_label_csv
 
         sample = self.samples[idx]
+
+        label_signature = self._label_signature(sample["label_path"])
+
+        if self.use_cache:
+            cached = self._load_from_cache(
+                sample["clip_id"],
+                label_signature,
+                self._config_signature(),
+                self._audio_signature(sample["audio_path"]),
+            )
+            if cached is not None:
+                return cached
 
         # Load and clean audio. Silence trimming is disabled — labels use the
         # original timeline and trimming would shift frame labels off the audio.
@@ -143,7 +160,22 @@ class Wav2Vec2LocalizationDataset:
         # Pad or truncate audio
         audio = pad_to_length(audio, self.max_samples, axis=0, pad_value=0.0)
 
-        return audio.astype(np.float32), frame_mask.astype(np.uint8)
+        result = (audio.astype(np.float32), frame_mask.astype(np.uint8))
+
+        if self.use_cache:
+            self._save_to_cache(
+                sample["clip_id"],
+                label_signature,
+                self._config_signature(),
+                self._audio_signature(sample["audio_path"]),
+                result,
+            )
+
+        return result
+
+    def _config_signature(self) -> str:
+        return (f"sr={self.sr};hop_samples={self.hop_samples};"
+                f"max_frames={self.max_frames}")
 
     def _create_w2v2_frame_labels(
         self,

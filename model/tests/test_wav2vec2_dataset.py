@@ -73,3 +73,54 @@ def test_wav2vec2_dataset_skips_header_only_wav(tmp_path):
     ds = Wav2Vec2LocalizationDataset(data_dir=str(data), max_length_seconds=1.0)
     assert len(ds) == 1
     assert ds.get_sample_info(0)["clip_id"] == "valid"
+
+
+def test_wav2vec2_dataset_cache_reused_when_unchanged(tmp_path, monkeypatch):
+    """Unchanged labels + audio + config must be served from the pickle cache,
+    so the second access never reloads the waveform."""
+    data = tmp_path / "data"
+    _write_wav_with_leading_silence(data / "audio" / "M_0002.wav")
+    _write_label(data / "labels" / "M_0002.csv")
+    cache = tmp_path / "cache"
+
+    import model.data.preprocessing as preprocessing
+
+    orig_load = preprocessing.load_audio
+    calls = {"n": 0}
+
+    def counting_load(*a, **k):
+        calls["n"] += 1
+        return orig_load(*a, **k)
+
+    monkeypatch.setattr(preprocessing, "load_audio", counting_load)
+
+    ds = Wav2Vec2LocalizationDataset(data_dir=str(data), max_length_seconds=1.0,
+                                     cache_dir=str(cache))
+    audio, mask = ds[0]
+    assert calls["n"] == 1
+
+    ds2 = Wav2Vec2LocalizationDataset(data_dir=str(data), max_length_seconds=1.0,
+                                      cache_dir=str(cache))
+    audio2, mask2 = ds2[0]
+    assert calls["n"] == 1  # second access must hit the cache
+    assert np.array_equal(audio, audio2)
+    assert np.array_equal(mask, mask2)
+
+
+def test_wav2vec2_dataset_cache_invalidates_on_config_change(tmp_path):
+    """A different max length changes the output shape; the config signature
+    must invalidate stale pickles."""
+    data = tmp_path / "data"
+    _write_wav_with_leading_silence(data / "audio" / "M_0002.wav")
+    _write_label(data / "labels" / "M_0002.csv")
+    cache = tmp_path / "cache"
+
+    ds = Wav2Vec2LocalizationDataset(data_dir=str(data), max_length_seconds=1.0,
+                                     cache_dir=str(cache))
+    audio, _ = ds[0]
+    assert audio.shape == (16000,)
+
+    ds2 = Wav2Vec2LocalizationDataset(data_dir=str(data), max_length_seconds=0.5,
+                                      cache_dir=str(cache))
+    audio2, _ = ds2[0]
+    assert audio2.shape == (8000,)  # stale cache would return 16000-length audio

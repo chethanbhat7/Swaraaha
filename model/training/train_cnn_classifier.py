@@ -74,6 +74,8 @@ def parse_args(argv=None):
                         choices=['focal', 'cross_entropy'])
     parser.add_argument('--focal_gamma', type=float, default=2.0)
     parser.add_argument('--gradient_accumulation_steps', type=int, default=1)
+    parser.add_argument('--cache_dir', type=str, default=None,
+                        help='Cache directory for preprocessed audio (auto-derived from data_dir if omitted).')
     parser.add_argument('--clean', action='store_true',
                         help='Start training from scratch (ignore resume checkpoint)')
     args = parser.parse_args(argv)
@@ -109,13 +111,22 @@ def train(args):
         torch.set_float32_matmul_precision('high')
     num_workers = args.num_workers or (os.cpu_count() or 4)
 
+    cache_dir = args.cache_dir
+    if cache_dir is None:
+        cache_dir = os.path.join(
+            os.path.dirname(args.data_dir.rstrip('/')),
+            'cache',
+            os.path.basename(args.data_dir.rstrip('/')),
+        )
     dataset = SpectrogramClassificationDataset(
         args.data_dir,
         sr=16000,
         n_mels=args.n_mels,
         hop_length=args.hop_length,
         max_length_seconds=args.max_length_seconds,
+        cache_dir=cache_dir,
     )
+    print(f'Cache: {cache_dir}')
     if len(dataset) == 0:
         print(f'No samples found in {args.data_dir}. '
               'Prepare the dataset first (see model/data/setup.py).')
