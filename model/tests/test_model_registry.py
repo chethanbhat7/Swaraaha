@@ -95,6 +95,45 @@ def test_run_all_catches_arbitrary_errors(monkeypatch):
     assert result["transcription"]["text"] == ""
 
 
+def test_run_all_runs_multitask_classifier(monkeypatch):
+    reg = ModelRegistry()
+    called = {}
+
+    def fake_multitask(audio, threshold=None):
+        called["audio"] = audio
+        called["threshold"] = threshold
+        return {
+            "prolongation": {"label": 1, "confidence": 0.9},
+            "summary": {"detected": ["prolongation"], "primary": "prolongation"},
+        }
+
+    monkeypatch.setattr(reg.multitask_classifier, "analyze", fake_multitask)
+    monkeypatch.setattr(
+        reg.cnn_multitask_classifier, "analyze",
+        lambda audio, threshold=None: {"error": "no weights"},
+    )
+    monkeypatch.setattr(
+        reg.classifier, "analyze",
+        lambda audio, threshold=None: {"summary": {"detected": []}},
+    )
+    monkeypatch.setattr(
+        reg.localizer, "analyze",
+        lambda audio, text=None, language="en", threshold=0.3, max_length_seconds=10.0: {
+            "regions": []
+        },
+    )
+    monkeypatch.setattr(
+        reg.transcriber, "transcribe",
+        lambda audio, **kwargs: {"text": "", "words": [], "duration_sec": 0.0},
+    )
+
+    result = reg.run_all(np.zeros(16000, dtype=np.float32))
+
+    assert called["threshold"] == 0.5
+    assert result["multitask"]["prolongation"] == {"label": 1, "confidence": 0.9}
+    assert result["multitask"]["summary"]["primary"] == "prolongation"
+
+
 def test_classifier_all_mode_skips_unknown_registry_entries(monkeypatch, tmp_path):
     canonical = {"prolongation", "block", "soundrep", "wordrep", "interjection"}
 
