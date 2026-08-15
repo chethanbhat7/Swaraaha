@@ -62,3 +62,32 @@ def test_cnn_trainer_default_is_class_balanced(tmp_path):
 
     args = parse_args([])
     assert args.class_balanced is True
+
+
+def test_multitask_loss_with_multilabel_bce_criterion():
+    torch.manual_seed(0)
+    B = 4
+    logits = {name: torch.randn(B, 2, requires_grad=True) for name in DYSFLUENCY_CLASSES}
+    labels = torch.randint(0, 2, (B, len(DYSFLUENCY_CLASSES))).long()
+    criterion = tmc.MultiLabelBCEWithLogitsLoss(
+        pos_weights={name: 2.0 for name in DYSFLUENCY_CLASSES})
+    loss = tmc.multitask_loss(logits, labels, criterion, device='cpu',
+                              class_names=DYSFLUENCY_CLASSES)
+    loss.backward()
+    assert loss > 0
+    assert all(l.grad is not None and l.grad.abs().sum() > 0
+               for l in logits.values())
+
+
+def test_multitask_loss_legacy_criteria_unchanged():
+    torch.manual_seed(0)
+    B = 4
+    logits = {name: torch.randn(B, 2, requires_grad=True) for name in DYSFLUENCY_CLASSES}
+    labels = torch.randint(0, 2, (B, len(DYSFLUENCY_CLASSES))).long()
+    criterion = FocalLoss(gamma=2.0)
+    loss = tmc.multitask_loss(logits, labels, criterion, device='cpu',
+                              class_names=DYSFLUENCY_CLASSES)
+    loss.backward()
+    assert loss > 0
+    assert all(l.grad is not None and l.grad.abs().sum() > 0
+               for l in logits.values())
