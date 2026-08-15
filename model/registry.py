@@ -554,6 +554,7 @@ class CNNMultiTaskClassifier(MultiTaskClassifier):
         spec = generate_mel_spectrogram(
             audio, sr=16000, n_mels=self._model.n_mels,
             hop_length=self._model.hop_length,
+            n_fft=getattr(self._model, "n_fft", 2048),
         )
         spec = pad_to_length(spec, max_frames, axis=1, pad_value=float(spec.min()))
         spec = spectrogram_to_image_array(spec)

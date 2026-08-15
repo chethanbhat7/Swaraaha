@@ -57,13 +57,15 @@ def parse_args(argv=None):
     parser.add_argument('--output_dir', type=str, default='model/weights')
     parser.add_argument('--n_mels', type=int, default=128)
     parser.add_argument('--hop_length', type=int, default=512)
+    parser.add_argument('--n_fft', type=int, default=2048,
+                        help='FFT window size for the mel-spectrogram.')
     parser.add_argument('--hidden_dim', type=int, default=128)
     parser.add_argument('--dropout', type=float, default=0.4)
     parser.add_argument('--aggregator', type=str, default='pool',
                         choices=['pool', 'lstm', 'transformer'])
     parser.add_argument('--num_lstm_layers', type=int, default=1)
     parser.add_argument('--num_transformer_layers', type=int, default=1)
-    parser.add_argument('--max_length_seconds', type=float, default=10.0)
+    parser.add_argument('--max_length_seconds', type=float, default=3.0)
     parser.add_argument('--warmup_steps', type=int, default=500)
     parser.add_argument('--weight_decay', type=float, default=0.01)
     parser.add_argument('--patience', type=int, default=5)
@@ -123,6 +125,7 @@ def train(args):
         sr=16000,
         n_mels=args.n_mels,
         hop_length=args.hop_length,
+        n_fft=args.n_fft,
         max_length_seconds=args.max_length_seconds,
         cache_dir=cache_dir,
     )

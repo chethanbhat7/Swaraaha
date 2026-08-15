@@ -117,11 +117,12 @@ class _CNNMultitaskBackbone(nn.Module):
 
 
 class CNNMultitaskClassifier:
-    def __init__(self, n_mels=128, hop_length=512, in_channels=1, hidden_dim=128,
+    def __init__(self, n_mels=128, hop_length=512, n_fft=2048, in_channels=1, hidden_dim=128,
                  dropout=0.4, class_names=None, aggregator='pool',
                  num_lstm_layers=1, num_transformer_layers=1):
         self.n_mels = n_mels
         self.hop_length = hop_length
+        self.n_fft = n_fft
         self.in_channels = in_channels
         self.hidden_dim = hidden_dim
         self.dropout = dropout
@@ -168,6 +169,7 @@ class CNNMultitaskClassifier:
             'model_state_dict': self.model.state_dict(),
             'n_mels': self.n_mels,
             'hop_length': self.hop_length,
+            'n_fft': self.n_fft,
             'in_channels': self.in_channels,
             'hidden_dim': self.hidden_dim,
             'dropout': self.dropout,
@@ -183,6 +185,7 @@ class CNNMultitaskClassifier:
         instance = cls(
             n_mels=checkpoint['n_mels'],
             hop_length=checkpoint.get('hop_length', 512),
+            n_fft=checkpoint.get('n_fft', 2048),
             in_channels=checkpoint.get('in_channels', 1),
             hidden_dim=checkpoint.get('hidden_dim', 128),
             dropout=checkpoint.get('dropout', 0.4),

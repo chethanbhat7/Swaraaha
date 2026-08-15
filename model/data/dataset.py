@@ -25,6 +25,7 @@ import csv
 import hashlib
 import os
 import pickle
+import re
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
@@ -127,8 +128,19 @@ class _PickleCacheMixin:
             )
         self.use_cache = cache_dir is not None
         if self.use_cache:
-            os.makedirs(cache_dir, exist_ok=True)
-        self.cache_dir = cache_dir
+            # Key the cache per dataset config so runs with different
+            # parameters (n_mels, hop_length, n_fft, ...) never overwrite
+            # each other's preprocessed pickles.
+            self.cache_dir = os.path.join(cache_dir, self._cache_config_key())
+            os.makedirs(self.cache_dir, exist_ok=True)
+        else:
+            self.cache_dir = cache_dir
+
+    def _cache_config_key(self) -> str:
+        """Short filesystem-safe key derived from the config signature."""
+        sig = self._config_signature()
+        key = re.sub(r"[^A-Za-z0-9]+", "_", sig).strip("_")
+        return key[:80]
 
     def _cache_path(self, clip_id: str) -> str:
         return os.path.join(self.cache_dir, f"{clip_id}.pkl")
@@ -210,7 +222,7 @@ class LocalizationDataset(_PickleCacheMixin):
     (set via max_length_seconds in __init__).
 
     Usage:
-        dataset = LocalizationDataset(data_dir="data/train", max_length_seconds=10)
+        dataset = LocalizationDataset(data_dir="data/train", max_length_seconds=3)
         spec, labels = dataset[0]
     """
 
@@ -220,7 +232,7 @@ class LocalizationDataset(_PickleCacheMixin):
         sr: int = 16000,
         n_mels: int = 128,
         hop_length: int = 512,
-        max_length_seconds: float = 10.0,
+        max_length_seconds: float = 3.0,
         sources: Optional[List[str]] = None,
         cache_dir: Optional[str] = None,
     ):
@@ -389,7 +401,7 @@ class ClassificationDataset(_PickleCacheMixin):
         (same as localization — we aggregate to multi-label here)
     """
 
-    def __init__(self, data_dir, sr=16000, max_length_seconds=10.0, cache_dir=None,
+    def __init__(self, data_dir, sr=16000, max_length_seconds=3.0, cache_dir=None,
                  sources=None):
         self.data_dir = data_dir
         self.sr = sr
@@ -505,11 +517,12 @@ class SpectrogramClassificationDataset(_PickleCacheMixin, Dataset):
     """
 
     def __init__(self, data_dir, sr=16000, n_mels=128, hop_length=512,
-                 max_length_seconds=10.0, sources=None, cache_dir=None):
+                 max_length_seconds=3.0, sources=None, cache_dir=None, n_fft=2048):
         self.data_dir = data_dir
         self.sr = sr
         self.n_mels = n_mels
         self.hop_length = hop_length
+        self.n_fft = n_fft
         self.max_length_seconds = max_length_seconds
         self.max_samples = int(max_length_seconds * sr)
         self.max_frames = int(self.max_samples // hop_length) + 1
@@ -586,7 +599,8 @@ class SpectrogramClassificationDataset(_PickleCacheMixin, Dataset):
         audio, _ = load_audio(sample['audio_path'], sr=self.sr)
         audio = clean_audio(audio, sr=self.sr)
         spec = generate_mel_spectrogram(audio, sr=self.sr, n_mels=self.n_mels,
-                                        hop_length=self.hop_length)
+                                        hop_length=self.hop_length,
+                                        n_fft=self.n_fft)
         spec = pad_to_length(spec, self.max_frames, axis=1, pad_value=spec.min())
         spec = spectrogram_to_image_array(spec)
         result = (spec.astype(np.float32), self._label_vector(sample))
@@ -604,4 +618,4 @@ class SpectrogramClassificationDataset(_PickleCacheMixin, Dataset):
 
     def _config_signature(self) -> str:
         return (f"sr={self.sr};n_mels={self.n_mels};hop_length={self.hop_length};"
-                f"max_frames={self.max_frames}")
+                f"n_fft={self.n_fft};max_frames={self.max_frames}")

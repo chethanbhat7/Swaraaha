@@ -89,6 +89,7 @@ def load_multitask(model_path):
         instance = CNNMultitaskClassifier(
             n_mels=args_ckpt.get('n_mels', 128),
             hop_length=args_ckpt.get('hop_length', 512),
+            n_fft=args_ckpt.get('n_fft', 2048),
             hidden_dim=args_ckpt.get('hidden_dim', 128),
             dropout=args_ckpt.get('dropout', 0.4),
             class_names=args_ckpt.get('class_names'),

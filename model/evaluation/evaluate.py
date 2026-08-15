@@ -56,7 +56,7 @@ def parse_args(argv=None):
                         help="Path to registry.json (default: model/registry.json).")
     parser.add_argument("--batch_size", type=int, default=8,
                         help="Batch size for evaluation.")
-    parser.add_argument("--max_length_seconds", type=float, default=10.0,
+    parser.add_argument("--max_length_seconds", type=float, default=3.0,
                         help="Max audio length.")
     parser.add_argument("--threshold", type=float, default=0.5,
                         help="Classification/detection threshold.")
@@ -70,6 +70,8 @@ def parse_args(argv=None):
     parser.add_argument("--n_mels", type=int, default=128, help="Mel bins (for localizer).")
     parser.add_argument("--hop_length", type=int, default=512,
                         help="Hop length (for localizer).")
+    parser.add_argument("--n_fft", type=int, default=2048,
+                        help="FFT window size (for CNN spectrogram models).")
     parser.add_argument("--full", action="store_true",
                         help="Evaluate the ENTIRE data_dir (no 20% split). "
                              "Use with a prepared test split, e.g. --data_dir data/test.")
@@ -134,6 +136,7 @@ def _build_spectrogram_classification_eval(args):
         sr=16000,
         n_mels=args.n_mels,
         hop_length=args.hop_length,
+        n_fft=args.n_fft,
         max_length_seconds=args.max_length_seconds,
         sources=args.sources,
     )
@@ -589,6 +592,11 @@ def evaluate_multitask(args):
     names = list(model.class_names)
 
     if hasattr(model, "n_mels"):
+        # CNN checkpoints carry their spectrogram config; prefer it so eval
+        # always uses the exact preprocessing the model was trained on.
+        args.n_mels = model.n_mels
+        args.hop_length = model.hop_length
+        args.n_fft = getattr(model, "n_fft", 2048)
         eval_dataset, eval_loader, _ = _build_spectrogram_classification_eval(args)
     else:
         eval_dataset, eval_loader, _ = _build_classification_eval(args)

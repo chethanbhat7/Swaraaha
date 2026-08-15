@@ -46,7 +46,7 @@ def parse_args():
                         help="Classification/detection threshold.")
     parser.add_argument("--batch_size", type=int, default=8,
                         help="Batch size for evaluation.")
-    parser.add_argument("--max_length_seconds", type=float, default=10.0,
+    parser.add_argument("--max_length_seconds", type=float, default=3.0,
                         help="Max audio length.")
     parser.add_argument("--flag_f1", type=float, default=0.7,
                         help="Flag classes with F1 below this value.")
