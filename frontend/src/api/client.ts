@@ -27,12 +27,20 @@ export interface ClassificationResults {
   };
 }
 
+export interface SeverityResult {
+  index_pct: number;
+  severity: 'fluent' | 'mild' | 'moderate' | 'severe';
+  label: string;
+}
+
 export interface AnalyzeResults {
   classification: ClassificationResults;
   localization: {
     regions: Array<{ start: number; end: number; confidence: number }>;
+    source?: 'model' | 'rule-based';
   };
   transcription: TranscriptionData;
+  severity?: SeverityResult;
 }
 
 export async function classifyAudio(file: File, language: string = 'english'): Promise<{ classification: ClassificationResults; transcription: TranscriptionData }> {
@@ -70,6 +78,7 @@ export interface ReportData {
   };
   date: string;
   classification: ClassificationResults;
+  severity?: SeverityResult;
 }
 
 export async function downloadReport(data: ReportData): Promise<Blob> {
