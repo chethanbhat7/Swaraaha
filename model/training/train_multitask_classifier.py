@@ -121,6 +121,8 @@ def multitask_loss(logits: Dict[str, "torch.Tensor"], labels: "torch.Tensor",
 
     if class_names is None:
         class_names = DYSFLUENCY_CLASSES
+    if isinstance(criterion, MultiLabelBCEWithLogitsLoss):
+        return criterion(logits, labels)
     total = torch.zeros((), dtype=torch.float32, device=device)
     for name in class_names:
         target = labels[:, DYSFLUENCY_CLASSES.index(name)].long().to(device)
