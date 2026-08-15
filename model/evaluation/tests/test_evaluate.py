@@ -61,6 +61,7 @@ def _args(**overrides):
         localizer_type="cnn",
         n_mels=128,
         hop_length=512,
+        n_fft=2048,
         full=False,
         model_path="model/weights/localizer_best.pt",
         output_dir="model/evaluation/reports",
@@ -293,6 +294,67 @@ def test_evaluate_multitask_reports_per_class_and_macro(tmp_path, monkeypatch, c
         report = json.load(f)
     assert set(report["per_class"].keys()) == set(CLASS_NAMES)
     assert 0.0 <= report["macro_f1"] <= 1.0
+
+
+def test_evaluate_multitask_uses_model_spectrogram_config(tmp_path, monkeypatch, capsys):
+    """CNN multitask eval must prefer the checkpoint's stored n_mels/
+    hop_length/n_fft over CLI defaults, so ablation configs evaluate on
+    the exact preprocessing they were trained with."""
+    import torch
+
+    import model.evaluation.evaluate as ev
+
+    CLASS_NAMES = ["block"]
+
+    class _FakeHead(torch.nn.Module):
+        def forward(self, pooled):
+            return torch.zeros(pooled.shape[0], 2)
+
+    class _FakeEval:
+        def __len__(self):
+            return 2
+
+    class _FakeModel:
+        def __init__(self):
+            self.model = torch.nn.ModuleDict({"heads": torch.nn.ModuleDict({
+                n: _FakeHead() for n in CLASS_NAMES})})
+            self.class_names = list(CLASS_NAMES)
+            self.n_mels = 256
+            self.hop_length = 256
+            self.n_fft = 1024
+
+        def forward(self, audio):
+            return {n: self.model["heads"][n](audio) for n in CLASS_NAMES}
+
+    seen = {}
+
+    def fake_build(args):
+        seen["n_mels"] = args.n_mels
+        seen["hop_length"] = args.hop_length
+        seen["n_fft"] = args.n_fft
+        labels = torch.zeros(2, 5, dtype=torch.uint8)
+        audio = torch.randn(2, 16000)
+        loader = [(audio, labels)]
+        return _FakeEval(), loader, [0, 1]
+
+    def fake_load(path):
+        return _FakeModel()
+
+    monkeypatch.setattr(ev, "_build_spectrogram_classification_eval", fake_build)
+    from model.evaluation import loader as eval_loader
+
+    monkeypatch.setattr(eval_loader, "load_multitask", fake_load)
+
+    out_dir = tmp_path / "reports"
+    out_dir.mkdir()
+    args = _args(
+        model_type="multitask",
+        model_path="weights/mt.pt",
+        output_dir=str(out_dir),
+    )
+    ev.evaluate_multitask(args)
+
+    assert seen == {"n_mels": 256, "hop_length": 256, "n_fft": 1024}
 
 
 def test_evaluate_multitask_sweep_reports_per_class_optimum(tmp_path, monkeypatch, capsys):

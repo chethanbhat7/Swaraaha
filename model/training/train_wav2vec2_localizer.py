@@ -45,7 +45,7 @@ def parse_args():
                         help="Learning rate.")
     parser.add_argument("--output_dir", type=str, default="model/weights",
                         help="Directory to save trained weights.")
-    parser.add_argument("--max_length_seconds", type=float, default=10.0,
+    parser.add_argument("--max_length_seconds", type=float, default=3.0,
                         help="Max audio length in seconds.")
     parser.add_argument("--dropout", type=float, default=0.3,
                         help="Dropout rate in temporal head.")

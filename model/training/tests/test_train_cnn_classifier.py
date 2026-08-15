@@ -15,6 +15,7 @@ def test_parse_args_cnn_defaults():
     assert args.aggregator == 'pool'
     assert args.n_mels == 128
     assert args.hop_length == 512
+    assert args.n_fft == 2048
     assert args.hidden_dim == 128
     assert args.dropout == 0.4
     assert args.num_lstm_layers == 1
@@ -25,6 +26,11 @@ def test_parse_args_cnn_defaults():
 def test_parse_args_single_class():
     args = tcc.parse_args(['--class_names', 'block'])
     assert args.class_names == ['block']
+
+
+def test_parse_args_n_fft_override():
+    args = tcc.parse_args(['--n_fft', '1024'])
+    assert args.n_fft == 1024
 
 
 def test_train_one_epoch_with_subset_class_names():

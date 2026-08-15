@@ -33,7 +33,7 @@ def parse_args():
     parser.add_argument("--output_dir", type=str, default="model/weights", help="Directory to save trained weights.")
     parser.add_argument("--n_mels", type=int, default=128, help="Number of mel frequency bins.")
     parser.add_argument("--hop_length", type=int, default=512, help="STFT hop length.")
-    parser.add_argument("--max_length_seconds", type=float, default=10.0, help="Max audio length in seconds.")
+    parser.add_argument("--max_length_seconds", type=float, default=3.0, help="Max audio length in seconds.")
     parser.add_argument("--dropout", type=float, default=0.4, help="Dropout rate.")
     parser.add_argument("--patience", type=int, default=7, help="Early stopping patience.")
     parser.add_argument("--weight_decay", type=float, default=1e-4, help="Weight decay.")

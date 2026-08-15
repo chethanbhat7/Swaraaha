@@ -23,6 +23,7 @@ class _Args:
     weight_decay = 0.01
     gradient_accumulation_steps = 1
     seed = 42
+    n_fft = 2048
     aggregator = 'pool'
     num_lstm_layers = 1
     num_transformer_layers = 1
@@ -61,6 +62,29 @@ def test_cnn_classifier_fingerprint_multi_class_subset_roundtrip():
     params = parse_cnn_classifier_fingerprint(fp)
     assert params['class_names'] == ['block', 'wordrep']
     assert params['data_short'] == 'train'
+
+
+def test_cnn_classifier_fingerprint_default_n_fft_omitted():
+    """n_fft=2048 (the default) must NOT appear in the fingerprint, so all
+    existing fingerprints and plan command lines stay unchanged."""
+    args = _Args()
+    args.n_fft = 2048
+    fp = cnn_classifier_fingerprint(args)
+    assert '_f' not in fp
+    assert fp == ('cnnclf_aggpool_e20_b16_lr3e-5_n128_h512_ml10_hd128_d0.4_pa5_'
+                  'wu500_wd0.01_ga1_s42_train_all')
+    assert parse_cnn_classifier_fingerprint(fp)['n_fft'] == 2048
+
+
+def test_cnn_classifier_fingerprint_non_default_n_fft_roundtrip():
+    args = _Args()
+    args.n_fft = 4096
+    fp = cnn_classifier_fingerprint(args)
+    assert '_f4096_' in fp
+    params = parse_cnn_classifier_fingerprint(fp)
+    assert params['n_fft'] == 4096
+    assert params['hop_length'] == 512
+    assert params['n_mels'] == 128
 
 
 def test_parse_cnn_classifier_fingerprint_aggregator_roundtrip():

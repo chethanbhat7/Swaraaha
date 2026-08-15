@@ -37,7 +37,7 @@ def parse_args(argv: Optional[List[str]] = None):
     parser.add_argument("--batch_size", type=int, default=16, help="Batch size.")
     parser.add_argument("--lr", type=float, default=3e-5, help="Learning rate.")
     parser.add_argument("--output_dir", type=str, default="model/weights", help="Directory to save trained weights.")
-    parser.add_argument("--max_length_seconds", type=float, default=10.0, help="Max audio length in seconds (pad/truncate).")
+    parser.add_argument("--max_length_seconds", type=float, default=3.0, help="Max audio length in seconds (pad/truncate).")
     parser.add_argument("--warmup_steps", type=int, default=500, help="Number of linear warmup steps.")
     parser.add_argument("--weight_decay", type=float, default=0.01, help="Weight decay for AdamW.")
     parser.add_argument("--patience", type=int, default=5, help="Early stopping patience (epochs without val macro-F1 improvement).")

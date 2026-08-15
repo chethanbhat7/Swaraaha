@@ -40,7 +40,7 @@ class Wav2Vec2LocalizationDataset(_PickleCacheMixin):
         self,
         data_dir: str,
         sr: int = 16000,
-        max_length_seconds: float = 10.0,
+        max_length_seconds: float = 3.0,
         hop_samples: int = 320,  # Wav2Vec2 subsampling factor
         sources: Optional[List[str]] = None,
         cache_dir: Optional[str] = None,

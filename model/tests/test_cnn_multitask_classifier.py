@@ -51,7 +51,8 @@ def test_predict_rejects_invalid_threshold():
 
 
 def test_save_load_roundtrip(tmp_path):
-    model = CNNMultitaskClassifier(n_mels=16, hidden_dim=8, class_names=CLASS_NAMES,
+    model = CNNMultitaskClassifier(n_mels=16, hop_length=256, n_fft=1024,
+                                   hidden_dim=8, class_names=CLASS_NAMES,
                                    aggregator='lstm')
     model.forward(torch.randn(2, 1, 16, 8))
     path = str(tmp_path / 'cnn.pt')
@@ -60,8 +61,21 @@ def test_save_load_roundtrip(tmp_path):
     assert loaded.class_names == CLASS_NAMES
     assert loaded.hidden_dim == 8
     assert loaded.aggregator == 'lstm'
+    assert loaded.n_mels == 16
+    assert loaded.hop_length == 256
+    assert loaded.n_fft == 1024
     for k, v in model.model.state_dict().items():
         assert torch.equal(v, loaded.model.state_dict()[k])
+
+
+def test_from_pretrained_defaults_n_fft_to_2048(tmp_path):
+    model = CNNMultitaskClassifier(n_mels=16, hop_length=512, hidden_dim=8,
+                                   class_names=CLASS_NAMES, aggregator='pool')
+    model.forward(torch.randn(2, 1, 16, 8))
+    path = str(tmp_path / 'cnn.pt')
+    model.save(path)
+    loaded = CNNMultitaskClassifier.from_pretrained(path)
+    assert loaded.n_fft == 2048
 
 
 def test_count_parameters_positive():

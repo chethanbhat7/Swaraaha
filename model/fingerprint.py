@@ -145,15 +145,17 @@ def parse_multitask_fingerprint(fp: str) -> dict:
 
 
 CNN_CLASSIFIER_RESUME_KEYS = [
-    'data_dir', 'epochs', 'batch_size', 'lr', 'n_mels', 'hop_length',
+    'data_dir', 'epochs', 'batch_size', 'lr', 'n_mels', 'hop_length', 'n_fft',
     'max_length_seconds', 'hidden_dim', 'dropout', 'patience', 'warmup_steps',
     'weight_decay', 'gradient_accumulation_steps', 'seed', 'aggregator',
     'num_lstm_layers', 'num_transformer_layers', 'class_names',
 ]
 
+DEFAULT_N_FFT = 2048
+
 CNN_CLASSIFIER_FINGERPRINT_FMT = (
     'cnnclf_agg{aggregator_short}_e{epochs}_b{batch_size}_lr{lr}_n{n_mels}'
-    '_h{hop_length}_ml{max_length_seconds}_hd{hidden_dim}_d{dropout}'
+    '_h{hop_length}{n_fft_segment}_ml{max_length_seconds}_hd{hidden_dim}_d{dropout}'
     '_pa{patience}_wu{warmup_steps}_wd{weight_decay}'
     '_ga{gradient_accumulation_steps}_s{seed}_{data_short}_{classes_short}'
 )
@@ -161,6 +163,7 @@ CNN_CLASSIFIER_FINGERPRINT_FMT = (
 _CNN_CLASSIFIER_FP_PATTERN = re.compile(
     r'^cnnclf_agg(?P<aggregator_short>[a-z]+\d*)_e(?P<epochs>\d+)_b(?P<batch_size>\d+)'
     r'_lr(?P<lr>[\d.eE+-]+)_n(?P<n_mels>\d+)_h(?P<hop_length>\d+)'
+    r'(?:_f(?P<n_fft>\d+))?'
     r'_ml(?P<max_length_seconds>[\d.eE+-]+)_hd(?P<hidden_dim>\d+)_d(?P<dropout>[\d.eE+-]+)'
     r'_pa(?P<patience>\d+)_wu(?P<warmup_steps>\d+)_wd(?P<weight_decay>[\d.eE+-]+)'
     r'_ga(?P<gradient_accumulation_steps>\d+)_s(?P<seed>\d+)'
@@ -183,6 +186,8 @@ def cnn_classifier_fingerprint(args):
     class_names = getattr(args, 'class_names', None) or list(DYSFLUENCY_CLASSES)
     classes_short = ('all' if set(class_names) == set(DYSFLUENCY_CLASSES)
                      else '_'.join(class_names))
+    n_fft = getattr(args, 'n_fft', None)
+    n_fft_segment = f'_f{n_fft}' if n_fft and n_fft != DEFAULT_N_FFT else ''
     return CNN_CLASSIFIER_FINGERPRINT_FMT.format(
         aggregator_short=_aggregator_short(
             args.aggregator,
@@ -194,6 +199,7 @@ def cnn_classifier_fingerprint(args):
         lr=_fmt_fp(args.lr),
         n_mels=args.n_mels,
         hop_length=args.hop_length,
+        n_fft_segment=n_fft_segment,
         max_length_seconds=_fmt_fp(args.max_length_seconds),
         hidden_dim=args.hidden_dim,
         dropout=_fmt_fp(args.dropout),
@@ -216,6 +222,10 @@ def parse_cnn_classifier_fingerprint(fp):
     data_short = groups.pop('data_short')
     classes_short = groups.pop('classes_short')
     params = {}
+    n_fft = groups.pop('n_fft', None)
+    if n_fft is None:
+        n_fft = DEFAULT_N_FFT
+    params['n_fft'] = int(n_fft)
     for key, value in groups.items():
         if key in {'epochs', 'batch_size', 'n_mels', 'hop_length', 'hidden_dim',
                    'patience', 'warmup_steps', 'gradient_accumulation_steps', 'seed'}:
