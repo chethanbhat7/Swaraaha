@@ -10,13 +10,14 @@ import {
   Pause,
   Download
 } from 'lucide-react'
-import { TranscriptionData, analyzeAudio, classifyAudio, downloadReport } from '../api/client'
+import { SeverityResult, TranscriptionData, analyzeAudio, classifyAudio, downloadReport } from '../api/client'
 import { storeAudioFile } from '../utils/db'
 
 interface AnalysisResults {
   classification: Record<string, { label: number; confidence: number }>
   localization: { regions: Array<{ start: number; end: number; confidence: number }> }
   transcription?: TranscriptionData
+  severity?: SeverityResult
 }
 
 const CLASS_DISPLAY_NAMES: Record<string, string> = {
@@ -631,21 +632,30 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
 
   const durationSec = getDurationInSeconds(duration)
 
-  // Determine Severity Level from localized dysfluency coverage
-  const stutterIndexValue = durationSec > 0 ? (localizationCoverage / durationSec) * 100 : 0
+  // Stutter index: backend-computed when available, else derived from regions
+  const stutterIndexValue = results.severity?.index_pct ??
+    (durationSec > 0 ? (localizationCoverage / durationSec) * 100 : 0)
 
-  let severity = "Fluent"
-  let severityColor = "text-emerald-500 bg-emerald-500/10 border-emerald-500/20"
-  if (stutterIndexValue >= 15) {
-    severity = "Severe"
-    severityColor = "text-error-red bg-error-red/10 border-error-red/20"
-  } else if (stutterIndexValue >= 5) {
-    severity = "Moderate"
-    severityColor = "text-warning-amber bg-warning-amber/10 border-warning-amber/20"
-  } else if (stutterIndexValue >= 2) {
-    severity = "Mild"
-    severityColor = "text-teal-500 bg-teal-500/10 border-teal-500/20"
+  const SEVERITY_COLORS: Record<string, string> = {
+    Fluent: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20",
+    Mild: "text-teal-500 bg-teal-500/10 border-teal-500/20",
+    Moderate: "text-warning-amber bg-warning-amber/10 border-warning-amber/20",
+    Severe: "text-error-red bg-error-red/10 border-error-red/20",
   }
+
+  const computedSeverity = (() => {
+    if (results.severity?.label) {
+      return {
+        label: results.severity.label,
+        color: SEVERITY_COLORS[results.severity.label] ?? SEVERITY_COLORS.Fluent,
+      }
+    }
+    let label = 'Fluent'
+    if (stutterIndexValue >= 15) label = 'Severe'
+    else if (stutterIndexValue >= 5) label = 'Moderate'
+    else if (stutterIndexValue >= 2) label = 'Mild'
+    return { label, color: SEVERITY_COLORS[label] }
+  })()
 
   // Print clinical report
   const handlePrint = () => {
@@ -662,6 +672,11 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
         audio: { filename, size: filesize, duration },
         date: reportDate,
         classification: results.classification,
+        severity: results.severity ?? {
+          index_pct: stutterIndexValue,
+          severity: computedSeverity.label.toLowerCase() as SeverityResult['severity'],
+          label: computedSeverity.label,
+        },
       })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -722,8 +737,8 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
             <Volume2 className="text-text-secondary" size={16} />
           </div>
           <div className="mt-4">
-            <span className={`inline-block px-3 py-1 text-xs font-bold border rounded-full ${severityColor}`}>
-              {severity} Dysfluency
+            <span className={`inline-block px-3 py-1 text-xs font-bold border rounded-full ${computedSeverity.color}`}>
+              {computedSeverity.label} Dysfluency
             </span>
             <p className="text-xs text-text-secondary mt-2">
               Based on speech localization regions.
