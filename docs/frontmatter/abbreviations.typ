@@ -1,0 +1,36 @@
+// --- Abbreviations ---
+#align(center)[= LIST OF ABBREVIATIONS]
+#table(
+  columns: (1fr, 3fr),
+  stroke: none,
+  align: (left, left),
+  column-gutter: 10pt,
+  table.header([*Abbreviation*], [*Description*]),
+  [*ALE*], [Activattion Likelihood Estimation],
+  [*ASR*], [Automatic Speech Recognition],
+  [*BERT*], [Bidirectional Encoder Representations from Transformers],
+  [*Bi-LSTM*], [Bidirectional Long Short-Term Memory],
+  [*CNN*], [Convolutional Neural Network],
+  [*EEG*], [Electroencephalography],
+  [*fMRI*], [Functional Magnetic Resonance Imaging],
+  [*GUI*], [Graphical User Interface],
+  [*HMM*], [Hidden Markov Model],
+  [*isWER*], [Intended Speech Word Error Rate],
+  [*LLM*], [Large Langauge Model],
+  [*LSTM*], [Long Short-Term Memory],
+  [*MFCC*], [Mel-Frequency Cepstral Coefficients],
+  [*PySide6*], [Python QT Framework],
+  [*ReLU*], [Rectified Linear Unit],
+  [*RNN*], [REcurrent Neural Network],
+  [*Sep-28k*], [Stuttering Event Prediction Dataset (28,000 samples)],
+  [*SLP*], [Speech-Language Pathologist],
+  [*SOTA*], [State Of The Art],
+  [*SVM*], [Support Vector Machine],
+  [*TTS*], [Text-to-Speech],
+  [*UI*], [User Interface],
+  [*VITS*], [Variational Inference With Adversarial Learning for end-to-end Text-to-Speech],
+  [*WavLM*], [Wave Langauge Model],
+  [*YOLO*], [You Only Look Once],
+)
+
+#pagebreak()

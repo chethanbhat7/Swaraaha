@@ -3,11 +3,8 @@
 // and the other front matter pick them up automatically.
 
 // Project
-#let project_title = "A Multi-Stage Deep Learning Framework for Syllable-Level Stuttering Localization, Classification, and Remediation using Wav2Vec 2.0 and Ensembled Transformers"
-#let project_title_break = [
-  #project_title.split("Localization, ").at(0) \
-  #project_title.split("Localization, ").at(1)
-]
+#let project_title = "Swaraaha: Stutter Classification and Localization System"
+
 #let report_type = "A PROJECT REPORT"
 #let document_title = "Major Project Report"
 #let degree = "Bachelor of Engineering"
@@ -67,7 +64,6 @@
 #let college_place = "Puttur"
 
 // Header / footer
-#let header_title = [“A Multi-Stage Deep Learning Framework for Syllable-Level Stuttering Localization, \
-Classification, and Remediation using Wav2Vec 2.0 and Ensembled Transformers”]
+#let header_title = project_title
 #let header_year = academic_year
 #let footer_dept = "Department of " + department + ", V. C. E. T, " + college_place + "."
