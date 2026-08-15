@@ -3,7 +3,7 @@
 // --- Chapter 3: Analysis and Requirement Specification ---
 #chapter_heading([ANALYSIS AND REQUIREMENT SPECIFICATION])
 
-== Introduction
+== INTRODUCTION
 The main aim of the proposed system is to build an automated method for stuttering detection and localization to overcome the disadvantages of the traditional subjective assessment methods adopted by Speech-Language Pathologists (SLPs).
 The conventional methods depend on the manual observation and interpretation, which can be time-consuming, inconsistent, and dependent on the evaluator’s expertise.
 To address these issues, the system proposes an objective and data-driven approach to analyze speech dysfluencies.
@@ -23,7 +23,7 @@ The system utilizes the Whisper model to convert speech to text and temporal seg
 We apply Connectionist Temporal Classification (CTC) based time alignment to accurately align detected dysfluencies to their corresponding places in the audio.
 The final output is delivered through an visualization interface and a detailed report.
 
-== Existing System Analysis
+== EXISTING SYSTEM ANALYSIS
 Current approaches to stuttering detection and analysis reveal several limitations, particularly in terms of accuracy, scalability, and usability.
 Traditionally, diagnosis is performed manually by Speech-Language Pathologists (SLPs).
 While this method benefits from expert knowledge, it is inherently subjective, often time-consuming, and difficult to scale.
@@ -43,7 +43,7 @@ This limits their effectiveness in detailed clinical analysis and feedback.
 
 Overall, existing systems suffer from multiple shortcomings, including subjectivity in evaluation, reliance on handcrafted features, limited generalization capability, lack of precise localization, minimal visualization and interpretability, dependence on internet connectivity, and absence of robust offline support.
 
-== Functional Requirements
+== FUNCTIONAL REQUIREMENTS
 The functional requirements of the proposed system define the core features and operations necessary for automated stuttering detection and analysis.
 These requirements are structured as a set of functional units, each corresponding to a specific capability within the system.
 - *Speech Recording:*
@@ -71,7 +71,7 @@ These requirements are structured as a set of functional units, each correspondi
 - *Model Management:*
   The system shall include a model registry to ensure consistent loading and management of trained model checkpoints across both web and desktop platforms.
 
-== Non-Functional Requirements
+== NON-FUNCTIONAL REQUIREMENTS
 The non-functional requirements define the quality attributes and operational constraints of the system.
 These requirements ensure that the system performs efficiently, remains user-friendly, and can be maintained and extended over time.
 - *Performance:*
@@ -93,7 +93,7 @@ These requirements ensure that the system performs efficiently, remains user-fri
 - *Data Privacy:*
   User data is handled with a strong focus on privacy. Audio recordings are stored locally using mechanisms such as IndexedDB or local file storage, eliminating the need for cloud-based data transmission.
 
-== Software Requirements
+== SOFTWARE REQUIREMENTS
 The software requirements of the proposed system include the tools, frameworks, and technologies used for developing, deploying, and maintaining the application across different platforms.
 - *Machine Learning Frameworks:*
   The system is developed using Python 3.11 as the primary programming language. Deep learning models are implemented using PyTorch, while Hugging Face Transformers are utilized for integrating pretrained models such as Wav2Vec 2.0 (base and large variants). For audio processing and numerical computations, libraries such as librosa and NumPy are employed.
@@ -106,7 +106,7 @@ The software requirements of the proposed system include the tools, frameworks, 
 - *Model Registry:*
   A centralized model registry is implemented to manage trained models efficiently. This includes a registry module (`model/registry.py`) and a configuration file (`registry.json`), which together serve as the standardized and authorized pathway for loading model checkpoints across the system.
 
-== Hardware Requirements
+== HARDWARE REQUIREMENTS
 The hardware requirements define the minimum and recommended system specifications necessary for efficient execution of the proposed system.
 These requirements ensure smooth performance during both development and deployment phases.
 
@@ -121,7 +121,7 @@ These requirements ensure smooth performance during both development and deploym
 - *Audio Input Device:*
   A functional microphone is required for recording speech input within the application.
 
-== Feasibility Study
+== FEASIBILITY STUDY
 The feasibility study evaluates the practicality of the proposed system from technical, economic, operational, and future expansion perspectives.
 
 - *Technical Feasibility:*
@@ -135,7 +135,7 @@ The feasibility study evaluates the practicality of the proposed system from tec
 - *Future Feasibility:*
   The system is designed with extensibility in mind. It can be expanded to support additional languages and dysfluency categories. Future enhancements may also include cloud-based synchronization, as well as features for tracking therapy progress over time, further increasing its practical value.
 
-== Use Case Diagram and Descriptions
+== USE CASE DIAGRAM AND DESCRIPTIONS
 The use case diagram represents the interaction between the user and the system.
 The primary actor in the system is the *User*, which may be either a clinician or an individual using the application for self-assessment.
 
@@ -148,7 +148,7 @@ Other supporting functionalities include toggling between interface themes and a
 
 The primary flow of interaction follows a simple sequence: the user records or uploads audio, initiates analysis, reviews visualizations and results, and finally generates or saves the report.
 
-== Activity Diagram
+== ACTIVITY DIAGRAM
 The activity diagram illustrates the step-by-step workflow of the system.
 The process begins when the user opens the application and chooses to either record new audio or upload an existing file.
 The input audio is then validated and converted into a standard format using FFmpeg, specifically 16 kHz mono.
@@ -162,7 +162,7 @@ Localization is performed using spectrogram-based CNN analysis or Wav2Vec2 tempo
 The results are then aligned to specific words or syllables using CTC-based alignment.
 Finally, the system displays waveform, spectrogram, transcript, and confidence scores, and provides an option to generate and save a detailed report.
 
-== Sequence Diagram
+== SEQUENCE DIAGRAM
 The sequence diagram describes the interaction between different system components during execution.
 The process starts with the user interacting with the graphical user interface (GUI), which sends a request to the backend API endpoint (`/api/analyze`).
 
@@ -171,7 +171,7 @@ Each service performs a specific task and passes its output to the next stage.
 Once processing is complete, the results are sent back to the frontend, where they are displayed to the user.
 The system also stores the results for report generation and history management.
 
-== Data Flow Description
+== DATA FLOW DESCRIPTION
 The data flow within the system begins with the input audio, which is first converted into a standardized 16 kHz mono WAV format using FFmpeg.
 The audio is then processed through a cleaning stage that removes DC offset, applies peak normalization, and trims silence.
 
@@ -187,7 +187,7 @@ For training and evaluation, the system utilizes multiple datasets, including Pr
 These datasets are normalized into a unified format, consisting of a `combined_labels.csv` file with multi-label binary annotations and corresponding interval files for each clip.
 The dataset is split into training, validation, and testing sets in an 80:10:10 ratio.
 
-== Chapter Summary
+== CHAPTER SUMMARY
 This chapter presented a detailed analysis of the system requirements, covering both functional and non-functional aspects.
 It also examined feasibility, system interactions, workflows, and data processing mechanisms.
 The requirements highlight the need for an accurate, interpretable, and multilingual-ready stuttering detection system that can operate efficiently in both online and offline environments.

@@ -3,7 +3,7 @@
 // --- Chapter 4: System Design ---
 #chapter_heading[SYSTEM DESIGN]
 
-== Introduction
+== INTRODUCTION
 This chapter presents the overall system design for an end-to-end framework developed for automated stutter detection and localization.
 The design outlines how different components of the system interact to process speech data and generate meaningful analytical results.
 
@@ -24,7 +24,7 @@ Interpretability is prioritized so that outputs remain clear and useful, especia
 Scalability enables the addition of new dysfluency types and language support.
 Additionally, the desktop application is designed to function offline, ensuring accessibility even in environments without internet connectivity.
 
-== Overall System Architecture
+== OVERALL SYSTEM ARCHITECTURE
 The overall system architecture is designed to support efficient and structured processing of speech data, from input acquisition to final result generation.
 The process begins when the user either records audio directly or uploads a pre-recorded file through the web interface or desktop application.
 The web application uses MediaRecorder APIs, while the desktop application utilizes sounddevice for capturing audio input.
@@ -54,11 +54,11 @@ The final results are presented through multiple visual and textual outputs, inc
 Both the web and desktop applications rely on a centralized model registry for loading trained models.
 This registry, implemented using a registry module and a configuration file, ensures that model checkpoints can be updated or replaced without requiring changes to the application code, thereby improving flexibility and maintainability.
 
-== System Architecture Blcok Diagram
+== SYSTEM ARCHITECTURE BLCOK DIAGRAM
 
-#image("/assets/architecture.jpeg")
+#add_image(image("/assets/architecture-verticle.png", height: 50%), caption: [System Architecture])
 
-== Module Description
+== MODULE DESCRIPTION
 The system is organized into multiple functional modules, each responsible for a specific stage in the speech processing pipeline.
 This modular design improves clarity, maintainability, and ease of extension.
 - *Audio Acquisition Module:*
@@ -86,7 +86,7 @@ This modular design improves clarity, maintainability, and ease of extension.
 - *Report Generation Module:*
   This module generates a structured report containing patient details, classification results, and localized dysfluency events. It also maintains a history of analyses using local storage mechanisms such as LocalStorage or IndexedDB.
 
-== Data Flow Design
+== DATA FLOW DESIGN
 The data flow design describes how audio data is processed through different stages of the system, from input acquisition to final output generation.
 
 The process begins with the input audio, which is either recorded or uploaded by the user.
@@ -107,7 +107,7 @@ The processed datasets are merged into a unified format consisting of a combined
 The complete dataset is then divided into training, validation, and testing subsets using an 80:10:10 split.
 These subsets are organized using symbolic links for efficient access, and preprocessed audio files are cached to improve training performance.
 
-== Algorithm
+== ALGORITHM
 The inference process of the system follows a structured sequence of steps, ensuring accurate and efficient detection and localization of dysfluencies.
 - *Step 1: Input Acquisition:*
   The system acquires speech input either through real-time recording or by uploading an audio file.
@@ -132,7 +132,7 @@ The inference process of the system follows a structured sequence of steps, ensu
 
 In addition to inference, the training procedure for each classifier follows a structured approach. Initially, the backbone model is frozen for the first three epochs to stabilize learning. It is then unfrozen with a reduced learning rate (scaled by a factor of 0.1). Training is performed using Focal Loss with a gamma value of 2 to handle class imbalance, and optimization is carried out using the AdamW optimizer with a learning rate of $3 times 10^(-5)$. A warm-up phase of 500 steps is applied, followed by early stopping to prevent overfitting. The best-performing model is selected based on the highest F1-score and saved as the final checkpoint.
 
-== Design Considerations
+== DESIGN CONSIDERATIONS
 The system is designed with a focus on accuracy, scalability, interpretability, usability, maintainability, and performance.
 Key design goals and their corresponding implementation strategies are outlined below: \
 - *Accuracy:*
@@ -154,7 +154,7 @@ Key design goals and their corresponding implementation strategies are outlined 
   Focal loss is used alongside positive class weighting (pos_weight) in the localizer.
   Performance is monitored using per-class evaluation metrics.
 
-== Component Interaction
+== COMPONENT INTERACTION
 The system components interact through clearly defined interfaces across different layers: \
 - *Frontend #sym.arrow.l.r Backend:*
   Communication occurs via REST APIs exposed by FastAPI, including endpoints such as `/api/classify`, `/api/localize`, `/api/analyze`, and `/health`.
@@ -166,7 +166,7 @@ The system components interact through clearly defined interfaces across differe
 - *Data Pipeline:*
   The data layer follows a structured workflow: `download → merge → prepare → train → evaluate`, ensuring reproducibility and consistency across experiments.
 
-== Chapter Summary
+== CHAPTER SUMMARY
 This chapter presented the complete system design of the proposed framework, covering its architecture, data flow, modules, and processing algorithms.
 The design clearly separates key functional stages, including audio acquisition, preprocessing, classification and localization pipelines, transcription, alignment, visualization, and report generation.
 

@@ -20,53 +20,13 @@
 )
 
 #set list(
-  indent: 2em,
+  indent: 3em,
   spacing: 1.5em,
 )
-
-#set outline(
-  indent: 0pt
-)
-
-#set outline.entry(
-  fill: none
-)
-
-#show outline: set heading(
-  outlined: true,
-)
-
-#show outline: set align(center)
 
 #show heading: it => {
   v(0.5em)
   it
-}
-
-#show outline.entry: it => {
-  v(12pt, weak: true)
-  link(it.element.location())[
-    #if it.level == 1 and it.element.func() == heading {
-      v(0.5em)
-      grid(
-        columns: (1fr, auto),
-        align: (left, center),
-        stack(dir: ltr)[*#it.body()*], [*#it.page()*]
-      )
-    } else {
-      grid(
-        columns: (1fr, 10fr, auto),
-        align: (left, left, right),
-        stack(dir: ltr)[
-          #{
-            show "Table": none
-            show "Figure": none
-            it.prefix()
-          }
-        ], [#it.body()], [#it.page()]
-      )
-    }
-  ]
 }
 
 #show figure.where(kind: table): set block(breakable: true)
@@ -81,6 +41,7 @@
 #include "frontmatter/acknowledgement.typ"
 #include "frontmatter/abstract.typ"
 #include "frontmatter/toc.typ"
+#include "frontmatter/abbreviations.typ"
 
 // --- Header and footer for the main body ---
 #set page(
@@ -112,6 +73,6 @@
 
 // --- Chapters ---
 #include "chapters/chapter1.typ"
-#include "chapters/chapter2.typ"
-#include "chapters/chapter3.typ"
-#include "chapters/chapter4.typ"
+// #include "chapters/chapter2.typ"
+// #include "chapters/chapter3.typ"
+// #include "chapters/chapter4.typ"
