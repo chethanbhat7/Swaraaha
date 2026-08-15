@@ -29,7 +29,9 @@ from model.data.augmentation import AugmentedDataset, SpectrogramAugmentor
 from model.data.dataset import SpectrogramClassificationDataset
 from model.fingerprint import CNN_CLASSIFIER_RESUME_KEYS, cnn_classifier_fingerprint
 from model.training.train_multitask_classifier import (
+    MultiLabelBCEWithLogitsLoss,
     SubsetDataset,
+    compute_class_pos_weights,
     evaluate_multitask,
     multitask_loss,
     set_seed,
@@ -75,6 +77,10 @@ def parse_args(argv=None):
     parser.add_argument('--loss_type', type=str, default='focal',
                         choices=['focal', 'cross_entropy'])
     parser.add_argument('--focal_gamma', type=float, default=2.0)
+    parser.add_argument('--class_balanced', action=argparse.BooleanOptionalAction,
+                        default=True,
+                        help='Use per-class pos_weight BCE loss (default: True). '
+                             'Set --no-class_balanced to use --loss_type instead.')
     parser.add_argument('--gradient_accumulation_steps', type=int, default=1)
     parser.add_argument('--cache_dir', type=str, default=None,
                         help='Cache directory for preprocessed audio (auto-derived from data_dir if omitted).')
@@ -150,8 +156,15 @@ def train(args):
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False,
                             num_workers=num_workers, pin_memory=(device.type == 'cuda'))
 
-    criterion = (FocalLoss(gamma=args.focal_gamma) if args.loss_type == 'focal'
-                 else nn.CrossEntropyLoss())
+    # ---- Loss ----
+    if args.class_balanced:
+        pos_weights = compute_class_pos_weights(dataset, args.class_names)
+        print(f'Per-class pos_weights: {pos_weights}')
+        criterion = MultiLabelBCEWithLogitsLoss(pos_weights=pos_weights)
+    else:
+        criterion = (FocalLoss(gamma=args.focal_gamma) if args.loss_type == 'focal'
+                     else nn.CrossEntropyLoss())
+    print(f'Loss: {criterion.__class__.__name__}')
     model = CNNMultitaskClassifier(
         n_mels=args.n_mels,
         hidden_dim=args.hidden_dim,

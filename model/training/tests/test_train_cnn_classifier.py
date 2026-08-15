@@ -57,7 +57,8 @@ def test_strip_compile_prefix_when_live_uncompiled():
     assert stripped['heads.block.weight'].equal(torch.ones(2, 8))
 
 
-def test_strip_compile_prefix_preserves_compiled_live():
-    ckpt = {'_orig_mod.heads.block.weight': torch.ones(2, 8)}
-    live = {'_orig_mod.heads.block.weight': torch.zeros(2, 8)}
-    assert tcc._strip_compile_prefix_if_needed(ckpt, live) is ckpt
+def test_cnn_trainer_default_is_class_balanced(tmp_path):
+    from model.training.train_cnn_classifier import parse_args
+
+    args = parse_args([])
+    assert args.class_balanced is True

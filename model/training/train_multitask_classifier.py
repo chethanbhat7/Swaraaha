@@ -20,6 +20,8 @@ import time
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
+import torch
+import torch.nn as nn
 
 from model.config.defaults import DYSFLUENCY_CLASSES
 from model.fingerprint import (
@@ -67,6 +69,49 @@ def set_seed(seed: int) -> None:
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
+
+
+def compute_class_pos_weights(dataset, class_names=None):
+    """Per-class neg/pos ratio from dataset.label_vectors (clip level)."""
+    from model.config.defaults import DYSFLUENCY_CLASSES
+    if class_names is None:
+        class_names = DYSFLUENCY_CLASSES
+    label_vectors = getattr(dataset, 'label_vectors', None)
+    if label_vectors is None:
+        label_vectors = [np.asarray(dataset[i][1], dtype=float) for i in range(len(dataset))]
+    label_vectors = np.asarray(label_vectors, dtype=float)
+    weights = {}
+    for name in class_names:
+        col = label_vectors[:, DYSFLUENCY_CLASSES.index(name)]
+        n_pos = int(col.sum())
+        n_neg = len(col) - n_pos
+        weights[name] = round(n_neg / max(n_pos, 1), 4) if n_pos > 0 else 1.0
+    return weights
+
+
+class MultiLabelBCEWithLogitsLoss(nn.Module):
+    """BCEWithLogitsLoss summed over per-class heads with per-class pos_weight.
+
+    logits: {class_name: (B, 2)}; labels: (B, len(DYSFLUENCY_CLASSES)) multi-hot.
+    """
+
+    def __init__(self, pos_weights):
+        super().__init__()
+        self.pos_weights = pos_weights
+
+    def forward(self, logits, labels):
+        import torch.nn.functional as F
+        from model.config.defaults import DYSFLUENCY_CLASSES
+        device = next(iter(logits.values())).device
+        total = torch.zeros((), dtype=torch.float32, device=device)
+        for name, logit in logits.items():
+            target = labels[:, DYSFLUENCY_CLASSES.index(name)].float().to(device)
+            total = total + F.binary_cross_entropy_with_logits(
+                logit[:, 1], target,
+                pos_weight=torch.tensor(self.pos_weights[name], dtype=torch.float32,
+                                        device=device),
+            )
+        return total
 
 
 def multitask_loss(logits: Dict[str, "torch.Tensor"], labels: "torch.Tensor",
