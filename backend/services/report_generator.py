@@ -28,6 +28,7 @@ def build_typ_source(data: dict) -> str:
     patient = data.get("patient") or {}
     audio = data.get("audio") or {}
     classification = data.get("classification") or {}
+    severity = data.get("severity") or {}
     date_text = _escape(data.get("date") or "")
 
     rows = []
@@ -44,6 +45,20 @@ def build_typ_source(data: dict) -> str:
         )
 
     class_rows = ",\n".join(rows) if rows else "  [No stuttering classes detected], [Not Detected], [0.0%]"
+
+    severity_section = ""
+    if isinstance(severity.get("index_pct"), (int, float)):
+        severity_section = f"""#v(1.5em)
+
+#text(size: 13pt, weight: "bold")[Diagnostic Severity]
+#table(
+  columns: 2,
+  stroke: none,
+  align: (left, left),
+  [*Stutter Index*], [{_escape(f"{severity['index_pct']:.1f}%")}],
+  [*Severity Level*], [{_escape(severity.get('label') or 'N/A')}],
+)
+"""
 
     return f"""#set page(paper: "a4", margin: 2.5cm)
 #set text(size: 11pt)
@@ -89,6 +104,7 @@ def build_typ_source(data: dict) -> str:
   [*Dysfluency Category*], [*Clinical Present Label*], [*Model Confidence Score*],
 {class_rows}
 )
+{severity_section}
 """
 
 
