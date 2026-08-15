@@ -27,5 +27,16 @@
     "soundrep": 0.5,
     "wordrep": 0.5,
     "interjection": 0.5
+  },
+  "classification_multitask_cnn": {
+    "path": "model/weights/cnnclf_aggpool_e20_b16_lr3e-5_n128_h512_ml10_hd128_d0.4_pa5_wu500_wd0.01_ga1_s42_train_all_best.pt",
+    "model_name": "cnn",
+    "thresholds": {
+      "prolongation": 0.5,
+      "block": 0.5,
+      "soundrep": 0.5,
+      "wordrep": 0.5,
+      "interjection": 0.5
+    }
   }
 }
