@@ -103,7 +103,102 @@ def _load_source_map(data_dir):
     return source_map
 
 
-class LocalizationDataset:
+class _PickleCacheMixin:
+    """Pickle-based on-disk cache for preprocessed dataset items.
+
+    Cache entries are keyed by ``clip_id`` and validated against three
+    signatures so stale pickles are never served:
+
+      * label signature — hash of the label CSV contents
+      * config signature — dataset parameters that change the output
+        (sr, n_mels, hop_length, max length); defined per subclass
+      * audio signature — size + mtime of the source audio file
+
+    Writes are atomic (temp file + ``os.replace``), so concurrent
+    ``DataLoader`` workers never observe partially-written pickles.
+    """
+
+    def _init_cache(self, cache_dir: Optional[str]) -> None:
+        if cache_dir is None and getattr(self, "data_dir", None):
+            cache_dir = os.path.join(
+                os.path.dirname(self.data_dir.rstrip("/")),
+                "cache",
+                os.path.basename(self.data_dir.rstrip("/")),
+            )
+        self.use_cache = cache_dir is not None
+        if self.use_cache:
+            os.makedirs(cache_dir, exist_ok=True)
+        self.cache_dir = cache_dir
+
+    def _cache_path(self, clip_id: str) -> str:
+        return os.path.join(self.cache_dir, f"{clip_id}.pkl")
+
+    def _label_signature(self, label_path: str) -> str:
+        """Hash of the label CSV contents, so regenerated labels invalidate
+        the pickle cache (which is keyed by clip_id only)."""
+        try:
+            with open(label_path, "rb") as f:
+                return hashlib.md5(f.read()).hexdigest()[:12]
+        except OSError:
+            return "missing"
+
+    def _audio_signature(self, audio_path: str) -> str:
+        """Identity of the source audio file (size + mtime), so replacing or
+        re-downloading a clip invalidates its cached preprocessed audio."""
+        try:
+            st = os.stat(audio_path)
+        except OSError:
+            return "missing"
+        return f"{st.st_size}:{st.st_mtime_ns}"
+
+    def _config_signature(self) -> str:
+        raise NotImplementedError
+
+    def _load_from_cache(
+        self,
+        clip_id: str,
+        label_signature: str,
+        config_signature: str,
+        audio_signature: str,
+    ) -> Optional[Tuple[np.ndarray, np.ndarray]]:
+        path = self._cache_path(clip_id)
+        if not os.path.isfile(path):
+            return None
+        try:
+            with open(path, "rb") as f:
+                payload = pickle.load(f)
+        except (pickle.UnpicklingError, EOFError):
+            return None
+        if (
+            isinstance(payload, tuple)
+            and len(payload) == 5
+            and payload[0] == label_signature
+            and payload[1] == config_signature
+            and payload[2] == audio_signature
+        ):
+            return payload[3], payload[4]
+        return None
+
+    def _save_to_cache(
+        self,
+        clip_id: str,
+        label_signature: str,
+        config_signature: str,
+        audio_signature: str,
+        data: Tuple[np.ndarray, np.ndarray],
+    ) -> None:
+        path = self._cache_path(clip_id)
+        tmp_path = f"{path}.tmp"
+        with open(tmp_path, "wb") as f:
+            pickle.dump(
+                (label_signature, config_signature, audio_signature, data[0], data[1]),
+                f,
+                protocol=pickle.HIGHEST_PROTOCOL,
+            )
+        os.replace(tmp_path, path)
+
+
+class LocalizationDataset(_PickleCacheMixin):
     """
     PyTorch Dataset for dysfluency localization.
 
@@ -127,6 +222,7 @@ class LocalizationDataset:
         hop_length: int = 512,
         max_length_seconds: float = 10.0,
         sources: Optional[List[str]] = None,
+        cache_dir: Optional[str] = None,
     ):
         """
         Args:
@@ -138,6 +234,8 @@ class LocalizationDataset:
             sources: If given, only include clips whose source (from
                 sources.csv) is in this list. Ignored when sources.csv is
                 missing.
+            cache_dir: Directory for the pickle cache of preprocessed items.
+                None (default) auto-derives <data_dir parent>/cache/<basename>.
         """
         self.data_dir = data_dir
         self.sr = sr
@@ -146,6 +244,7 @@ class LocalizationDataset:
         self.max_samples = int(max_length_seconds * sr)
         self.max_frames = self.max_samples // hop_length
         self.sources = set(sources) if sources else None
+        self._init_cache(cache_dir)
         self._source_map = self._load_source_map()
 
         self.audio_dir = os.path.join(data_dir, "audio")
@@ -211,6 +310,18 @@ class LocalizationDataset:
 
         sample = self.samples[idx]
 
+        label_signature = self._label_signature(sample["label_path"])
+
+        if self.use_cache:
+            cached = self._load_from_cache(
+                sample["clip_id"],
+                label_signature,
+                self._config_signature(),
+                self._audio_signature(sample["audio_path"]),
+            )
+            if cached is not None:
+                return cached
+
         # Load audio
         audio, _ = load_audio(sample["audio_path"], sr=self.sr)
 
@@ -243,14 +354,29 @@ class LocalizationDataset:
         # Add channel dimension: (1, n_mels, max_frames)
         spec = spectrogram_to_image_array(spec)
 
-        return spec.astype(np.float32), frame_mask.astype(np.uint8)
+        result = (spec.astype(np.float32), frame_mask.astype(np.uint8))
+
+        if self.use_cache:
+            self._save_to_cache(
+                sample["clip_id"],
+                label_signature,
+                self._config_signature(),
+                self._audio_signature(sample["audio_path"]),
+                result,
+            )
+
+        return result
+
+    def _config_signature(self) -> str:
+        return (f"sr={self.sr};n_mels={self.n_mels};hop_length={self.hop_length};"
+                f"max_frames={self.max_frames}")
 
     def get_sample_info(self, idx: int) -> Dict:
         """Return metadata for a sample without loading audio."""
         return self.samples[idx].copy()
 
 
-class ClassificationDataset:
+class ClassificationDataset(_PickleCacheMixin):
     """
     PyTorch Dataset for dysfluency classification (multi-label).
 
@@ -269,10 +395,7 @@ class ClassificationDataset:
         self.sr = sr
         self.max_length_seconds = max_length_seconds
         self.max_samples = int(max_length_seconds * sr)
-        self.use_cache = cache_dir is not None
-        if self.use_cache:
-            os.makedirs(cache_dir, exist_ok=True)
-        self.cache_dir = cache_dir
+        self._init_cache(cache_dir)
         self.audio_dir = os.path.join(data_dir, 'audio')
         self.labels_dir = os.path.join(data_dir, 'labels')
         self.sources = set(sources) if sources else None
@@ -365,87 +488,24 @@ class ClassificationDataset:
 
         return result
 
-    def _cache_path(self, clip_id: str) -> str:
-        return os.path.join(self.cache_dir, f"{clip_id}.pkl")
-
-    def _label_signature(self, label_path: str) -> str:
-        """Hash of the label CSV contents, so regenerated labels invalidate
-        the pickle cache (which is keyed by clip_id only)."""
-        try:
-            with open(label_path, "rb") as f:
-                return hashlib.md5(f.read()).hexdigest()[:12]
-        except OSError:
-            return "missing"
-
     def _config_signature(self) -> str:
-        """Signature of the dataset config that changes the preprocessed audio
-        (sample rate and padded length)."""
         return f"sr={self.sr};max_samples={self.max_samples}"
-
-    def _audio_signature(self, audio_path: str) -> str:
-        """Identity of the source audio file (size + mtime), so replacing or
-        re-downloading a clip invalidates its cached preprocessed audio."""
-        try:
-            st = os.stat(audio_path)
-        except OSError:
-            return "missing"
-        return f"{st.st_size}:{st.st_mtime_ns}"
-
-    def _load_from_cache(
-        self,
-        clip_id: str,
-        label_signature: str,
-        config_signature: str,
-        audio_signature: str,
-    ) -> Optional[Tuple[np.ndarray, np.ndarray]]:
-        path = self._cache_path(clip_id)
-        if not os.path.isfile(path):
-            return None
-        try:
-            with open(path, "rb") as f:
-                payload = pickle.load(f)
-        except (pickle.UnpicklingError, EOFError):
-            return None
-        if (
-            isinstance(payload, tuple)
-            and len(payload) == 5
-            and payload[0] == label_signature
-            and payload[1] == config_signature
-            and payload[2] == audio_signature
-        ):
-            return payload[3], payload[4]
-        return None
-
-    def _save_to_cache(
-        self,
-        clip_id: str,
-        label_signature: str,
-        config_signature: str,
-        audio_signature: str,
-        data: Tuple[np.ndarray, np.ndarray],
-    ) -> None:
-        path = self._cache_path(clip_id)
-        with open(path, "wb") as f:
-            pickle.dump(
-                (label_signature, config_signature, audio_signature, data[0], data[1]),
-                f,
-                protocol=pickle.HIGHEST_PROTOCOL,
-            )
 
     def get_sample_info(self, idx: int) -> Dict:
         return self.samples[idx].copy()
 
 
-class SpectrogramClassificationDataset(Dataset):
+class SpectrogramClassificationDataset(_PickleCacheMixin, Dataset):
     """Classification dataset that materialises mel-spectrograms on the fly.
 
     Mirrors ``ClassificationDataset`` but returns ``(1, n_mels, n_frames)``
     spectrogram tensors instead of waveforms, so a CNN classifier can consume
-    the same label format. Supports the same ``sources.csv`` filtering.
+    the same label format. Supports the same ``sources.csv`` filtering and the
+    same pickle cache for preprocessed spectrograms.
     """
 
     def __init__(self, data_dir, sr=16000, n_mels=128, hop_length=512,
-                 max_length_seconds=10.0, sources=None):
+                 max_length_seconds=10.0, sources=None, cache_dir=None):
         self.data_dir = data_dir
         self.sr = sr
         self.n_mels = n_mels
@@ -454,6 +514,7 @@ class SpectrogramClassificationDataset(Dataset):
         self.max_samples = int(max_length_seconds * sr)
         self.max_frames = int(self.max_samples // hop_length) + 1
         self.sources = set(sources) if sources else None
+        self._init_cache(cache_dir)
         self._source_map = _load_source_map(data_dir)
         self.samples = self._scan_samples()
 
@@ -510,10 +571,37 @@ class SpectrogramClassificationDataset(Dataset):
         )
 
         sample = self.samples[idx]
+        label_signature = self._label_signature(sample['label_path'])
+
+        if self.use_cache:
+            cached = self._load_from_cache(
+                sample['clip_id'],
+                label_signature,
+                self._config_signature(),
+                self._audio_signature(sample['audio_path']),
+            )
+            if cached is not None:
+                return cached
+
         audio, _ = load_audio(sample['audio_path'], sr=self.sr)
         audio = clean_audio(audio, sr=self.sr)
         spec = generate_mel_spectrogram(audio, sr=self.sr, n_mels=self.n_mels,
                                         hop_length=self.hop_length)
         spec = pad_to_length(spec, self.max_frames, axis=1, pad_value=spec.min())
         spec = spectrogram_to_image_array(spec)
-        return spec.astype(np.float32), self._label_vector(sample)
+        result = (spec.astype(np.float32), self._label_vector(sample))
+
+        if self.use_cache:
+            self._save_to_cache(
+                sample['clip_id'],
+                label_signature,
+                self._config_signature(),
+                self._audio_signature(sample['audio_path']),
+                result,
+            )
+
+        return result
+
+    def _config_signature(self) -> str:
+        return (f"sr={self.sr};n_mels={self.n_mels};hop_length={self.hop_length};"
+                f"max_frames={self.max_frames}")

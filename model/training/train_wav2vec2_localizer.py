@@ -78,6 +78,8 @@ def parse_args():
     parser.add_argument("--no-augmentation", dest="augmentation", action="store_false",
                         default=True,
                         help="Disable label-aligned waveform augmentation (ablation).")
+    parser.add_argument("--cache_dir", type=str, default=None,
+                        help="Cache directory for preprocessed audio (auto-derived from data_dir if omitted).")
     return parser.parse_args()
 
 
@@ -255,13 +257,22 @@ def train(args) -> Dict:
 
     # ---- Dataset ----
     print("\n  Loading dataset...")
+    cache_dir = args.cache_dir
+    if cache_dir is None:
+        cache_dir = os.path.join(
+            os.path.dirname(args.data_dir.rstrip("/")),
+            "cache",
+            os.path.basename(args.data_dir.rstrip("/")),
+        )
     dataset = Wav2Vec2LocalizationDataset(
         data_dir=args.data_dir,
         sr=16000,
         max_length_seconds=args.max_length_seconds,
         sources=[s.strip() for s in args.sources.split(",")] if args.sources else None,
+        cache_dir=cache_dir,
     )
     print(f"  Total samples: {len(dataset)}")
+    print(f"  Cache: {cache_dir}")
 
     if len(dataset) == 0:
         print("  ERROR: No samples found. Check data_dir structure.")
