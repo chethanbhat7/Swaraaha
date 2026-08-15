@@ -29,6 +29,8 @@ def localize_audio_bytes(audio_bytes: bytes) -> dict:
         audio_data = librosa.resample(audio_data, orig_sr=sr, target_sr=16000)
         sr = 16000
 
+    duration_sec = round(len(audio_data) / sr, 3)
+
     if len(audio_data) > 160000:
         audio_data = audio_data[:160000]
     elif len(audio_data) < 160000:
@@ -38,13 +40,14 @@ def localize_audio_bytes(audio_bytes: bytes) -> dict:
     spec = generate_mel_spectrogram(audio_data, sr=sr)
 
     try:
-        regions = get_model().predict(spec, threshold=0.5)
+        regions = get_model().predict(spec)
     except Exception as e:
-        return {"regions": [], "error": str(e)}
+        return {"regions": [], "error": str(e), "duration_sec": duration_sec}
 
     return {
         "regions": [
             {"start": round(s, 3), "end": round(e, 3), "confidence": round(c, 4)}
             for s, e, c in regions
-        ]
+        ],
+        "duration_sec": duration_sec,
     }
