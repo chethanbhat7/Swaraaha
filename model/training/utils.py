@@ -311,6 +311,126 @@ def align_frame_labels(frame_labels, logits):
     return torch.nn.functional.pad(frame_labels, (0, n - frame_labels.shape[-1]))
 
 
+def build_localizer_criterion(pos_weight: Optional[float] = None, device: str = "cpu"):
+    """Build the BCEWithLogitsLoss criterion for localizer training.
+
+    Localizer frame labels are heavily imbalanced (dysfluent frames are rare),
+    so an unweighted loss under-penalizes missed frames. When ``pos_weight`` is
+    given the criterion weights positive frames by that factor.
+    """
+    if pos_weight is not None:
+        return torch.nn.BCEWithLogitsLoss(
+            pos_weight=torch.tensor([pos_weight], device=device)
+        )
+    return torch.nn.BCEWithLogitsLoss()
+
+
+def compute_frame_auroc(y_true, y_scores) -> float:
+    """Threshold-free frame-level score used for localizer early stopping.
+
+    Frame F1 at a fixed threshold of 0.5 is a dead metric for rare positives
+    (all-negative predictions score near-perfect), so early stopping must use a
+    threshold-independent ranking score instead. Returns 0.5 (chance) when only
+    one class is present, keeping the metric well-defined on degenerate splits.
+    """
+    from model.evaluation.metrics import compute_binary_metrics
+
+    return float(compute_binary_metrics(y_true, y_scores)["auroc"])
+
+
+def extract_regions(mask: np.ndarray) -> List[tuple]:
+    """Find contiguous runs of 1s in a binary frame mask.
+
+    Returns a list of (start, end) frame index pairs (end exclusive).
+    """
+    regions = []
+    in_region = False
+    start = 0
+    for i, v in enumerate(mask):
+        if v == 1 and not in_region:
+            in_region = True
+            start = i
+        elif v == 0 and in_region:
+            in_region = False
+            regions.append((start, i))
+    if in_region:
+        regions.append((start, len(mask)))
+    return regions
+
+
+def compute_mean_iou(true_regions, pred_regions) -> float:
+    """Mean best-match IoU between true and predicted regions (frame units).
+
+    For each true region, take the highest IoU against any predicted region;
+    return the mean across true regions. 0.0 if either list is empty.
+    """
+    if not true_regions or not pred_regions:
+        return 0.0
+
+    ious = []
+    for ts, te in true_regions:
+        best_iou = 0.0
+        for ps, pe in pred_regions:
+            inter_start = max(ts, ps)
+            inter_end = min(te, pe)
+            intersection = max(0, inter_end - inter_start)
+            union = (te - ts) + (pe - ps) - intersection
+            iou = intersection / union if union > 0 else 0.0
+            best_iou = max(best_iou, iou)
+        ious.append(best_iou)
+
+    return float(np.mean(ious)) if ious else 0.0
+
+
+def compute_event_mean_iou(y_true: np.ndarray, pred_bin: np.ndarray) -> float:
+    """Mean event-level IoU from a binary frame mask and a thresholded mask."""
+    return compute_mean_iou(
+        extract_regions(y_true.astype(int)),
+        extract_regions(pred_bin.astype(int)),
+    )
+
+
+def compute_frame_pos_weight(
+    samples: List[Dict],
+    num_frames: int,
+    sr: int = 16000,
+    hop_length: int = 512,
+) -> float:
+    """Compute inverse-frequency pos_weight from per-clip label CSVs.
+
+    Frame labels are built from the label intervals only (no audio is loaded),
+    so the ratio can be computed once at training start. The masks use the same
+    frame convention as ``create_frame_labels``: frame ``i`` covers audio
+    samples ``i * hop_length`` onwards.
+
+    Args:
+        samples: List of sample dicts with a ``label_path`` key.
+        num_frames: Fixed frame count per clip (the padded training length).
+        sr: Sample rate used for frame placement.
+        hop_length: Frames per spectrogram hop.
+
+    Returns:
+        pos_weight = round(n_neg / n_pos, 4), or 1.0 when no positive frames.
+    """
+    from model.data.dataset import load_label_csv
+    from model.data.preprocessing import create_frame_labels
+
+    total_frames = len(samples) * num_frames
+    total_pos = 0
+    for sample in samples:
+        intervals = load_label_csv(sample["label_path"])
+        mask = create_frame_labels(
+            [(start, end) for start, end, _ in intervals],
+            num_frames=num_frames, sr=sr, hop_length=hop_length,
+        )
+        total_pos += int(mask.sum())
+    n_pos = total_pos
+    n_neg = total_frames - total_pos
+    if n_pos == 0:
+        return 1.0
+    return round(n_neg / n_pos, 4)
+
+
 def find_latest_localizer(output_dir: str, pipeline: str) -> Optional[str]:
     """Return the most recently modified {pipeline} best-checkpoint path, or None."""
     import glob

@@ -30,6 +30,8 @@ def create_training_data(
     val_ratio: float = 0.1,
     test_ratio: float = 0.1,
     seed: int = 42,
+    force: bool = False,
+    test_only_sources: tuple[str, ...] = ("boli",),
 ) -> Path:
     """
     Create training-ready directory structure from merged dataset.
@@ -41,6 +43,9 @@ def create_training_data(
         val_ratio: Fraction of data for validation.
         test_ratio: Fraction of data for testing.
         seed: Random seed for reproducible splits.
+        force: Overwrite existing label CSVs in split directories.
+        test_only_sources: Sources that must never appear in train/val;
+                           all such clips are pinned to the test split.
 
     Returns:
         Path to output directory.
@@ -66,30 +71,51 @@ def create_training_data(
         df = df[exists].reset_index(drop=True)
     print(f"  {len(df)} clips with valid audio")
 
-    # Filter out header-only WAV files (just 44-byte header, no audio data)
-    has_data = df["clip_file"].apply(lambda p: Path(p).stat().st_size > 44)
-    empty_hdr = (~has_data).sum()
-    if empty_hdr > 0:
-        print(f"  Skipping {empty_hdr} clips with empty audio (header-only)")
-        df = df[has_data].reset_index(drop=True)
+    # Filter out header-only WAV files (just 44-byte header, no audio data).
+    # Guarded against an already-empty df: `~series.sum()` on an empty
+    # object-dtype series yields a string, not an int.
+    if len(df) > 0:
+        has_data = df["clip_file"].apply(lambda p: Path(p).stat().st_size > 44)
+        empty_hdr = (~has_data).sum()
+        if empty_hdr > 0:
+            print(f"  Skipping {empty_hdr} clips with empty audio (header-only)")
+            df = df[has_data].reset_index(drop=True)
     print(f"  {len(df)} clips with usable audio")
+
+    if len(df) == 0:
+        print("Error: no clips with usable audio after filtering; "
+              "refusing to create empty splits.")
+        sys.exit(1)
 
     # Count interval CSVs available
     labels_dir = merged_path.parent / "labels"
     total_intervals = sum(1 for _ in labels_dir.glob("*.csv")) if labels_dir.exists() else 0
     print(f"  Interval CSVs available: {total_intervals}")
 
+    # Load clip_id -> source mapping (optional)
+    sources_path = merged_path.parent / "sources.csv"
+    source_map = {}
+    if sources_path.exists():
+        sources_df = pd.read_csv(sources_path)
+        source_map = dict(zip(sources_df["clip_id"], sources_df["source"]))
+
     # Create splits
     rng = np.random.default_rng(seed)
-    indices = rng.permutation(len(df))
-    n_train = int(len(df) * train_ratio)
-    n_val = int(len(df) * val_ratio)
+    pinned_mask = df["source"].isin(test_only_sources)
+    pinned_idx = np.where(pinned_mask)[0].tolist()
+    free_idx = np.where(~pinned_mask)[0].tolist()
+
+    indices = rng.permutation(free_idx)
+    n_train = int(len(free_idx) * train_ratio)
+    n_val = int(len(free_idx) * val_ratio)
 
     split_indices = {
         "train": indices[:n_train].tolist(),
         "val": indices[n_train:n_train + n_val].tolist(),
-        "test": indices[n_train + n_val:].tolist(),
+        "test": indices[n_train + n_val:].tolist() + pinned_idx,
     }
+    if pinned_idx:
+        print(f"  Pinned {len(pinned_idx)} clips to test (sources: {', '.join(test_only_sources)})")
 
     # Build splits.json and create directories
     splits = {}
@@ -124,11 +150,18 @@ def create_training_data(
             # Copy label CSV
             src_label = labels_dir / f"{clip_stem}.csv"
             dst_label = split_labels_dir / f"{clip_stem}.csv"
-            if src_label.exists() and not dst_label.exists():
+            if src_label.exists() and (not dst_label.exists() or force):
                 shutil.copy2(src_label, dst_label)
                 label_found += 1
             elif not src_label.exists():
                 label_missing += 1
+
+        # Write sources.csv for this split
+        split_sources = pd.DataFrame([
+            {"clip_id": Path(c).stem, "source": source_map.get(Path(c).stem, "")}
+            for c in clip_files
+        ], columns=["clip_id", "source"])
+        split_sources.to_csv(split_dir / "sources.csv", index=False)
 
         all_label_found += label_found
         all_label_missing += label_missing
@@ -171,6 +204,10 @@ if __name__ == "__main__":
     parser.add_argument(
         "--seed", type=int, default=42, help="Random seed"
     )
+    parser.add_argument(
+        "--force", action="store_true",
+        help="Overwrite existing label CSVs in split directories.",
+    )
     args = parser.parse_args()
 
     create_training_data(
@@ -179,4 +216,5 @@ if __name__ == "__main__":
         val_ratio=args.val_ratio,
         test_ratio=args.test_ratio,
         seed=args.seed,
+        force=args.force,
     )

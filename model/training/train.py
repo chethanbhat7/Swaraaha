@@ -61,6 +61,12 @@ class SystemInfo:
             elif self.has_gpu:
                 return 2
             return 1
+        elif pipeline == "mt":
+            if self.has_gpu and self.gpu_memory_gb >= 8:
+                return 16
+            elif self.has_gpu:
+                return 8
+            return 4
         return 4
 
     def optimal_num_workers(self) -> int:
@@ -82,6 +88,7 @@ CLASS_NAMES = ["prolongation", "block", "soundrep", "wordrep", "interjection"]
 
 PIPELINE_SCRIPTS = {
     "cls": "model.training.train_classifier",
+    "mt": "model.training.train_multitask_classifier",
     "loc": "model.training.train_localizer",
     "wav2vec": "model.training.train_wav2vec2_localizer",
 }

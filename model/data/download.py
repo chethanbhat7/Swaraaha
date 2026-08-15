@@ -42,8 +42,9 @@ class Dataset:
 
     def download(self) -> tuple:
         """Download the dataset. Returns (success: bool, message: str)."""
-        if self.get_path().exists():
-            return True, f"{self.name} already exists at {self.get_path()}"
+        path = self.get_path()
+        if path.exists() and any(path.iterdir()):
+            return True, f"{self.name} already exists at {path}"
 
         if self._handler is None:
             return False, f"Unknown dataset type: {self.dtype}"
@@ -155,5 +156,15 @@ def download_datasets(
     return results
 
 
+def main() -> int:
+    """Download all datasets. Returns exit code (0 on full success)."""
+    try:
+        results = download_datasets()
+    except Exception as e:
+        print(f"  Download failed: {e}")
+        return 1
+    return 0 if all(ok for ok, _ in results.values()) else 1
+
+
 if __name__ == "__main__":
-    download_datasets()
+    raise SystemExit(main())

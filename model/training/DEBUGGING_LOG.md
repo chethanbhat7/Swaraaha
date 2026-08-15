@@ -530,3 +530,356 @@ is not used — all-5 output is raw per-classifier results plus a detected-class
 F1 is optimized at the default 0.5 decision threshold. Sweeping the threshold on
 the val set (precision/recall curve) can recover several points of F1 with zero
 retraining — worth doing before any architecture change.
+
+---
+
+## 9. Localizer: waveform augmentation applied to spectrograms
+
+**Symptom:** CNN spectrogram localizer frame `F1` stuck at `0.000`; validation
+loss dropped but no frame ever crossed the `0.5` threshold.
+
+**Root cause:** `AugmentedDataset` ran the *waveform* `AudioAugmentor` (noise,
+time-stretch, pitch-shift, roll) directly on `(1, n_mels, T)` spectrogram
+arrays. Stretch/pitch-shift resampled the time axis while frame labels stayed
+put — augmented "signal" had near-zero correlation with labels (measured ≈
+`−0.11`). Training on misaligned labels ≈ training on noise.
+
+**Files affected:**
+- `model/data/augmentation.py`
+
+**Fix (rewrote `model/data/augmentation.py`):**
+- `SpectrogramAugmentor` — SpecAugment-style masking on `(C, n_mels, T)`;
+  masking never moves energy in time, labels stay valid.
+- `AudioAugmentor.apply_with_labels(...)` — samples each transform once and
+  applies it to audio AND frame labels in lockstep (stretch/pitch via
+  `_resample`, roll shifts labels by `round(shift / frame_hop)` frames).
+- `AugmentedDataset` routes by input dimensionality + `label_aligned` /
+  `frame_hop_samples` instead of waveform-augmenting everything.
+
+**Verified by:** 12 new tests in `model/data/tests/test_augmentation.py`.
+
+---
+
+## 10. Localizer: SEP-28K weak labels inflate all-source metrics
+
+**Symptom:** All-sources run (sep28k + uclass) hit frame `F1 0.85`, IoU `0.90`
+— looked great but was not the trustworthy number.
+
+**Root cause:** SEP-28K intervals span the whole clip (`0.000,3.000`), so
+whole-clip predictions trivially match whole-clip ground truth. Only UCLASS has
+precise event intervals.
+
+**Fix:** The trustworthy number comes from a UCLASS-only run:
+`python -m model.training.train --pipelines loc wav2vec -- --sources uclass --clean`.
+
+---
+
+## 11. Localizer: `pos_weight=5.0` ~8× too weak (current case)
+
+**Symptom:** UCLASS-only CNN run: `AUROC 0.927` but frame `F1@0.5 = 0.011`
+(final best `0.014`). Prediction distribution: `max = 0.537`, `p99.9 = 0.488`
+— nothing meaningfully exceeds `0.5`. Best-threshold F1 only `0.256`
+(at `t = 0.38`); precision at the API default threshold `0.3` is `0.148`
+(85% false positives).
+
+**Root cause:** Positive-frame rate on UCLASS is `2.5%`, so the balanced
+`pos_weight` should be `n_neg/n_pos ≈ 39`. The hardcoded `5.0` is ~8× too
+weak — the loss never pushes outputs into confident territory, and every
+prediction is compressed into a low-probability band overlapping the negatives.
+High AUROC despite poor F1 = small separable subset drives the ranking.
+
+**Diagnostic evidence** (evaluate on val, `check_cnn_preds.py`):
+```
+positive ratio = 0.02486
+F1@0.5 = 0.0114   AUROC = 0.9273   best-threshold F1 = 0.256 at t=0.38
+pos preds: mean 0.384, p90 0.464
+neg preds: p99.9 0.484, max 0.537   ← negatives beat most positives
+t=0.3 → F1 0.249, precision 0.148, recall 0.793
+```
+
+**Fix (implemented, awaiting retrain):** `--pos_weight` default `5.0` → `None`
+(auto-computed from training-split frame labels, inverse frequency); best-
+threshold F1 reported alongside AUROC. Files:
+`model/training/train_localizer.py`, `model/training/train_wav2vec2_localizer.py`,
+`model/training/utils.py`.
+
+---
+
+## 12. Localizer: Wav2Vec2 path is the working one
+
+UCLASS-only w2v2 run reached frame `F1@0.5 = 0.322`, `AUROC 0.943` at epoch 6
+and still climbing. The pretrained backbone separates events even at threshold
+0.5 — no compression problem. Expect CNN to remain the weak link.
+
+---
+
+## 13. Project Boli: all clips silently skipped in merge
+
+**Symptom:** 0 Boli clips ingested; combined labels only had sep28k + uclass.
+
+**Root causes (two, in `model/data/merge.py`):**
+1. **Filename mismatch:** transcript stems are `{nEvents}_{speaker}_{task}`
+   (`10_727253_EI`) but audio files are `{speaker}_english_{task}_blob.wav`
+   (`727253_english_image_blob.wav`). Matcher only tried `{stem}.wav`.
+2. **Timestamps are seconds, not ms:** the parser divided by 1000, so every
+   Boli interval would be 1000× too small.
+
+**Fix (TDD, 9 tests in `model/data/tests/test_merge.py`):**
+`_boli_audio_name()` maps `{nEvents}_{speaker}_{task}` →
+`{speaker}_english_{task}_blob.wav` (task codes `E1/E2/E3/EI`); raw seconds
+kept as seconds.
+
+**Verified by:** real-data run → 54/55 clips ingested as `source='boli'`
+(312 intervals: SR 159, B 74, PR 42, WR 21, IN 16). The 1 skipped clip is a
+genuine missing-audio case upstream.
+
+---
+
+## 14. Transcription fidelity: Whisper is not a stutter detector
+
+**Probe:** 100 SEP-28K single-label clips per group (soundrep, wordrep, block,
+prolongation, clean) + 50 UCLASS clips with precise events, through the real
+`Transcriber.transcribe()` (Whisper-tiny + `_flag_repetitions`).
+
+**Results:**
+- Raw fidelity: sound-reps as repeated tokens in **1/100** clips; blocks
+  vanish entirely (**0/100**).
+- `wordrep` flag fired **0/500** times — even where Whisper DID transcribe the
+  repeat.
+- `soundrep` flags dominated by ellipsis false positives: regex `(.)\1{2,}`
+  matches `...` in `"she..."`, `"just..."`, plus `,000` in numbers.
+  False-positive rate on clean clips (4%) > recall on real soundreps (3%).
+- UCLASS event-level: recall 6.1%, precision 75% (only 4 flags in 50 clips).
+
+**Root causes:**
+1. `_transcribe_with_whisper` de-dups consecutive identical chunks
+   (hallucination guard) *before* `_flag_repetitions` runs → genuine repeats
+   already collapsed.
+2. `_is_repeated_fragment` regex matches 3+ trailing periods.
+
+**Fix:** none applied yet (pending: fix regex + reorder flagging, or document
+as display-layer limitation).
+
+**Design implication:** detection never uses the transcript; type-linking stays
+audio-only (classifier saliency). Transcription is display-only.
+
+---
+
+## 15. `--sources` not in localizer fingerprint → silent skip
+
+**Symptom:** rerun with different `--sources` would silently skip because
+`maybe_skip_completed` saw a completed checkpoint with the same fingerprint.
+
+**Root cause:** `sources` not in `CNN_LOCALIZER_RESUME_KEYS` /
+`W2V2_LOCALIZER_RESUME_KEYS`.
+
+**Fix (workflow):** always pass `--clean` when changing sources.
+
+---
+
+## 16. Probe infra bug: `pipe.__call__` monkeypatch ignored
+
+**Symptom:** raw Whisper chunks never captured; raw-fidelity metrics showed 0%.
+
+**Root cause:** Python resolves `__call__` on the *type*, not the instance;
+`pipe.__call__ = fn` is silently ignored.
+
+**Fix:** wrap the pipeline in a `_Proxy` instance that stashes raw output on a
+side channel.
+
+---
+
+## 17. M13 labels reached `data/labels` but never the training splits
+
+**Symptom:** After re-running `python -m model.data.setup`, retraining produced
+the same inflated positive ratios as before the M13 (SEP-28K majority-vote)
+fix — training results looked unchanged.
+
+**Root cause:** `setup.py` ran `merge` and `prepare` as subprocesses with no
+flags. The re-merge DID write majority-vote labels to `data/labels`, but
+`prepare` only copies a label when the destination is missing or `--force` is
+given — so existing `data/train/labels` kept the old single-annotator labels.
+The new ground truth never reached the training splits.
+
+**Fix (operational):** `python -m model.data.prepare --force`, which
+re-copied all 36,674 labels into the splits (verified: block positive ratio
+dropped 0.401 → 0.141).
+
+**Fix (code):** `setup.py` now accepts `--force` (forwarded to merge +
+prepare) and forwards any `--` extra args to every step, so re-running setup
+with `python -m model.data.setup --force` regenerates and propagates labels.
+
+---
+
+## 18. Multitask classifier: `load_multitask` crashed on training-format checkpoints
+
+**Symptom:** `--model_type multitask` eval crashed with
+`KeyError: 'model_name'` in `MultiTaskWav2VecClassifier.from_pretrained`
+(model/classification/multitask.py:135).
+
+**Root cause:** Format mismatch. Training scripts save via `save_checkpoint`
+(model/training/utils.py:17-56) → `{epoch, model_state_dict,
+optimizer_state_dict, metrics, scheduler_state_dict}` with **no `model_name`**.
+The model class's own `save()` writes `{model_state_dict, model_name,
+class_names, hidden_dim}`. `load_multitask` (model/evaluation/loader.py)
+unconditionally called `from_pretrained`, which requires `model_name`.
+`load_classifier` already handled both formats (checks `"model_name" in
+checkpoint`); `load_multitask` did not.
+
+**Fix:** `load_multitask` now checks for `"model_name"` in the checkpoint. If
+absent, it infers the HF model name via `model_name_from_path`
+(model/fingerprint.py:77, maps `w2v2base` → `facebook/wav2vec2-base`; the
+`multi_` fingerprint parses fine), builds `MultiTaskWav2VecClassifier(
+model_name=..., hidden_dim=768, class_names=None)`, strips `_orig_mod.`
+prefixes, `load_state_dict(strict=True)`.
+
+**Test:** `model/evaluation/tests/test_loader.py:test_load_multitask_training_format_without_model_name`
+(monkeypatched model class). Full suite: 296 passed.
+
+---
+
+## 19. First multitask training run — results (freeze=3, focal, 20 epochs)
+
+**Fingerprint:** `multi_e20_b16_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml10_s42_train_w2v2base`
+**Artifacts:** `model/weights/{fp}_{best,final,checkpoint}.pt`, `_log.csv`, `_training.log`.
+
+**Result:** 11 epochs (early stop, patience 5, best = epoch 6). val macro-F1
+0 → 0.3651 (best), 0.357 at ep11. val_acc 0.87–0.90. Train Focal loss 0.51→0.34.
+Backbone frozen 3 epochs, unfroze ep4 (head LR 3e-5, backbone 3e-6). 7395.7s total.
+
+**Decision: `val_loss` (1.7–2.6) is NOT a real problem.** It's a
+metric-mismatch artifact: val loss = CrossEntropy summed over 5 heads
+(train_multitask_classifier.py:211), train loss = FocalLoss γ=2 summed (:354).
+Focal downweights easy examples, so it is systematically ~5× lower.
+val_loss was actually decreasing across epochs.
+
+**Decision: MT beats the single-classifier approach on hard classes.** Earlier
+b16 single-classifier runs collapsed to all-negative (F1 0.0). MT reaches 0.365
+macro. Old single-class block classifier had AUROC 0.499 (≈random,
+always-positive); MT block head gets AUROC 0.752 — the shared backbone fixes
+the hard classes.
+
+**Eval on best.pt** (data/train, 20% stratified split seed 42, 5857 val
+samples, @t=0.5):
+
+| class        | F1    | AUROC | support |
+|--------------|-------|-------|---------|
+| prolongation | 0.422 | 0.820 | 568     |
+| block        | 0.147 | 0.752 | ~832    |
+| soundrep     | 0.281 | 0.832 | ~715    |
+| wordrep      | 0.249 | 0.756 | ~562    |
+| interjection | 0.725 | 0.916 | 1259    |
+| **macro avg**| **0.365** |      |         |
+
+Positive ratios (train): prolongation 0.095, block 0.142, soundrep 0.122,
+wordrep 0.096, interjection 0.218.
+
+**Observation:** AUROC ≫ F1@0.5 for every class ⇒ threshold mis-calibration is
+the bottleneck, not ranking quality. Drives section 20.
+
+---
+
+## 20. Threshold tuning phase (current)
+
+**Decision:** Focus on proving and capturing the per-class threshold gap for the
+multitask classifier before any retraining. Rationale: AUROC (0.75–0.92) is far
+above what a single fixed 0.5 threshold produces (macro F1 0.365), so the model
+ranks well — the operating point is wrong.
+
+**Scope (all in):**
+1. `evaluate_multitask` honors `--sweep_thresholds`.
+2. Per-class optimal thresholds persisted to `multitask_thresholds.json`.
+3. `MultiTaskClassifier.analyze` (registry) applies per-class thresholds.
+
+**Design doc:** `docs/superpowers/specs/2026-08-13-multitask-threshold-tuning-design.md`
+
+**Note:** `evaluate_multitask` (evaluate.py:485-554) currently ignores
+`--sweep_thresholds` — only the classifier/localizer paths use it. The machinery
+to reuse already exists: `THRESHOLD_SWEEP = np.arange(0.1, 0.91, 0.05)`
+(metrics.py:15) and `find_optimal_threshold` (metrics.py:274).
+
+---
+
+## 21. Threshold tuning results (done)
+
+**Symptom (resolved):** macro F1 stuck at 0.365 with a global 0.5 threshold
+despite AUROC 0.75–0.92 — the operating point, not the ranking, was the
+bottleneck.
+
+**Fix (implemented, TDD):**
+1. `evaluate_multitask` honors `--sweep_thresholds` (per-class `threshold_sweep`
+   with `best_f1`/`best_youden`/`f1_at_default`/`sweep` rows; headline
+   `macro_f1_at_optimal`).
+2. Sweep optima persisted to `<output_dir>/multitask_thresholds.json`
+   (`f1_threshold`/`youden_threshold` per class, rounded to 2dp).
+3. `MultiTaskClassifier` (registry) resolves per-class thresholds — registry
+   `thresholds_path` → sibling `multitask_thresholds.json` next to the model
+   file → single-threshold fallback.
+
+**Real run** (best.pt, data/train, 20% stratified val split seed 42, 5857
+samples, batch 16): macro F1 **0.365 → 0.467** at per-class optimal thresholds.
+
+| class        | F1@0.5 | F1@opt | f1_thr | youden_thr | AUROC |
+|--------------|--------|--------|--------|------------|-------|
+| prolongation | 0.422  | 0.422  | 0.50   | 0.40       | 0.820 |
+| block        | 0.147  | 0.391  | 0.40   | 0.35       | 0.752 |
+| soundrep     | 0.281  | 0.459  | 0.35   | 0.25       | 0.832 |
+| wordrep      | 0.249  | 0.337  | 0.40   | 0.35       | 0.756 |
+| interjection | 0.725  | 0.725  | 0.50   | 0.40       | 0.916 |
+| **macro avg**| **0.365** | **0.467** |      |            |      |
+
+Biggest winners: block +0.24, soundrep +0.18, wordrep +0.09. Interjection and
+prolongation peak at 0.50 (already at their optimum).
+
+**Artifacts:** the sweep writes `model/evaluation/reports/multitask_thresholds.json`
+as a report artifact; the per-class thresholds are baked into `model/registry.json`
+under `classification_multitask.thresholds` (inline, tracked with the registry), so
+`MultiTaskClassifier` reads them at load time. The `thresholds_path`/sibling-file
+mechanisms remain as fallbacks for unregistered setups.
+
+**Held-out validation (DONE, §21 follow-up):** the repo ships a genuinely held-out
+split — `data/train` / `data/val` / `data/test` built by `create_training_data`
+(80/10/10, `boli` source pinned to test; disjoint clip sets, verified via
+`sources.csv` overlap). Training/eval never touch it by default. Final numbers
+must come from the held-out split:
+```
+python -m model.evaluation.evaluate --model_type multitask \
+    --model_path <ckpt> --data_dir data/test --batch_size 16 \
+    --full --sweep_thresholds --output_dir model/evaluation/reports
+```
+(`--full` = evaluate ENTIRE data_dir, no 20% split; explicitly designed for
+`--data_dir data/test`.) Results on the current best model (3715 test clips):
+
+| Class | val F1@0.5 | test F1@0.5 | val F1@opt | test F1@opt | test AUROC |
+|---|---|---|---|---|---|
+| prolongation | 0.422 | 0.399 | 0.422 | 0.435 | 0.802 |
+| block | 0.147 | 0.111 | 0.391 | 0.368 | 0.703 |
+| soundrep | 0.281 | 0.214 | 0.459 | 0.453 | 0.819 |
+| wordrep | 0.249 | 0.194 | 0.337 | 0.326 | 0.759 |
+| interjection | 0.725 | 0.724 | 0.725 | 0.724 | 0.908 |
+| **macro** | **0.365** | **0.328** | **0.467** | **0.461** | — |
+
+Interpretation: ~4pt optimism at the fixed 0.5 threshold (mild overfit to the
+val split), but optimal-threshold macro holds up (0.467 → 0.461) and the
+test-optimal thresholds {0.45, 0.35, 0.30, 0.40, 0.50} nearly match the
+val-tuned registry values {0.5, 0.4, 0.35, 0.4, 0.5} — thresholds transfer well.
+
+**Caveats:**
+- Thresholds tuned on the val split and applied to held-out test are the honest
+  headline; tuning on test itself would be optimism (only done above to verify
+  threshold stability).
+- `f1_at_0_5`/`macro_f1_at_0_5` keys are mislabeled when `--threshold` is
+  overridden (they're really "at args.threshold"). Harmless with the default
+  0.5; noted for the retrain phase.
+- `f1_at_0_5`/`macro_f1_at_0_5` keys are mislabeled when `--threshold` is
+  overridden (they're really "at args.threshold"). Harmless with the default
+  0.5; noted for the retrain phase.
+
+**Bonus bug found by the sanity check:** the registry's `_load_multitask_classifier`
+used `MultiTaskWav2VecClassifier.from_pretrained` only — crashes with
+`KeyError: 'model_name'` on training-format checkpoints (saved by
+`save_checkpoint`, no `model_name` key). Fixed by delegating to the robust
+`model.evaluation.loader.load_multitask` (same dual-format handling as §18,
+which covered the evaluation loader). Test:
+`test_multitask_loader_handles_training_format`.
+

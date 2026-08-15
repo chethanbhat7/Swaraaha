@@ -74,6 +74,20 @@ PROJECT_BOLI_LABEL_MAP = {
 }
 
 # ============================================================================
+# LABEL GENERATION
+# ============================================================================
+
+# SEP-28K clips are 3.0s (48000 samples @ 16kHz). Start/Stop in the label CSVs
+# are episode-relative sample boundaries, so every present clip-level label is
+# materialized as a full-clip weak interval (0.0, duration).
+SEP28K_CLIP_DURATION_SEC = 3.0
+
+# UCLASS 3s clips are centered on the stutter event (~1.5s into the clip), so
+# each present label becomes an interval centered at that point.
+UCLASS_EVENT_CENTER_SEC = 1.5
+UCLASS_INTERVAL_HALF_WIDTH_SEC = 0.25
+
+# ============================================================================
 # WORKFLOW
 # ============================================================================
 

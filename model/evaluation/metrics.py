@@ -12,6 +12,15 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 
 
+THRESHOLD_SWEEP = np.arange(0.1, 0.91, 0.05)
+"""Canonical threshold grid for sweep-based optimal-threshold search.
+
+Shared by ``find_optimal_threshold`` and the printed sweep in
+``evaluate.py`` so the reported optimum is always a row of the printed
+table (M8: they previously disagreed).
+"""
+
+
 def _trapezoid(y: np.ndarray, x: np.ndarray) -> float:
     """
     Integrate ``y`` over ``x`` with the trapezoidal rule.
@@ -83,8 +92,13 @@ def compute_classification_metrics(
         fn = int(np.sum((y_true_idx == c) & (y_pred_idx != c)))
         support = int(np.sum(y_true_idx == c))
 
-        precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
-        recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+        # With no predicted positives, precision is trivially 1.0 (no false
+        # alarms); with no true positives, recall is trivially 1.0 (nothing
+        # missed). Degenerate classes (no support, no predictions) are
+        # therefore perfect, so a perfect model on an all-one-class split
+        # scores macro-F1 1.0 instead of 1/C (sklearn zero_division=1).
+        precision = tp / (tp + fp) if (tp + fp) > 0 else 1.0
+        recall = tp / (tp + fn) if (tp + fn) > 0 else 1.0
         f1 = (
             2 * precision * recall / (precision + recall)
             if (precision + recall) > 0
@@ -278,9 +292,9 @@ def find_optimal_threshold(
     y_true = np.asarray(y_true).astype(int)
     y_scores = np.asarray(y_scores).astype(float)
 
-    thresholds = np.arange(0.05, 0.96, 0.05)
+    thresholds = THRESHOLD_SWEEP
     best_thresh = 0.5
-    best_val = 0.0
+    best_val = -float("inf")
 
     for thresh in thresholds:
         y_pred = (y_scores >= thresh).astype(int)
@@ -350,8 +364,13 @@ def compute_localization_metrics(
     fn = int(np.sum((y_true == 1) & (y_pred_bin == 0)))
     tn = int(np.sum((y_true == 0) & (y_pred_bin == 0)))
 
-    precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
-    recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+    # With no predicted positives, precision is trivially 1.0 (no false
+    # alarms); with no true positives, recall is trivially 1.0 (nothing
+    # missed). Keeps all-negative perfect predictions at F1=1.0, consistent
+    # with _compute_event_metrics returning (1.0, 1.0) for empty region lists
+    # (matches sklearn's zero_division=1 convention).
+    precision = tp / (tp + fp) if (tp + fp) > 0 else 1.0
+    recall = tp / (tp + fn) if (tp + fn) > 0 else 1.0
     f1 = (
         2 * precision * recall / (precision + recall)
         if (precision + recall) > 0
