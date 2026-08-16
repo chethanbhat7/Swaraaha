@@ -928,3 +928,30 @@ and share the buggy metadata (records 512); they were **not** re-trained here �
 if they are ever used for evals, they must be re-trained with the fixed trainer
 first.
 
+---
+
+## §23 Comparative study — results matrix
+
+All 7 classifier arms trained and evaluated at 3 s (`ml3`; single seed 42).
+Thresholds swept on the internal val split (20%, seed 42) and applied to
+test/Boli via `--thresholds_path`. Test = same-speaker held-out (known
+speaker leakage); Boli = cross-corpus held-out (~53 clips).
+
+| Arm | Type | Params | Test F1@0.5 | Test F1@tuned | Boli F1@0.5 | Boli F1@tuned |
+|-----|------|-------:|------------:|--------------:|------------:|--------------:|
+| 1. 5× single-head Wav2Vec2 | classifier | 94.6M | 0.5111 | 0.5183 | 0.1093 | 0.1535 |
+| 2. MT Wav2Vec2 (frz3) | multitask | 97.3M | 0.4896 | 0.5215 | 0.1125 | 0.1595 |
+| 3. MT Wav2Vec2 (frz20) | multitask | 97.3M | 0.1417 | 0.3388 | 0.0346 | 0.2951 |
+| 4. MT CNN pool | multitask | 342K | 0.1880 | 0.2532 | 0.4384 | 0.3588 |
+| 5. 5× single-head CNN | multitask_single | 275K | 0.2214 | 0.2531 | 0.4505 | 0.4414 |
+| 6. MT CNN LSTM | multitask | 458K | 0.2481 | 0.2585 | 0.4257 | 0.5206 |
+| 7. MT CNN transformer | multitask | 540K | 0.2550 | 0.2644 | 0.4020 | 0.4771 |
+
+- Headlines (test): best macro F1@tuned = Arm 2 (MT Wav2Vec2 frz3, 0.5215);
+  best mean AUPRC = Arm 2 (0.5454), Arm 1 (0.5445) essentially tied.
+- Headlines (Boli): best macro F1@0.5 = Arm 5 (0.4505); best macro F1@tuned =
+  Arm 6 (0.5206).
+- Caveats: known speaker leakage on test; single seed 42; thresholds tuned on
+  val only; Boli is the only cross-corpus held-out set (53 clips).
+- Full per-class numbers: `model/evaluation/reports/comparative_study_report.json`
+
