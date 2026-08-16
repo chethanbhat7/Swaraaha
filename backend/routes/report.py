@@ -1,12 +1,14 @@
-"""Report API route — generates a Typst PDF clinical report."""
+"""Report API route — generates a shared Typst PDF clinical report."""
 
 import re
 
 from fastapi import APIRouter, HTTPException, Response
 
-from backend.services.report_generator import generate_report_pdf
+from shared.reporting.report_builder import generate_report_pdf
 
 router = APIRouter()
+
+REQUIRED_FIELDS = ("patient", "audio", "date", "classification")
 
 
 def _slugify(text: str) -> str:
@@ -15,10 +17,11 @@ def _slugify(text: str) -> str:
 
 @router.post("/report")
 async def generate_report(payload: dict):
+    missing = [field for field in REQUIRED_FIELDS if field not in payload]
+    if missing:
+        raise HTTPException(status_code=422, detail=f"Missing field: {missing[0]}")
     try:
         pdf_bytes = generate_report_pdf(payload)
-    except KeyError as exc:
-        raise HTTPException(status_code=422, detail=f"Missing field: {exc}") from exc
     except Exception as exc:  # pragma: no cover - defensive
         raise HTTPException(status_code=500, detail="Failed to generate PDF report") from exc
 
