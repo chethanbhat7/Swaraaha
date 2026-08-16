@@ -62,14 +62,45 @@ class ModelRunner:
             logger.warning("Localization unavailable: %s", e)
             return []
 
+    def _combine(self, audio: np.ndarray, localizations: list) -> dict:
+        """Fuse localization tuples with classifier saliency into combined regions."""
+        try:
+            from model.combiner import combine_regions
+            from model.config.defaults import DYSFLUENCY_CLASSES
+
+            audio_np = np.asarray(audio, dtype=np.float32)
+            if audio_np.ndim > 1:
+                audio_np = audio_np.mean(axis=1)
+            classifier = self._get_classifier()
+            saliency = classifier.saliency(audio_np).squeeze(0)
+            if hasattr(saliency, "cpu"):
+                saliency = saliency.cpu()
+            saliency = np.asarray(saliency, dtype=float)
+            regions = [
+                {"start": s, "end": e, "confidence": c}
+                for s, e, c in localizations
+            ]
+            return combine_regions(
+                regions,
+                saliency,
+                class_names=list(DYSFLUENCY_CLASSES),
+                thresholds=getattr(classifier, "_thresholds", {}) or None,
+                audio_duration=len(audio_np) / 16000,
+            )
+        except Exception as exc:
+            logger.warning("Combined fusion unavailable: %s", exc)
+            return {"error": str(exc)}
+
     def analyze(self, audio: np.ndarray, language: str = "english") -> dict:
         """Run classification + localization + transcription on audio. Returns structured results."""
         classifications = self._classify(audio)
         localizations = self._localize(audio)
         transcription = self.transcribe(audio, localizations=localizations, language=language)
+        combined = self._combine(audio, localizations)
 
         return {
             "classifications": classifications,
             "localizations": localizations,
             "transcription": transcription,
+            "combined": combined,
         }
