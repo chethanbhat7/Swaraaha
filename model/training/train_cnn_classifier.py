@@ -101,6 +101,26 @@ def _strip_compile_prefix_if_needed(state_dict, live_state_dict):
     return state_dict
 
 
+def _build_cnn_model(args):
+    """Construct the CNN multitask model from CLI args.
+
+    Every spectrogram config arg must be forwarded to the model so its
+    checkpoint metadata matches the dataset it was trained on (eval rebuilds
+    the spectrogram dataset from that metadata).
+    """
+    return CNNMultitaskClassifier(
+        n_mels=args.n_mels,
+        hop_length=args.hop_length,
+        n_fft=args.n_fft,
+        hidden_dim=args.hidden_dim,
+        dropout=args.dropout,
+        class_names=args.class_names,
+        aggregator=args.aggregator,
+        num_lstm_layers=args.num_lstm_layers,
+        num_transformer_layers=args.num_transformer_layers,
+    )
+
+
 def train(args):
     set_seed(args.seed)
     fp = cnn_classifier_fingerprint(args)
@@ -165,15 +185,7 @@ def train(args):
         criterion = (FocalLoss(gamma=args.focal_gamma) if args.loss_type == 'focal'
                      else nn.CrossEntropyLoss())
     print(f'Loss: {criterion.__class__.__name__}')
-    model = CNNMultitaskClassifier(
-        n_mels=args.n_mels,
-        hidden_dim=args.hidden_dim,
-        dropout=args.dropout,
-        class_names=args.class_names,
-        aggregator=args.aggregator,
-        num_lstm_layers=args.num_lstm_layers,
-        num_transformer_layers=args.num_transformer_layers,
-    )
+    model = _build_cnn_model(args)
     model.model.to(device)
     if device.type == 'cuda':
         warnings.filterwarnings('ignore', category=UserWarning)
