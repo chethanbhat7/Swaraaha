@@ -1,0 +1,777 @@
+{
+  "per_class": {
+    "prolongation": {
+      "class_name": "prolongation",
+      "model_path": "model/weights/multi_e20_b16_lr3e-5_frz20_focal_g2_ga1_wu500_wd0.01_ml3_s42_train_w2v2base_best.pt",
+      "num_samples": 5857,
+      "threshold": 0.5,
+      "binary": {
+        "auroc": 0.7126,
+        "auprc": 0.2494,
+        "threshold": 0.5,
+        "precision": 0.4009,
+        "recall": 0.1562,
+        "f1": 0.2248,
+        "specificity": 0.9755,
+        "accuracy": 0.8976,
+        "support": 557,
+        "tn": 5170,
+        "fp": 130,
+        "fn": 470,
+        "tp": 87
+      },
+      "support": 557,
+      "threshold_sweep": {
+        "best_f1": {
+          "threshold": 0.40000000000000013,
+          "f1": 0.298
+        },
+        "best_youden": {
+          "threshold": 0.3500000000000001,
+          "youden": 0.3123
+        },
+        "f1_at_default": 0.2248,
+        "sweep": [
+          {
+            "threshold": 0.1,
+            "f1": 0.174,
+            "precision": 0.0953,
+            "recall": 1.0,
+            "specificity": 0.0021
+          },
+          {
+            "threshold": 0.15000000000000002,
+            "f1": 0.1747,
+            "precision": 0.0957,
+            "recall": 0.9964,
+            "specificity": 0.0108
+          },
+          {
+            "threshold": 0.20000000000000004,
+            "f1": 0.1815,
+            "precision": 0.1001,
+            "recall": 0.9713,
+            "specificity": 0.0826
+          },
+          {
+            "threshold": 0.25000000000000006,
+            "f1": 0.2034,
+            "precision": 0.1149,
+            "recall": 0.8869,
+            "specificity": 0.2817
+          },
+          {
+            "threshold": 0.30000000000000004,
+            "f1": 0.2455,
+            "precision": 0.1466,
+            "recall": 0.754,
+            "specificity": 0.5389
+          },
+          {
+            "threshold": 0.3500000000000001,
+            "f1": 0.2837,
+            "precision": 0.1889,
+            "recall": 0.5691,
+            "specificity": 0.7432
+          },
+          {
+            "threshold": 0.40000000000000013,
+            "f1": 0.298,
+            "precision": 0.2427,
+            "recall": 0.386,
+            "specificity": 0.8734
+          },
+          {
+            "threshold": 0.45000000000000007,
+            "f1": 0.2742,
+            "precision": 0.322,
+            "recall": 0.2388,
+            "specificity": 0.9472
+          },
+          {
+            "threshold": 0.5000000000000001,
+            "f1": 0.2248,
+            "precision": 0.4009,
+            "recall": 0.1562,
+            "specificity": 0.9755
+          },
+          {
+            "threshold": 0.5500000000000002,
+            "f1": 0.1331,
+            "precision": 0.4831,
+            "recall": 0.0772,
+            "specificity": 0.9913
+          },
+          {
+            "threshold": 0.6000000000000002,
+            "f1": 0.0809,
+            "precision": 0.6667,
+            "recall": 0.0431,
+            "specificity": 0.9977
+          },
+          {
+            "threshold": 0.6500000000000001,
+            "f1": 0.0383,
+            "precision": 0.6471,
+            "recall": 0.0197,
+            "specificity": 0.9989
+          },
+          {
+            "threshold": 0.7000000000000002,
+            "f1": 0.0141,
+            "precision": 0.4444,
+            "recall": 0.0072,
+            "specificity": 0.9991
+          },
+          {
+            "threshold": 0.7500000000000002,
+            "f1": 0.0036,
+            "precision": 0.3333,
+            "recall": 0.0018,
+            "specificity": 0.9996
+          },
+          {
+            "threshold": 0.8000000000000002,
+            "f1": 0.0036,
+            "precision": 1.0,
+            "recall": 0.0018,
+            "specificity": 1.0
+          },
+          {
+            "threshold": 0.8500000000000002,
+            "f1": 0.0036,
+            "precision": 1.0,
+            "recall": 0.0018,
+            "specificity": 1.0
+          },
+          {
+            "threshold": 0.9000000000000002,
+            "f1": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "specificity": 1.0
+          }
+        ]
+      }
+    },
+    "block": {
+      "class_name": "block",
+      "model_path": "model/weights/multi_e20_b16_lr3e-5_frz20_focal_g2_ga1_wu500_wd0.01_ml3_s42_train_w2v2base_best.pt",
+      "num_samples": 5857,
+      "threshold": 0.5,
+      "binary": {
+        "auroc": 0.67,
+        "auprc": 0.2821,
+        "threshold": 0.5,
+        "precision": 0.6429,
+        "recall": 0.0111,
+        "f1": 0.0219,
+        "specificity": 0.999,
+        "accuracy": 0.8626,
+        "support": 809,
+        "tn": 5043,
+        "fp": 5,
+        "fn": 800,
+        "tp": 9
+      },
+      "support": 809,
+      "threshold_sweep": {
+        "best_f1": {
+          "threshold": 0.30000000000000004,
+          "f1": 0.3162
+        },
+        "best_youden": {
+          "threshold": 0.30000000000000004,
+          "youden": 0.2402
+        },
+        "f1_at_default": 0.0219,
+        "sweep": [
+          {
+            "threshold": 0.1,
+            "f1": 0.2429,
+            "precision": 0.1383,
+            "recall": 0.9988,
+            "specificity": 0.0024
+          },
+          {
+            "threshold": 0.15000000000000002,
+            "f1": 0.2454,
+            "precision": 0.1401,
+            "recall": 0.9876,
+            "specificity": 0.0287
+          },
+          {
+            "threshold": 0.20000000000000004,
+            "f1": 0.2573,
+            "precision": 0.1491,
+            "recall": 0.937,
+            "specificity": 0.143
+          },
+          {
+            "threshold": 0.25000000000000006,
+            "f1": 0.2868,
+            "precision": 0.1742,
+            "recall": 0.8096,
+            "specificity": 0.3851
+          },
+          {
+            "threshold": 0.30000000000000004,
+            "f1": 0.3162,
+            "precision": 0.2227,
+            "recall": 0.5451,
+            "specificity": 0.6951
+          },
+          {
+            "threshold": 0.3500000000000001,
+            "f1": 0.3087,
+            "precision": 0.3247,
+            "recall": 0.2942,
+            "specificity": 0.9019
+          },
+          {
+            "threshold": 0.40000000000000013,
+            "f1": 0.1824,
+            "precision": 0.46,
+            "recall": 0.1137,
+            "specificity": 0.9786
+          },
+          {
+            "threshold": 0.45000000000000007,
+            "f1": 0.0651,
+            "precision": 0.549,
+            "recall": 0.0346,
+            "specificity": 0.9954
+          },
+          {
+            "threshold": 0.5000000000000001,
+            "f1": 0.0219,
+            "precision": 0.6429,
+            "recall": 0.0111,
+            "specificity": 0.999
+          },
+          {
+            "threshold": 0.5500000000000002,
+            "f1": 0.0049,
+            "precision": 0.5,
+            "recall": 0.0025,
+            "specificity": 0.9996
+          },
+          {
+            "threshold": 0.6000000000000002,
+            "f1": 0.0025,
+            "precision": 1.0,
+            "recall": 0.0012,
+            "specificity": 1.0
+          },
+          {
+            "threshold": 0.6500000000000001,
+            "f1": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "specificity": 1.0
+          },
+          {
+            "threshold": 0.7000000000000002,
+            "f1": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "specificity": 1.0
+          },
+          {
+            "threshold": 0.7500000000000002,
+            "f1": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "specificity": 1.0
+          },
+          {
+            "threshold": 0.8000000000000002,
+            "f1": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "specificity": 1.0
+          },
+          {
+            "threshold": 0.8500000000000002,
+            "f1": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "specificity": 1.0
+          },
+          {
+            "threshold": 0.9000000000000002,
+            "f1": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "specificity": 1.0
+          }
+        ]
+      }
+    },
+    "soundrep": {
+      "class_name": "soundrep",
+      "model_path": "model/weights/multi_e20_b16_lr3e-5_frz20_focal_g2_ga1_wu500_wd0.01_ml3_s42_train_w2v2base_best.pt",
+      "num_samples": 5857,
+      "threshold": 0.5,
+      "binary": {
+        "auroc": 0.7143,
+        "auprc": 0.3075,
+        "threshold": 0.5,
+        "precision": 0.6585,
+        "recall": 0.0377,
+        "f1": 0.0712,
+        "specificity": 0.9973,
+        "accuracy": 0.8798,
+        "support": 717,
+        "tn": 5126,
+        "fp": 14,
+        "fn": 690,
+        "tp": 27
+      },
+      "support": 717,
+      "threshold_sweep": {
+        "best_f1": {
+          "threshold": 0.30000000000000004,
+          "f1": 0.3562
+        },
+        "best_youden": {
+          "threshold": 0.25000000000000006,
+          "youden": 0.3142
+        },
+        "f1_at_default": 0.0712,
+        "sweep": [
+          {
+            "threshold": 0.1,
+            "f1": 0.2192,
+            "precision": 0.1233,
+            "recall": 0.9874,
+            "specificity": 0.0202
+          },
+          {
+            "threshold": 0.15000000000000002,
+            "f1": 0.2321,
+            "precision": 0.1321,
+            "recall": 0.9568,
+            "specificity": 0.1228
+          },
+          {
+            "threshold": 0.20000000000000004,
+            "f1": 0.264,
+            "precision": 0.1562,
+            "recall": 0.8508,
+            "specificity": 0.3589
+          },
+          {
+            "threshold": 0.25000000000000006,
+            "f1": 0.3177,
+            "precision": 0.2084,
+            "recall": 0.6681,
+            "specificity": 0.6461
+          },
+          {
+            "threshold": 0.30000000000000004,
+            "f1": 0.3562,
+            "precision": 0.2922,
+            "recall": 0.4561,
+            "specificity": 0.8459
+          },
+          {
+            "threshold": 0.3500000000000001,
+            "f1": 0.3082,
+            "precision": 0.3796,
+            "recall": 0.2594,
+            "specificity": 0.9409
+          },
+          {
+            "threshold": 0.40000000000000013,
+            "f1": 0.2286,
+            "precision": 0.4737,
+            "recall": 0.1506,
+            "specificity": 0.9767
+          },
+          {
+            "threshold": 0.45000000000000007,
+            "f1": 0.1415,
+            "precision": 0.5631,
+            "recall": 0.0809,
+            "specificity": 0.9912
+          },
+          {
+            "threshold": 0.5000000000000001,
+            "f1": 0.0712,
+            "precision": 0.6585,
+            "recall": 0.0377,
+            "specificity": 0.9973
+          },
+          {
+            "threshold": 0.5500000000000002,
+            "f1": 0.0327,
+            "precision": 0.6667,
+            "recall": 0.0167,
+            "specificity": 0.9988
+          },
+          {
+            "threshold": 0.6000000000000002,
+            "f1": 0.0138,
+            "precision": 0.8333,
+            "recall": 0.007,
+            "specificity": 0.9998
+          },
+          {
+            "threshold": 0.6500000000000001,
+            "f1": 0.0056,
+            "precision": 1.0,
+            "recall": 0.0028,
+            "specificity": 1.0
+          },
+          {
+            "threshold": 0.7000000000000002,
+            "f1": 0.0056,
+            "precision": 1.0,
+            "recall": 0.0028,
+            "specificity": 1.0
+          },
+          {
+            "threshold": 0.7500000000000002,
+            "f1": 0.0028,
+            "precision": 1.0,
+            "recall": 0.0014,
+            "specificity": 1.0
+          },
+          {
+            "threshold": 0.8000000000000002,
+            "f1": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "specificity": 1.0
+          },
+          {
+            "threshold": 0.8500000000000002,
+            "f1": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "specificity": 1.0
+          },
+          {
+            "threshold": 0.9000000000000002,
+            "f1": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "specificity": 1.0
+          }
+        ]
+      }
+    },
+    "wordrep": {
+      "class_name": "wordrep",
+      "model_path": "model/weights/multi_e20_b16_lr3e-5_frz20_focal_g2_ga1_wu500_wd0.01_ml3_s42_train_w2v2base_best.pt",
+      "num_samples": 5857,
+      "threshold": 0.5,
+      "binary": {
+        "auroc": 0.663,
+        "auprc": 0.1654,
+        "threshold": 0.5,
+        "precision": 0.1316,
+        "recall": 0.0088,
+        "f1": 0.0165,
+        "specificity": 0.9938,
+        "accuracy": 0.8982,
+        "support": 568,
+        "tn": 5256,
+        "fp": 33,
+        "fn": 563,
+        "tp": 5
+      },
+      "support": 568,
+      "threshold_sweep": {
+        "best_f1": {
+          "threshold": 0.30000000000000004,
+          "f1": 0.2459
+        },
+        "best_youden": {
+          "threshold": 0.30000000000000004,
+          "youden": 0.2294
+        },
+        "f1_at_default": 0.0165,
+        "sweep": [
+          {
+            "threshold": 0.1,
+            "f1": 0.1777,
+            "precision": 0.0975,
+            "recall": 1.0,
+            "specificity": 0.0059
+          },
+          {
+            "threshold": 0.15000000000000002,
+            "f1": 0.1801,
+            "precision": 0.099,
+            "recall": 1.0,
+            "specificity": 0.0225
+          },
+          {
+            "threshold": 0.20000000000000004,
+            "f1": 0.1933,
+            "precision": 0.1072,
+            "recall": 0.9806,
+            "specificity": 0.1233
+          },
+          {
+            "threshold": 0.25000000000000006,
+            "f1": 0.2189,
+            "precision": 0.1267,
+            "recall": 0.8028,
+            "specificity": 0.4057
+          },
+          {
+            "threshold": 0.30000000000000004,
+            "f1": 0.2459,
+            "precision": 0.161,
+            "recall": 0.5211,
+            "specificity": 0.7083
+          },
+          {
+            "threshold": 0.3500000000000001,
+            "f1": 0.2392,
+            "precision": 0.205,
+            "recall": 0.287,
+            "specificity": 0.8805
+          },
+          {
+            "threshold": 0.40000000000000013,
+            "f1": 0.1648,
+            "precision": 0.2353,
+            "recall": 0.1268,
+            "specificity": 0.9558
+          },
+          {
+            "threshold": 0.45000000000000007,
+            "f1": 0.0567,
+            "precision": 0.1863,
+            "recall": 0.0335,
+            "specificity": 0.9843
+          },
+          {
+            "threshold": 0.5000000000000001,
+            "f1": 0.0165,
+            "precision": 0.1316,
+            "recall": 0.0088,
+            "specificity": 0.9938
+          },
+          {
+            "threshold": 0.5500000000000002,
+            "f1": 0.0103,
+            "precision": 0.2143,
+            "recall": 0.0053,
+            "specificity": 0.9979
+          },
+          {
+            "threshold": 0.6000000000000002,
+            "f1": 0.007,
+            "precision": 0.3333,
+            "recall": 0.0035,
+            "specificity": 0.9992
+          },
+          {
+            "threshold": 0.6500000000000001,
+            "f1": 0.0035,
+            "precision": 0.5,
+            "recall": 0.0018,
+            "specificity": 0.9998
+          },
+          {
+            "threshold": 0.7000000000000002,
+            "f1": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "specificity": 1.0
+          },
+          {
+            "threshold": 0.7500000000000002,
+            "f1": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "specificity": 1.0
+          },
+          {
+            "threshold": 0.8000000000000002,
+            "f1": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "specificity": 1.0
+          },
+          {
+            "threshold": 0.8500000000000002,
+            "f1": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "specificity": 1.0
+          },
+          {
+            "threshold": 0.9000000000000002,
+            "f1": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "specificity": 1.0
+          }
+        ]
+      }
+    },
+    "interjection": {
+      "class_name": "interjection",
+      "model_path": "model/weights/multi_e20_b16_lr3e-5_frz20_focal_g2_ga1_wu500_wd0.01_ml3_s42_train_w2v2base_best.pt",
+      "num_samples": 5857,
+      "threshold": 0.5,
+      "binary": {
+        "auroc": 0.7256,
+        "auprc": 0.4674,
+        "threshold": 0.5,
+        "precision": 0.531,
+        "recall": 0.3193,
+        "f1": 0.3988,
+        "specificity": 0.9228,
+        "accuracy": 0.7931,
+        "support": 1259,
+        "tn": 4243,
+        "fp": 355,
+        "fn": 857,
+        "tp": 402
+      },
+      "support": 1259,
+      "threshold_sweep": {
+        "best_f1": {
+          "threshold": 0.45000000000000007,
+          "f1": 0.4632
+        },
+        "best_youden": {
+          "threshold": 0.40000000000000013,
+          "youden": 0.3329
+        },
+        "f1_at_default": 0.3988,
+        "sweep": [
+          {
+            "threshold": 0.1,
+            "f1": 0.354,
+            "precision": 0.2151,
+            "recall": 0.9984,
+            "specificity": 0.0026
+          },
+          {
+            "threshold": 0.15000000000000002,
+            "f1": 0.3546,
+            "precision": 0.2156,
+            "recall": 0.9976,
+            "specificity": 0.0063
+          },
+          {
+            "threshold": 0.20000000000000004,
+            "f1": 0.3558,
+            "precision": 0.2167,
+            "recall": 0.9936,
+            "specificity": 0.0163
+          },
+          {
+            "threshold": 0.25000000000000006,
+            "f1": 0.36,
+            "precision": 0.2204,
+            "recall": 0.9809,
+            "specificity": 0.05
+          },
+          {
+            "threshold": 0.30000000000000004,
+            "f1": 0.3782,
+            "precision": 0.2359,
+            "recall": 0.9523,
+            "specificity": 0.1555
+          },
+          {
+            "threshold": 0.3500000000000001,
+            "f1": 0.415,
+            "precision": 0.2732,
+            "recall": 0.8634,
+            "specificity": 0.371
+          },
+          {
+            "threshold": 0.40000000000000013,
+            "f1": 0.4603,
+            "precision": 0.3424,
+            "recall": 0.7021,
+            "specificity": 0.6307
+          },
+          {
+            "threshold": 0.45000000000000007,
+            "f1": 0.4632,
+            "precision": 0.4312,
+            "recall": 0.5004,
+            "specificity": 0.8193
+          },
+          {
+            "threshold": 0.5000000000000001,
+            "f1": 0.3988,
+            "precision": 0.531,
+            "recall": 0.3193,
+            "specificity": 0.9228
+          },
+          {
+            "threshold": 0.5500000000000002,
+            "f1": 0.2897,
+            "precision": 0.6286,
+            "recall": 0.1882,
+            "specificity": 0.9696
+          },
+          {
+            "threshold": 0.6000000000000002,
+            "f1": 0.1852,
+            "precision": 0.7514,
+            "recall": 0.1056,
+            "specificity": 0.9904
+          },
+          {
+            "threshold": 0.6500000000000001,
+            "f1": 0.1136,
+            "precision": 0.7938,
+            "recall": 0.0612,
+            "specificity": 0.9957
+          },
+          {
+            "threshold": 0.7000000000000002,
+            "f1": 0.0524,
+            "precision": 0.8947,
+            "recall": 0.027,
+            "specificity": 0.9991
+          },
+          {
+            "threshold": 0.7500000000000002,
+            "f1": 0.0266,
+            "precision": 1.0,
+            "recall": 0.0135,
+            "specificity": 1.0
+          },
+          {
+            "threshold": 0.8000000000000002,
+            "f1": 0.0126,
+            "precision": 1.0,
+            "recall": 0.0064,
+            "specificity": 1.0
+          },
+          {
+            "threshold": 0.8500000000000002,
+            "f1": 0.0095,
+            "precision": 1.0,
+            "recall": 0.0048,
+            "specificity": 1.0
+          },
+          {
+            "threshold": 0.9000000000000002,
+            "f1": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "specificity": 1.0
+          }
+        ]
+      }
+    }
+  },
+  "macro_f1": 0.1466,
+  "model_path": "model/weights/multi_e20_b16_lr3e-5_frz20_focal_g2_ga1_wu500_wd0.01_ml3_s42_train_w2v2base_best.pt",
+  "macro_f1_at_optimal": 0.3359
+}

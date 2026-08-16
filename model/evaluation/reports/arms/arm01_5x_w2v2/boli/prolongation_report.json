@@ -1,0 +1,87 @@
+{
+  "per_class": {
+    "not_present": {
+      "precision": 0.7045,
+      "recall": 0.8378,
+      "f1": 0.7654,
+      "support": 37
+    },
+    "present": {
+      "precision": 0.3333,
+      "recall": 0.1875,
+      "f1": 0.24,
+      "support": 16
+    }
+  },
+  "macro": {
+    "precision": 0.5189,
+    "recall": 0.5127,
+    "f1": 0.5027
+  },
+  "accuracy": 0.6415,
+  "binary": {
+    "auroc": 0.5405,
+    "auprc": 0.4319,
+    "threshold": 0.5,
+    "precision": 0.3333,
+    "recall": 0.1875,
+    "f1": 0.24,
+    "specificity": 0.8378,
+    "accuracy": 0.6415,
+    "support": 16,
+    "tn": 31,
+    "fp": 6,
+    "fn": 13,
+    "tp": 3
+  },
+  "class_name": "prolongation",
+  "model_path": "model/weights/prolongation_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml3_s42_train_w2v2base_best.pt",
+  "num_samples": 53,
+  "threshold": 0.5,
+  "model": {
+    "fingerprint": "prolongation_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml3_s42_train_w2v2base",
+    "class_name": "prolongation",
+    "epochs": 20,
+    "batch_size": 8,
+    "lr": 3e-05,
+    "freeze_backbone_epochs": 3,
+    "loss_type": "focal",
+    "focal_gamma": 2.0,
+    "gradient_accumulation_steps": 1,
+    "warmup_steps": 500,
+    "weight_decay": 0.01,
+    "max_length_seconds": 3.0,
+    "seed": 42,
+    "data_short": "train",
+    "model_name": "facebook/wav2vec2-base"
+  },
+  "threshold_sweep": {
+    "best_f1": {
+      "threshold": 0.1,
+      "f1": 0.45454545454545453
+    },
+    "best_specificity": {
+      "threshold": 0.6500000000000001,
+      "specificity": 1.0
+    },
+    "best_youden": {
+      "threshold": 0.6000000000000002,
+      "youden": 0.16047297297297303
+    }
+  },
+  "threshold_tuned": {
+    "auroc": 0.5405,
+    "auprc": 0.4319,
+    "threshold": 0.5000000000000001,
+    "precision": 0.3333,
+    "recall": 0.1875,
+    "f1": 0.24,
+    "specificity": 0.8378,
+    "accuracy": 0.6415,
+    "support": 16,
+    "tn": 31,
+    "fp": 6,
+    "fn": 13,
+    "tp": 3
+  }
+}

@@ -1,0 +1,87 @@
+{
+  "per_class": {
+    "not_present": {
+      "precision": 0.9343,
+      "recall": 0.9507,
+      "f1": 0.9424,
+      "support": 3349
+    },
+    "present": {
+      "precision": 0.4625,
+      "recall": 0.388,
+      "f1": 0.422,
+      "support": 366
+    }
+  },
+  "macro": {
+    "precision": 0.6984,
+    "recall": 0.6694,
+    "f1": 0.6822
+  },
+  "accuracy": 0.8953,
+  "binary": {
+    "auroc": 0.8205,
+    "auprc": 0.4231,
+    "threshold": 0.5,
+    "precision": 0.4625,
+    "recall": 0.388,
+    "f1": 0.422,
+    "specificity": 0.9507,
+    "accuracy": 0.8953,
+    "support": 366,
+    "tn": 3184,
+    "fp": 165,
+    "fn": 224,
+    "tp": 142
+  },
+  "class_name": "wordrep",
+  "model_path": "model/weights/wordrep_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml3_s42_train_w2v2base_best.pt",
+  "num_samples": 3715,
+  "threshold": 0.5,
+  "model": {
+    "fingerprint": "wordrep_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml3_s42_train_w2v2base",
+    "class_name": "wordrep",
+    "epochs": 20,
+    "batch_size": 8,
+    "lr": 3e-05,
+    "freeze_backbone_epochs": 3,
+    "loss_type": "focal",
+    "focal_gamma": 2.0,
+    "gradient_accumulation_steps": 1,
+    "warmup_steps": 500,
+    "weight_decay": 0.01,
+    "max_length_seconds": 3.0,
+    "seed": 42,
+    "data_short": "train",
+    "model_name": "facebook/wav2vec2-base"
+  },
+  "threshold_sweep": {
+    "best_f1": {
+      "threshold": 0.5500000000000002,
+      "f1": 0.4224422442244224
+    },
+    "best_specificity": {
+      "threshold": 0.8500000000000002,
+      "specificity": 1.0
+    },
+    "best_youden": {
+      "threshold": 0.25000000000000006,
+      "youden": 0.47894404495592036
+    }
+  },
+  "threshold_tuned": {
+    "auroc": 0.8205,
+    "auprc": 0.4231,
+    "threshold": 0.45000000000000007,
+    "precision": 0.3943,
+    "recall": 0.418,
+    "f1": 0.4058,
+    "specificity": 0.9298,
+    "accuracy": 0.8794,
+    "support": 366,
+    "tn": 3114,
+    "fp": 235,
+    "fn": 213,
+    "tp": 153
+  }
+}

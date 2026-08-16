@@ -1,0 +1,72 @@
+{
+  "per_class": {
+    "not_present": {
+      "precision": 0.9548,
+      "recall": 0.9324,
+      "f1": 0.9434,
+      "support": 4598
+    },
+    "present": {
+      "precision": 0.7725,
+      "recall": 0.8388,
+      "f1": 0.8043,
+      "support": 1259
+    }
+  },
+  "macro": {
+    "precision": 0.8636,
+    "recall": 0.8856,
+    "f1": 0.8739
+  },
+  "accuracy": 0.9122,
+  "binary": {
+    "auroc": 0.9539,
+    "auprc": 0.871,
+    "threshold": 0.5,
+    "precision": 0.7725,
+    "recall": 0.8388,
+    "f1": 0.8043,
+    "specificity": 0.9324,
+    "accuracy": 0.9122,
+    "support": 1259,
+    "tn": 4287,
+    "fp": 311,
+    "fn": 203,
+    "tp": 1056
+  },
+  "class_name": "interjection",
+  "model_path": "model/weights/interjection_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml3_s42_train_w2v2base_best.pt",
+  "num_samples": 5857,
+  "threshold": 0.5,
+  "model": {
+    "fingerprint": "interjection_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml3_s42_train_w2v2base",
+    "class_name": "interjection",
+    "epochs": 20,
+    "batch_size": 8,
+    "lr": 3e-05,
+    "freeze_backbone_epochs": 3,
+    "loss_type": "focal",
+    "focal_gamma": 2.0,
+    "gradient_accumulation_steps": 1,
+    "warmup_steps": 500,
+    "weight_decay": 0.01,
+    "max_length_seconds": 3.0,
+    "seed": 42,
+    "data_short": "train",
+    "model_name": "facebook/wav2vec2-base"
+  },
+  "threshold_sweep": {
+    "best_f1": {
+      "threshold": 0.5500000000000002,
+      "f1": 0.8090249798549556
+    },
+    "best_specificity": {
+      "threshold": 0.9000000000000002,
+      "specificity": 1.0
+    },
+    "best_youden": {
+      "threshold": 0.40000000000000013,
+      "youden": 0.7750931872510098
+    }
+  }
+}
