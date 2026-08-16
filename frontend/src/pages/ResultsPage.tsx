@@ -10,13 +10,14 @@ import {
   Pause,
   Download
 } from 'lucide-react'
-import { TranscriptionData, analyzeAudio, classifyAudio, downloadReport } from '../api/client'
+import { TranscriptionData, CombinedResults, analyzeAudio, classifyAudio, downloadReport } from '../api/client'
 import { storeAudioFile } from '../utils/db'
 
 interface AnalysisResults {
   classification: Record<string, { label: number; confidence: number }>
   localization: { regions: Array<{ start: number; end: number; confidence: number }> }
   transcription?: TranscriptionData
+  combined?: CombinedResults
 }
 
 const CLASS_DISPLAY_NAMES: Record<string, string> = {
@@ -611,6 +612,12 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
 
   if (!results) return null
 
+  const combined = results.combined && !('error' in results.combined)
+    ? results.combined
+    : undefined
+  const regions: Array<{ start: number; end: number; confidence: number; primary_type?: string | null }> =
+    combined?.regions ?? results.localization.regions
+
   // Calculate Speech Metrics
   const classes = Object.keys(results.classification).filter(
     c => results.classification[c] && typeof results.classification[c].confidence === 'number'
@@ -662,6 +669,9 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
         audio: { filename, size: filesize, duration },
         date: reportDate,
         classification: results.classification,
+        combined: combined ?? undefined,
+        transcription: results.transcription,
+        localization: results.localization,
       })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -803,21 +813,31 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
         {/* Right Side: Localization Regions List */}
         <div className="p-6 bg-bg-card border border-border-color rounded-xl space-y-4 shadow-xs flex flex-col justify-between" style={{ borderRadius: '16px' }}>
           <div className="space-y-3">
-            <div className="border-b border-border-color pb-3">
+            <div className="border-b border-border-color pb-3 flex items-center justify-between">
               <h3 className="text-sm font-bold">Dysfluency Localization</h3>
+              <span className="text-[10px] font-semibold text-text-secondary">
+                {(combined ? combined.total_stutters : regions.length)} Events
+              </span>
             </div>
             
-            {results.localization.regions.length === 0 ? (
+            {regions.length === 0 ? (
               <div className="py-8 text-center text-xs text-text-secondary space-y-2">
                 <CheckCircle2 className="mx-auto text-emerald-500" size={24} />
                 <p>No stuttering events localized in timestamps.</p>
               </div>
             ) : (
               <div className="space-y-2.5 max-h-[220px] overflow-y-auto pr-1">
-                {results.localization.regions.map((r, i) => (
+                {regions.map((r, i) => (
                   <div key={i} className="flex items-center justify-between p-2.5 bg-bg-sidebar border border-border-color rounded-lg text-xs">
-                    <div className="font-mono font-bold text-text-primary">
-                      {r.start.toFixed(2)}s &mdash; {r.end.toFixed(2)}s
+                    <div className="space-y-0.5">
+                      <div className="font-mono font-bold text-text-primary">
+                        {r.start.toFixed(2)}s &mdash; {r.end.toFixed(2)}s
+                      </div>
+                      {r.primary_type && (
+                        <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold text-text-primary">
+                          {CLASS_DISPLAY_NAMES[r.primary_type] ?? r.primary_type}
+                        </span>
+                      )}
                     </div>
                     <div className="text-[10px] font-semibold text-text-secondary">
                       Conf: {(r.confidence * 100).toFixed(0)}%
