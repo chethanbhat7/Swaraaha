@@ -54,6 +54,12 @@ class ResultsPanel(QWidget):
         loc_label.setStyleSheet("font-size: 16px; font-weight: 600;")
         layout.addWidget(loc_label)
 
+        self._total_label = QLabel("")
+        self._total_label.setStyleSheet(
+            f"font-size: 13px; font-weight: 600; color: {COLORS['secondary']};"
+        )
+        layout.addWidget(self._total_label)
+
         self._waveform = WaveformView()
         self._waveform.setMinimumHeight(100)
         layout.addWidget(self._waveform)
@@ -99,11 +105,22 @@ class ResultsPanel(QWidget):
 
         resize_table_to_contents(self._table)
 
+        combined = results.get("combined")
+        has_combined = isinstance(combined, dict) and "error" not in combined
+        total_events = combined.get("total_stutters", 0) if has_combined else len(localizations)
+        self._total_label.setText(f"Total Dysfluent Events: {total_events}")
+
         if audio is not None and len(audio) > 0:
             self._waveform.set_audio(audio, sample_rate)
             overlays = []
-            for start_sec, end_sec, conf in localizations:
-                overlays.append((start_sec, end_sec, COLORS["primary"]))
+            if has_combined:
+                for region in combined["regions"]:
+                    ptype = region.get("primary_type")
+                    color = COLORS["dysfluency"].get(ptype, COLORS["primary"]) if ptype else COLORS["primary"]
+                    overlays.append((region["start"], region["end"], color))
+            else:
+                for start_sec, end_sec, conf in localizations:
+                    overlays.append((start_sec, end_sec, COLORS["primary"]))
             self._waveform.set_overlays(overlays)
 
         if transcription:
@@ -115,4 +132,5 @@ class ResultsPanel(QWidget):
             self._table.setItem(i, 1, QTableWidgetItem("—"))
             self._table.setItem(i, 2, QTableWidgetItem("—"))
         self._waveform.clear_overlays()
+        self._total_label.setText("")
         self._transcription_panel.clear()

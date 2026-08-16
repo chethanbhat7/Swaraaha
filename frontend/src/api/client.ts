@@ -27,12 +27,35 @@ export interface ClassificationResults {
   };
 }
 
+export interface CombinedClass {
+  label: number;
+  confidence: number;
+  prob_present: number;
+  prob_not_present: number;
+}
+
+export interface CombinedRegion {
+  start: number;
+  end: number;
+  confidence: number;
+  primary_type: string | null;
+  classes: Record<string, CombinedClass>;
+  syllables: never[];
+}
+
+export interface CombinedResults {
+  regions: CombinedRegion[];
+  audio_duration: number;
+  total_stutters: number;
+}
+
 export interface AnalyzeResults {
   classification: ClassificationResults;
   localization: {
     regions: Array<{ start: number; end: number; confidence: number }>;
   };
   transcription: TranscriptionData;
+  combined?: CombinedResults;
 }
 
 export async function classifyAudio(file: File, language: string = 'english'): Promise<{ classification: ClassificationResults; transcription: TranscriptionData }> {
@@ -70,6 +93,11 @@ export interface ReportData {
   };
   date: string;
   classification: ClassificationResults;
+  combined?: CombinedResults;
+  transcription?: TranscriptionData;
+  localization?: {
+    regions: Array<{ start: number; end: number; confidence: number }>;
+  };
 }
 
 export async function downloadReport(data: ReportData): Promise<Blob> {
