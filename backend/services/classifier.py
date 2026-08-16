@@ -1,8 +1,11 @@
 """Service layer for the classification pipeline."""
 
+import logging
 from typing import Optional
 
 from model.registry import Classifier, MultiTaskClassifier
+
+logger = logging.getLogger(__name__)
 
 _clf: Optional[object] = None
 
@@ -38,6 +41,11 @@ def classify_audio_bytes(audio_bytes: bytes) -> dict:
     try:
         return get_model().analyze(audio_bytes)
     except FileNotFoundError:
+        logger.warning(
+            "MultiTaskClassifier unavailable (weights missing); "
+            "falling back to per-class Classifier",
+            exc_info=True,
+        )
         return _fallback_model().analyze(audio_bytes)
 
 

@@ -49,3 +49,36 @@ def test_skips_words_without_timestamps():
     regions = regions_from_words(words)
     assert len(regions) == 1
     assert regions[0]["start"] == 0.5
+
+
+def test_word_repetition_inside_multitoken_chunk():
+    chunks = [
+        {"text": "I I like tea", "start": 0.0, "end": 2.0},
+    ]
+    regions = regions_from_words(chunks)
+    assert len(regions) == 1
+    assert regions[0]["type"] == "wordrep"
+    assert regions[0]["start"] == 0.0
+    assert regions[0]["end"] == 1.0
+
+
+def test_word_repetition_spans_chunks():
+    chunks = [
+        {"text": "I I", "start": 0.0, "end": 1.0},
+        {"text": "like tea", "start": 1.0, "end": 2.0},
+    ]
+    regions = regions_from_words(chunks)
+    assert len(regions) == 1
+    assert regions[0]["start"] == 0.0
+    assert regions[0]["end"] == 1.0
+
+
+def test_repetition_in_middle_of_chunk():
+    chunks = [
+        {"text": "the the the boy", "start": 0.0, "end": 2.0},
+    ]
+    regions = regions_from_words(chunks)
+    assert len(regions) == 1
+    assert regions[0]["type"] == "wordrep"
+    assert regions[0]["start"] == 0.0
+    assert regions[0]["end"] == 1.5

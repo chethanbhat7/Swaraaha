@@ -37,6 +37,29 @@ def test_classify_audio_bytes_falls_back_to_per_class_classifier(monkeypatch):
     assert result["summary"] == {"detected": ["prolongation"], "primary": "prolongation"}
 
 
+def test_classify_audio_bytes_fallback_persists_across_calls(monkeypatch):
+    captured = {"calls": 0}
+
+    class _FakePerClass:
+        def analyze(self, audio, threshold=None):
+            captured["calls"] += 1
+            return {"summary": {"detected": [], "primary": "prolongation"}}
+
+    class _FakeMultiTask:
+        def analyze(self, audio, threshold=None):
+            raise FileNotFoundError("Model file not found")
+
+    monkeypatch.setattr(classifier_service, "MultiTaskClassifier", _FakeMultiTask)
+    monkeypatch.setattr(classifier_service, "Classifier", _FakePerClass)
+    monkeypatch.setattr(classifier_service, "_clf", None)
+
+    classifier_service.classify_audio_bytes(b"fake-wav-bytes")
+    classifier_service.classify_audio_bytes(b"fake-wav-bytes")
+
+    assert captured["calls"] == 2
+    assert isinstance(classifier_service._clf, _FakePerClass)
+
+
 def test_classify_audio_bytes_delegates_to_multitask_classifier(monkeypatch):
     captured = {}
 
