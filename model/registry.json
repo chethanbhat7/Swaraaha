@@ -1,17 +1,42 @@
 {
   "classification": {
-    "prolongation": "model/weights/prolongation_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml10_s42_train_w2v2base_best.pt",
-    "block": "model/weights/block_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml10_s42_train_w2v2base_best.pt",
-    "soundrep": "model/weights/soundrep_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml10_s42_train_w2v2base_best.pt",
-    "wordrep": "model/weights/wordrep_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml10_s42_train_w2v2base_best.pt",
-    "interjection": "model/weights/interjection_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml10_s42_train_w2v2base_best.pt"
+    "prolongation": "model/weights/prolongation_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml3_s42_train_w2v2base_best.pt",
+    "block": "model/weights/block_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml3_s42_train_w2v2base_best.pt",
+    "soundrep": "model/weights/soundrep_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml3_s42_train_w2v2base_best.pt",
+    "wordrep": "model/weights/wordrep_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml3_s42_train_w2v2base_best.pt",
+    "interjection": "model/weights/interjection_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml3_s42_train_w2v2base_best.pt"
   },
-  "localization": {},
+  "classification_multitask": {
+    "path": "model/weights/multi_e20_b16_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml3_s42_train_w2v2base_best.pt",
+    "model_name": "facebook/wav2vec2-base",
+    "thresholds": {
+      "prolongation": 0.45,
+      "block": 0.4,
+      "soundrep": 0.4,
+      "wordrep": 0.4,
+      "interjection": 0.4
+    }
+  },
+  "localization": {
+    "cnn": "model/weights/cnnloc_e30_b8_lr0.001_n128_h512_ml3_d0.4_pa7_wd0.0001_vr0.2_s42_train_best.pt",
+    "wav2vec2": "model/weights/w2v2loc_e20_b4_lr3e-5_frz5_wu500_hd256_d0.3_wd0.01_ml3_pa5_vr0.2_s42_train_w2v2base_best.pt"
+  },
   "thresholds": {
     "prolongation": 0.5,
-    "block": 0.5,
-    "soundrep": 0.5,
-    "wordrep": 0.5,
-    "interjection": 0.5
+    "block": 0.4,
+    "soundrep": 0.4,
+    "wordrep": 0.45,
+    "interjection": 0.55
+  },
+  "classification_multitask_cnn": {
+    "path": "model/weights/cnnclf_aggpool_e20_b16_lr3e-5_n128_h512_ml3_hd128_d0.4_pa5_wu500_wd0.01_ga1_s42_train_all_best.pt",
+    "model_name": "cnn",
+    "thresholds": {
+      "prolongation": 0.5,
+      "block": 0.5,
+      "soundrep": 0.55,
+      "wordrep": 0.45,
+      "interjection": 0.1
+    }
   }
 }

@@ -51,6 +51,11 @@ outputs are shown together rather than merged into one score:
 - **Five binary classifiers**, one per dysfluency class: `prolongation`,
   `block`, `soundrep`, `wordrep`, `interjection`.
 - Each classifier is based on **Wav2Vec 2.0** (`facebook/wav2vec2-base`), fine-tuned per class.
+- **Shared-backbone multitask classifier** (`model/classification/multitask.py`):
+  one Wav2Vec2 backbone → mean-pool → five per-class `Linear(768,768)→Tanh→Linear(768,2)`
+  heads, trained jointly with summed FocalLoss(γ=2). The shared backbone fixes the
+  hard classes (block single-classifier AUROC was ≈random 0.499; MT block head gets 0.752).
+  Registered under `classification_multitask`; best val macro-F1 so far **0.3651**.
 - All models are loaded via the **model registry** (`model/registry.py` + `model/registry.json`).
 
 ### 4b. Localization pipeline — "where in the audio it happened"
@@ -127,6 +132,13 @@ Key features:
 All 5 classifiers have been trained. Results (val F1):
 - prolongation: 0.5239, block: 0.5288, soundrep: 0.0019, wordrep: 0.0135, interjection: 0.6830
 
+A multitask classifier (shared backbone + 5 heads) has also been trained —
+best val macro-F1 0.3651 (early-stopped at epoch 11/20). Per-class eval on the
+val split (AUROC / F1@0.5): prolongation 0.820/0.422, block 0.752/0.147,
+soundrep 0.832/0.281, wordrep 0.756/0.249, interjection 0.916/0.725. The gap
+between AUROC and F1@0.5 indicates threshold mis-calibration, not bad ranking —
+see `model/training/DEBUGGING_LOG.md` §19–20 for the full analysis.
+
 ## 7. Conventions
 
 - **Commit messages:** Follow [Conventional Commits](https://www.conventionalcommits.org/):
@@ -155,5 +167,8 @@ All 5 classifiers have been trained. Results (val F1):
 - [x] PySide6 desktop app — scaffolding complete
 - [ ] Localizer training — no trained checkpoints yet (`registry.json` `localization` empty)
 - [ ] Migrate `app/` + `backend/` consumers to `model/transcription.py` + `Localizer.analyze`
-- [ ] Threshold tuning — sweep val set for optimal F1
+- [ ] Threshold tuning — sweep val set for optimal F1 (**done** — macro F1
+      0.365 → 0.467 at per-class optimal thresholds on the multitask model;
+      thresholds live in `model/registry.json` `classification_multitask.thresholds`;
+      details in `model/training/DEBUGGING_LOG.md` §21)
 - [ ] Warm restart LR schedule — extend training beyond 20 epochs

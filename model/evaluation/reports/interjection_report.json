@@ -1,0 +1,72 @@
+{
+  "per_class": {
+    "not_present": {
+      "precision": 0.8225,
+      "recall": 0.9395,
+      "f1": 0.8772,
+      "support": 3937
+    },
+    "present": {
+      "precision": 0.8249,
+      "recall": 0.5842,
+      "f1": 0.684,
+      "support": 1919
+    }
+  },
+  "macro": {
+    "precision": 0.8237,
+    "recall": 0.7619,
+    "f1": 0.7806
+  },
+  "accuracy": 0.8231,
+  "binary": {
+    "auroc": 0.8451,
+    "auprc": 0.7986,
+    "threshold": 0.5,
+    "precision": 0.8249,
+    "recall": 0.5842,
+    "f1": 0.684,
+    "specificity": 0.9395,
+    "accuracy": 0.8231,
+    "support": 1919,
+    "tn": 3699,
+    "fp": 238,
+    "fn": 798,
+    "tp": 1121
+  },
+  "class_name": "interjection",
+  "model_path": "/home/kshku/Git/Swaraaha/model/weights/interjection_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml10_s42_train_w2v2base_best.pt",
+  "num_samples": 5856,
+  "threshold": 0.5,
+  "model": {
+    "fingerprint": "interjection_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml10_s42_train_w2v2base",
+    "class_name": "interjection",
+    "epochs": 20,
+    "batch_size": 8,
+    "lr": 3e-05,
+    "freeze_backbone_epochs": 3,
+    "loss_type": "focal",
+    "focal_gamma": 2.0,
+    "gradient_accumulation_steps": 1,
+    "warmup_steps": 500,
+    "weight_decay": 0.01,
+    "max_length_seconds": 10.0,
+    "seed": 42,
+    "data_short": "train",
+    "model_name": "facebook/wav2vec2-base"
+  },
+  "threshold_sweep": {
+    "best_f1": {
+      "threshold": 0.35000000000000003,
+      "f1": 0.7021219446682783
+    },
+    "best_specificity": {
+      "threshold": 0.9500000000000001,
+      "specificity": 1.0
+    },
+    "best_youden": {
+      "threshold": 0.35000000000000003,
+      "youden": 0.5548456453869655
+    }
+  }
+}

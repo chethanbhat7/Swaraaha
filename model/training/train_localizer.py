@@ -33,7 +33,7 @@ def parse_args():
     parser.add_argument("--output_dir", type=str, default="model/weights", help="Directory to save trained weights.")
     parser.add_argument("--n_mels", type=int, default=128, help="Number of mel frequency bins.")
     parser.add_argument("--hop_length", type=int, default=512, help="STFT hop length.")
-    parser.add_argument("--max_length_seconds", type=float, default=10.0, help="Max audio length in seconds.")
+    parser.add_argument("--max_length_seconds", type=float, default=3.0, help="Max audio length in seconds.")
     parser.add_argument("--dropout", type=float, default=0.4, help="Dropout rate.")
     parser.add_argument("--patience", type=int, default=7, help="Early stopping patience.")
     parser.add_argument("--weight_decay", type=float, default=1e-4, help="Weight decay.")
@@ -44,6 +44,17 @@ def parse_args():
 
     parser.add_argument("--seed", type=int, default=42, help="Random seed.")
     parser.add_argument("--val_ratio", type=float, default=0.2, help="Validation split ratio.")
+    parser.add_argument("--sources", type=str, default=None,
+                        help="Comma-separated dataset sources to train on (e.g. 'uclass'). "
+                             "Defaults to all sources in sources.csv.")
+    parser.add_argument("--pos_weight", type=float, default=None,
+                        help="Positive-frame weight for BCE loss (imbalance correction). "
+                             "Default: auto-computed from the training split's frame labels.")
+    parser.add_argument("--no-augmentation", dest="augmentation", action="store_false",
+                        default=True,
+                        help="Disable spectrogram masking augmentation (ablation).")
+    parser.add_argument("--cache_dir", type=str, default=None,
+                        help="Cache directory for preprocessed audio (auto-derived from data_dir if omitted).")
     return parser.parse_args()
 
 
@@ -120,10 +131,12 @@ def evaluate_localizer(model, dataloader, device, threshold: float = 0.5):
     Evaluate localization model.
 
     Returns:
-        frame_f1, mean_iou, avg_loss, all_true, all_pred_probs
+        frame_f1, mean_iou, auroc, avg_loss, all_true, all_pred_probs
     """
     import torch
     from tqdm import tqdm
+
+    from model.training.utils import compute_event_mean_iou, compute_frame_auroc
 
     model.model.eval()
     all_true, all_pred = [], []
@@ -162,47 +175,13 @@ def evaluate_localizer(model, dataloader, device, threshold: float = 0.5):
     f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
 
     # Event-level IoU
-    true_regions = _extract_regions(all_true.astype(int))
-    pred_regions = _extract_regions(pred_bin)
-    mean_iou = _compute_mean_iou(true_regions, pred_regions)
+    mean_iou = compute_event_mean_iou(all_true, pred_bin)
+
+    # Threshold-free score for early stopping / best-checkpoint selection
+    auroc = compute_frame_auroc(all_true, all_pred)
 
     avg_loss = total_loss / max(num_batches, 1)
-    return f1, mean_iou, avg_loss, all_true, all_pred
-
-
-def _extract_regions(mask: np.ndarray) -> List[Tuple[int, int]]:
-    regions = []
-    in_region = False
-    start = 0
-    for i, v in enumerate(mask):
-        if v == 1 and not in_region:
-            in_region = True
-            start = i
-        elif v == 0 and in_region:
-            in_region = False
-            regions.append((start, i))
-    if in_region:
-        regions.append((start, len(mask)))
-    return regions
-
-
-def _compute_mean_iou(true_regions, pred_regions) -> float:
-    if not true_regions or not pred_regions:
-        return 0.0
-
-    ious = []
-    for ts, te in true_regions:
-        best_iou = 0.0
-        for ps, pe in pred_regions:
-            inter_start = max(ts, ps)
-            inter_end = min(te, pe)
-            intersection = max(0, inter_end - inter_start)
-            union = (te - ts) + (pe - ps) - intersection
-            iou = intersection / union if union > 0 else 0.0
-            best_iou = max(best_iou, iou)
-        ious.append(best_iou)
-
-    return float(np.mean(ious)) if ious else 0.0
+    return f1, mean_iou, auroc, avg_loss, all_true, all_pred
 
 
 def train(args) -> Dict:
@@ -216,8 +195,9 @@ def train(args) -> Dict:
         CSVLogger,
         EarlyStopping,
         TeeLogger,
+        build_localizer_criterion,
+        compute_frame_pos_weight,
         maybe_skip_completed,
-        save_checkpoint,
         save_resume_state,
         try_load_resume,
     )
@@ -245,14 +225,24 @@ def train(args) -> Dict:
 
     # ---- Dataset ----
     print("\n  Loading dataset...")
+    cache_dir = args.cache_dir
+    if cache_dir is None:
+        cache_dir = os.path.join(
+            os.path.dirname(args.data_dir.rstrip("/")),
+            "cache",
+            os.path.basename(args.data_dir.rstrip("/")),
+        )
     dataset = LocalizationDataset(
         data_dir=args.data_dir,
         sr=16000,
         n_mels=args.n_mels,
         hop_length=args.hop_length,
         max_length_seconds=args.max_length_seconds,
+        sources=[s.strip() for s in args.sources.split(",")] if args.sources else None,
+        cache_dir=cache_dir,
     )
     print(f"  Total samples: {len(dataset)}")
+    print(f"  Cache: {cache_dir}")
 
     if len(dataset) == 0:
         print("  ERROR: No samples found. Check data_dir structure.")
@@ -265,13 +255,18 @@ def train(args) -> Dict:
     train_dataset = SubsetDataset(dataset, train_idx)
     val_dataset = SubsetDataset(dataset, val_idx)
 
-    from model.data.augmentation import AugmentedDataset, AudioAugmentor
+    from model.data.augmentation import AugmentedDataset, SpectrogramAugmentor
     from model.config.defaults import AUGMENTATION_ENABLED
-    if AUGMENTATION_ENABLED:
+    if AUGMENTATION_ENABLED and args.augmentation:
         train_dataset = AugmentedDataset(
-            train_dataset, augmentor=AudioAugmentor(), augment_spectrogram=True
+            train_dataset,
+            augmentor=None,
+            augment_spectrogram=True,
+            spectrogram_augmentor=SpectrogramAugmentor(),
         )
-        print(f"  Augmentation: ON (spectrogram)")
+        print(f"  Augmentation: ON (spectrogram masking)")
+    else:
+        print(f"  Augmentation: OFF")
 
     train_loader = DataLoader(
         train_dataset, batch_size=args.batch_size, shuffle=True,
@@ -291,19 +286,31 @@ def train(args) -> Dict:
     print(f"  Parameters: {sum(p.numel() for p in model.model.parameters()):,}")
 
     start_epoch = 1
-    best_f1 = 0.0
-    history = {"train_loss": [], "val_loss": [], "val_frame_f1": [], "val_mean_iou": []}
+    best_score = 0.0
+    history = {"train_loss": [], "val_loss": [], "val_frame_f1": [], "val_mean_iou": [], "val_auroc": []}
     if resume_ckpt is not None:
         model.model.load_state_dict(resume_ckpt["model_state_dict"])
         start_epoch = resume_ckpt["epoch"] + 1
-        best_f1 = resume_ckpt["best_f1"]
+        best_score = resume_ckpt.get("best_f1", 0.0)
         history = resume_ckpt["history"]
-        print(f"  Resuming from epoch {resume_ckpt['epoch']} (best F1: {best_f1:.4f})")
+        print(f"  Resuming from epoch {resume_ckpt['epoch']} (best score: {best_score:.4f})")
 
     # ---- Loss & Optimizer ----
     # Positive class weighting for frame-level imbalance
-    pos_weight = torch.tensor([5.0], device=device)
-    criterion = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+    if args.pos_weight is None:
+        train_samples = [dataset.samples[i] for i in train_idx]
+        pos_weight = compute_frame_pos_weight(
+            train_samples,
+            num_frames=dataset.max_frames,
+            sr=16000,
+            hop_length=args.hop_length,
+        )
+        print(f"  Auto pos_weight: {pos_weight} "
+              f"(from {len(train_samples)} training clips)")
+    else:
+        pos_weight = args.pos_weight
+        print(f"  pos_weight: {pos_weight} (explicit)")
+    criterion = build_localizer_criterion(pos_weight, device)
 
     optimizer = torch.optim.AdamW(
         model.model.parameters(), lr=args.lr, weight_decay=args.weight_decay,
@@ -318,7 +325,7 @@ def train(args) -> Dict:
 
     # ---- Logging ----
     log_path = os.path.join(args.output_dir, f"{fp}_log.csv")
-    logger = CSVLogger(log_path, ["epoch", "train_loss", "val_loss", "val_frame_f1", "val_mean_iou", "lr"])
+    logger = CSVLogger(log_path, ["epoch", "train_loss", "val_loss", "val_frame_f1", "val_mean_iou", "val_auroc", "lr"])
 
     early_stopping = EarlyStopping(patience=args.patience, mode="max")
 
@@ -334,56 +341,64 @@ def train(args) -> Dict:
         current_lr = optimizer.param_groups[0]["lr"]
 
         # Validate
-        val_f1, val_iou, val_loss, _, _ = evaluate_localizer(model, val_loader, device)
+        val_f1, val_iou, val_auroc, val_loss, all_true, all_pred = evaluate_localizer(
+            model, val_loader, device
+        )
         scheduler.step()
+
+        from model.evaluation.metrics import find_optimal_threshold
+        best_thresh, best_f1 = find_optimal_threshold(all_true, all_pred, metric="f1")
 
         epoch_time = time.time() - epoch_start
 
         # Log
         logger.log(
             epoch=epoch, train_loss=f"{train_loss:.4f}", val_loss=f"{val_loss:.4f}",
-            val_frame_f1=f"{val_f1:.4f}", val_mean_iou=f"{val_iou:.4f}", lr=f"{current_lr:.2e}",
+            val_frame_f1=f"{val_f1:.4f}", val_mean_iou=f"{val_iou:.4f}",
+            val_auroc=f"{val_auroc:.4f}", lr=f"{current_lr:.2e}",
         )
 
         history["train_loss"].append(train_loss)
         history["val_loss"].append(val_loss)
         history["val_frame_f1"].append(val_f1)
         history["val_mean_iou"].append(val_iou)
+        history["val_auroc"].append(val_auroc)
 
         print(
             f"  Epoch {epoch:3d}/{args.epochs} | "
             f"loss={train_loss:.4f} | val_loss={val_loss:.4f} | "
-            f"frame_F1={val_f1:.3f} | IoU={val_iou:.3f} | "
+            f"frame_F1={val_f1:.3f} | F1@opt={best_f1:.3f}(t={best_thresh:.2f}) | "
+            f"IoU={val_iou:.3f} | AUROC={val_auroc:.3f} | "
             f"lr={current_lr:.2e} | {epoch_time:.1f}s"
         )
 
         # Save resume checkpoint
-        save_resume_state(model, optimizer, scheduler, epoch, best_f1, history, args, fp,
+        save_resume_state(model, optimizer, scheduler, epoch, best_score, history, args, fp,
                           CNN_LOCALIZER_RESUME_KEYS, completed=False)
 
-        # Checkpoint best
-        if val_f1 > best_f1:
-            best_f1 = val_f1
+        # Checkpoint best (threshold-free AUROC, not frame F1@0.5)
+        if val_auroc > best_score:
+            best_score = val_auroc
             ckpt_path = os.path.join(args.output_dir, f"{fp}_best.pt")
-            save_checkpoint(model, optimizer, epoch, {"val_f1": val_f1, "val_iou": val_iou}, ckpt_path, scheduler)
+            model.save(ckpt_path)
 
-        if early_stopping.step(val_f1):
+        if early_stopping.step(val_auroc):
             print(f"\n  Early stopping at epoch {epoch}")
             break
 
     # Mark training as complete so future runs skip this model
-    save_resume_state(model, optimizer, scheduler, epoch, best_f1, history, args, fp,
+    save_resume_state(model, optimizer, scheduler, epoch, best_score, history, args, fp,
                       CNN_LOCALIZER_RESUME_KEYS, completed=True)
 
     # Save final
     final_path = os.path.join(args.output_dir, f"{fp}_final.pt")
-    save_checkpoint(model, optimizer, epoch, {"val_f1": best_f1}, final_path, scheduler)
+    model.save(final_path)
 
     total_time = time.time() - start_time
     logger.close()
 
     print(f"\n  Training complete in {total_time:.1f}s")
-    print(f"  Best val frame F1: {best_f1:.4f}")
+    print(f"  Best val AUROC: {best_score:.4f}")
     print(f"  Saved: {final_path}")
 
     # Save training curves

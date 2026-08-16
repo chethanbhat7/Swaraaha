@@ -16,13 +16,16 @@ Expected directory layout:
 Frame resolution: 20ms per frame (320 samples at 16kHz)
 """
 
+import csv
 import os
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
+from model.data.dataset import _PickleCacheMixin, load_label_csv
 
-class Wav2Vec2LocalizationDataset:
+
+class Wav2Vec2LocalizationDataset(_PickleCacheMixin):
     """
     Dataset for Wav2Vec2-based localization.
 
@@ -37,8 +40,10 @@ class Wav2Vec2LocalizationDataset:
         self,
         data_dir: str,
         sr: int = 16000,
-        max_length_seconds: float = 10.0,
+        max_length_seconds: float = 3.0,
         hop_samples: int = 320,  # Wav2Vec2 subsampling factor
+        sources: Optional[List[str]] = None,
+        cache_dir: Optional[str] = None,
     ):
         """
         Args:
@@ -46,17 +51,39 @@ class Wav2Vec2LocalizationDataset:
             sr: Target sample rate.
             max_length_seconds: Pad/truncate all audio to this length.
             hop_samples: Samples per frame for Wav2Vec2 (320 = 20ms).
+            sources: If given, only include clips whose source (from
+                sources.csv) is in this list. Ignored when sources.csv is
+                missing.
+            cache_dir: Directory for the pickle cache of preprocessed items.
+                None (default) auto-derives <data_dir parent>/cache/<basename>.
         """
         self.data_dir = data_dir
         self.sr = sr
         self.max_samples = int(max_length_seconds * sr)
         self.hop_samples = hop_samples
         self.max_frames = self.max_samples // hop_samples
+        self.sources = set(sources) if sources else None
+        self._init_cache(cache_dir)
+        self._source_map = self._load_source_map()
 
         self.audio_dir = os.path.join(data_dir, "audio")
         self.labels_dir = os.path.join(data_dir, "labels")
 
         self.samples = self._scan_samples()
+
+    def _load_source_map(self) -> Dict[str, str]:
+        """Load clip_id -> source mapping from sources.csv (if present)."""
+        path = os.path.join(self.data_dir, "sources.csv")
+        if not os.path.isfile(path):
+            return {}
+        source_map = {}
+        with open(path, "r") as f:
+            for row in csv.DictReader(f):
+                clip_id = row.get("clip_id", "").strip()
+                source = row.get("source", "").strip()
+                if clip_id and source:
+                    source_map[clip_id] = source
+        return source_map
 
     def _scan_samples(self) -> List[Dict]:
         samples = []
@@ -72,6 +99,15 @@ class Wav2Vec2LocalizationDataset:
 
             if not os.path.isfile(label_path):
                 continue
+
+            # Skip header-only WAV files (no audio data) — same guard as
+            # ClassificationDataset, so training never runs on empty silence.
+            if os.path.getsize(audio_path) <= 44:
+                continue
+
+            if self.sources is not None and self._source_map:
+                if self._source_map.get(clip_id) not in self.sources:
+                    continue
 
             samples.append({
                 "clip_id": clip_id,
@@ -93,13 +129,25 @@ class Wav2Vec2LocalizationDataset:
             frame_label: uint8 ndarray, shape (max_frames,).
         """
         from model.data.preprocessing import clean_audio, load_audio, pad_to_length
-        from model.data.dataset import load_label_csv
 
         sample = self.samples[idx]
 
-        # Load and clean audio
+        label_signature = self._label_signature(sample["label_path"])
+
+        if self.use_cache:
+            cached = self._load_from_cache(
+                sample["clip_id"],
+                label_signature,
+                self._config_signature(),
+                self._audio_signature(sample["audio_path"]),
+            )
+            if cached is not None:
+                return cached
+
+        # Load and clean audio. Silence trimming is disabled — labels use the
+        # original timeline and trimming would shift frame labels off the audio.
         audio, _ = load_audio(sample["audio_path"], sr=self.sr)
-        audio = clean_audio(audio, sr=self.sr)
+        audio = clean_audio(audio, sr=self.sr, trim=False)
 
         # Load labels
         intervals = load_label_csv(sample["label_path"])
@@ -112,7 +160,22 @@ class Wav2Vec2LocalizationDataset:
         # Pad or truncate audio
         audio = pad_to_length(audio, self.max_samples, axis=0, pad_value=0.0)
 
-        return audio.astype(np.float32), frame_mask.astype(np.uint8)
+        result = (audio.astype(np.float32), frame_mask.astype(np.uint8))
+
+        if self.use_cache:
+            self._save_to_cache(
+                sample["clip_id"],
+                label_signature,
+                self._config_signature(),
+                self._audio_signature(sample["audio_path"]),
+                result,
+            )
+
+        return result
+
+    def _config_signature(self) -> str:
+        return (f"sr={self.sr};hop_samples={self.hop_samples};"
+                f"max_frames={self.max_frames}")
 
     def _create_w2v2_frame_labels(
         self,

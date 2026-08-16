@@ -1,25 +1,17 @@
 """Model inference wrapper — classification, localization and transcription.
 
-Uses model.registry (Classifier / Localizer) for real inference. When the
-trained weights are missing, falls back to mock results so the UI keeps working.
+Uses model.registry (MultiTaskClassifier / Localizer) for real inference.
+Classification errors propagate so the UI surfaces them instead of fabricating
+results.
 """
 
 import logging
 
 import numpy as np
-import torch
 
 from app.core.transcription import AudioTranscriber
 
 logger = logging.getLogger(__name__)
-
-MOCK_CLASSIFICATIONS = {
-    "prolongation": (False, 0.12),
-    "block": (True, 0.87),
-    "soundrep": (False, 0.08),
-    "wordrep": (False, 0.05),
-    "interjection": (True, 0.72),
-}
 
 
 class ModelRunner:
@@ -35,8 +27,8 @@ class ModelRunner:
 
     def _get_classifier(self):
         if self._classifier is None:
-            from model.registry import Classifier
-            self._classifier = Classifier()
+            from model.registry import MultiTaskClassifier
+            self._classifier = MultiTaskClassifier()
         return self._classifier
 
     def _get_localizer(self):
@@ -46,17 +38,16 @@ class ModelRunner:
         return self._localizer
 
     def _classify(self, audio: np.ndarray) -> dict:
-        """Per-class classification results as {name: (stutter_present, confidence)}."""
-        try:
-            audio_np = np.asarray(audio, dtype=np.float32)
-            if audio_np.ndim == 1:
-                audio_np = audio_np[np.newaxis, ...]
-            tensor = torch.tensor(audio_np)
-            raw = self._get_classifier().predict_all(tensor)
-            return {name: (bool(label), float(conf)) for name, (label, conf) in raw.items()}
-        except Exception as e:
-            logger.warning("Classification unavailable, using mock results: %s", e)
-            return dict(MOCK_CLASSIFICATIONS)
+        """Multi-task classification results as {name: (stutter_present, confidence)}."""
+        audio_np = np.asarray(audio, dtype=np.float32)
+        if audio_np.ndim > 1:
+            audio_np = audio_np.mean(axis=1)
+        raw = self._get_classifier().analyze(audio_np)
+        return {
+            name: (bool(result["label"]), float(result["confidence"]))
+            for name, result in raw.items()
+            if name != "summary"
+        }
 
     def _localize(self, audio: np.ndarray) -> list:
         """Dysfluency regions as [(start_sec, end_sec, confidence), ...]."""
@@ -71,14 +62,45 @@ class ModelRunner:
             logger.warning("Localization unavailable: %s", e)
             return []
 
+    def _combine(self, audio: np.ndarray, localizations: list) -> dict:
+        """Fuse localization tuples with classifier saliency into combined regions."""
+        try:
+            from model.combiner import combine_regions
+            from model.config.defaults import DYSFLUENCY_CLASSES
+
+            audio_np = np.asarray(audio, dtype=np.float32)
+            if audio_np.ndim > 1:
+                audio_np = audio_np.mean(axis=1)
+            classifier = self._get_classifier()
+            saliency = classifier.saliency(audio_np).squeeze(0)
+            if hasattr(saliency, "cpu"):
+                saliency = saliency.cpu()
+            saliency = np.asarray(saliency, dtype=float)
+            regions = [
+                {"start": s, "end": e, "confidence": c}
+                for s, e, c in localizations
+            ]
+            return combine_regions(
+                regions,
+                saliency,
+                class_names=list(DYSFLUENCY_CLASSES),
+                thresholds=getattr(classifier, "_thresholds", {}) or None,
+                audio_duration=len(audio_np) / 16000,
+            )
+        except Exception as exc:
+            logger.warning("Combined fusion unavailable: %s", exc)
+            return {"error": str(exc)}
+
     def analyze(self, audio: np.ndarray, language: str = "english") -> dict:
         """Run classification + localization + transcription on audio. Returns structured results."""
         classifications = self._classify(audio)
         localizations = self._localize(audio)
         transcription = self.transcribe(audio, localizations=localizations, language=language)
+        combined = self._combine(audio, localizations)
 
         return {
             "classifications": classifications,
             "localizations": localizations,
             "transcription": transcription,
+            "combined": combined,
         }

@@ -1,0 +1,23 @@
+{
+  "frame_level": {
+    "precision": 0.1774,
+    "recall": 0.0227,
+    "f1": 0.0403,
+    "specificity": 0.9853
+  },
+  "event_level": {
+    "detection_accuracy": 0.0,
+    "mean_iou": 0.0,
+    "num_true_events": 16,
+    "num_pred_events": 47,
+    "num_false_alarms": 47,
+    "false_alarm_rate_per_min": 11.1593
+  },
+  "model_type": "wav2vec2",
+  "model_path": "model/weights/w2v2loc_e20_b4_lr3e-5_frz5_wu500_hd256_d0.3_wd0.01_ml3_pa5_vr0.2_s42_train_w2v2base_best.pt",
+  "num_samples": 53,
+  "threshold": 0.5,
+  "model": {
+    "filename": "w2v2loc_e20_b4_lr3e-5_frz5_wu500_hd256_d0.3_wd0.01_ml3_pa5_vr0.2_s42_train_w2v2base_best.pt"
+  }
+}

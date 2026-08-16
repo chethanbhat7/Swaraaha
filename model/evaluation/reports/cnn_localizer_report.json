@@ -1,0 +1,154 @@
+{
+  "frame_level": {
+    "precision": 0.0,
+    "recall": 1.0,
+    "f1": 0.0,
+    "specificity": 0.0
+  },
+  "event_level": {
+    "detection_accuracy": 0.0,
+    "mean_iou": 0.0,
+    "num_true_events": 0,
+    "num_pred_events": 1,
+    "num_false_alarms": 1,
+    "false_alarm_rate_per_min": 234.375
+  },
+  "model_type": "cnn",
+  "model_path": "model/weights/localizer_best.pt",
+  "num_samples": 2,
+  "threshold": 0.5,
+  "threshold_sweep": {
+    "best_f1": {
+      "threshold": 0.6500000000000001,
+      "f1": 1.0
+    },
+    "best_youden": {
+      "threshold": 0.6500000000000001,
+      "youden": 1.0
+    },
+    "sweep": [
+      {
+        "threshold": 0.1,
+        "frame_f1": 0.0,
+        "precision": 0.0,
+        "recall": 1.0,
+        "specificity": 0.0
+      },
+      {
+        "threshold": 0.15000000000000002,
+        "frame_f1": 0.0,
+        "precision": 0.0,
+        "recall": 1.0,
+        "specificity": 0.0
+      },
+      {
+        "threshold": 0.20000000000000004,
+        "frame_f1": 0.0,
+        "precision": 0.0,
+        "recall": 1.0,
+        "specificity": 0.0
+      },
+      {
+        "threshold": 0.25000000000000006,
+        "frame_f1": 0.0,
+        "precision": 0.0,
+        "recall": 1.0,
+        "specificity": 0.0
+      },
+      {
+        "threshold": 0.30000000000000004,
+        "frame_f1": 0.0,
+        "precision": 0.0,
+        "recall": 1.0,
+        "specificity": 0.0
+      },
+      {
+        "threshold": 0.3500000000000001,
+        "frame_f1": 0.0,
+        "precision": 0.0,
+        "recall": 1.0,
+        "specificity": 0.0
+      },
+      {
+        "threshold": 0.40000000000000013,
+        "frame_f1": 0.0,
+        "precision": 0.0,
+        "recall": 1.0,
+        "specificity": 0.0
+      },
+      {
+        "threshold": 0.45000000000000007,
+        "frame_f1": 0.0,
+        "precision": 0.0,
+        "recall": 1.0,
+        "specificity": 0.0
+      },
+      {
+        "threshold": 0.5000000000000001,
+        "frame_f1": 0.0,
+        "precision": 0.0,
+        "recall": 1.0,
+        "specificity": 0.0
+      },
+      {
+        "threshold": 0.5500000000000002,
+        "frame_f1": 0.0,
+        "precision": 0.0,
+        "recall": 1.0,
+        "specificity": 0.0
+      },
+      {
+        "threshold": 0.6000000000000002,
+        "frame_f1": 0.0,
+        "precision": 0.0,
+        "recall": 1.0,
+        "specificity": 0.0
+      },
+      {
+        "threshold": 0.6500000000000001,
+        "frame_f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "specificity": 1.0
+      },
+      {
+        "threshold": 0.7000000000000002,
+        "frame_f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "specificity": 1.0
+      },
+      {
+        "threshold": 0.7500000000000002,
+        "frame_f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "specificity": 1.0
+      },
+      {
+        "threshold": 0.8000000000000002,
+        "frame_f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "specificity": 1.0
+      },
+      {
+        "threshold": 0.8500000000000002,
+        "frame_f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "specificity": 1.0
+      },
+      {
+        "threshold": 0.9000000000000002,
+        "frame_f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "specificity": 1.0
+      }
+    ]
+  },
+  "model": {
+    "filename": "localizer_best.pt"
+  }
+}

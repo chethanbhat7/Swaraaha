@@ -1,0 +1,14 @@
+{
+  "model_path": "model/weights/cnnclf_aggpool_e20_b16_lr3e-5_n128_h512_ml3_hd128_d0.4_pa5_wu500_wd0.01_ga1_s42_train_prolongation_best.pt",
+  "source": "val_split (20%, seed 42)",
+  "thresholds": {
+    "prolongation": {
+      "f1_threshold": 0.5,
+      "youden_threshold": 0.5,
+      "f1_at_optimal": 0.1839,
+      "f1_at_0_5": 0.1839
+    }
+  },
+  "macro_f1_at_0_5": 0.1839,
+  "macro_f1_at_optimal": 0.1839
+}

@@ -45,7 +45,7 @@ def parse_args():
                         help="Learning rate.")
     parser.add_argument("--output_dir", type=str, default="model/weights",
                         help="Directory to save trained weights.")
-    parser.add_argument("--max_length_seconds", type=float, default=10.0,
+    parser.add_argument("--max_length_seconds", type=float, default=3.0,
                         help="Max audio length in seconds.")
     parser.add_argument("--dropout", type=float, default=0.3,
                         help="Dropout rate in temporal head.")
@@ -69,6 +69,17 @@ def parse_args():
                         help="Linear warmup steps.")
     parser.add_argument("--clean", action="store_true",
                         help="Ignore resume checkpoints and train from scratch.")
+    parser.add_argument("--sources", type=str, default=None,
+                        help="Comma-separated dataset sources to train on (e.g. 'uclass'). "
+                             "Defaults to all sources in sources.csv.")
+    parser.add_argument("--pos_weight", type=float, default=None,
+                        help="Positive-frame weight for BCE loss (imbalance correction). "
+                             "Default: auto-computed from the training split's frame labels.")
+    parser.add_argument("--no-augmentation", dest="augmentation", action="store_false",
+                        default=True,
+                        help="Disable label-aligned waveform augmentation (ablation).")
+    parser.add_argument("--cache_dir", type=str, default=None,
+                        help="Cache directory for preprocessed audio (auto-derived from data_dir if omitted).")
     return parser.parse_args()
 
 
@@ -149,10 +160,12 @@ def evaluate_model(model, dataloader, device, threshold: float = 0.5):
     Evaluate localization model.
 
     Returns:
-        frame_f1, avg_loss, all_true, all_pred_probs
+        frame_f1, mean_iou, auroc, avg_loss, all_true, all_pred_probs
     """
     import torch
     from tqdm import tqdm
+
+    from model.training.utils import compute_event_mean_iou, compute_frame_auroc
 
     model.model.eval()
     all_true, all_pred = [], []
@@ -190,8 +203,15 @@ def evaluate_model(model, dataloader, device, threshold: float = 0.5):
     recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
     f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
 
+    # Event-level IoU
+    mean_iou = compute_event_mean_iou(all_true, pred_bin)
+
+    # Threshold-free score for early stopping / best-checkpoint selection
+    auroc = compute_frame_auroc(all_true, all_pred)
+
     avg_loss = total_loss / max(num_batches, 1)
-    return f1, avg_loss, all_true, all_pred
+    return f1, mean_iou, auroc, avg_loss, all_true, all_pred
+    return f1, auroc, avg_loss, all_true, all_pred
 
 
 def train(args) -> Dict:
@@ -206,6 +226,8 @@ def train(args) -> Dict:
         CSVLogger,
         EarlyStopping,
         TeeLogger,
+        build_localizer_criterion,
+        compute_frame_pos_weight,
         maybe_skip_completed,
         save_resume_state,
         try_load_resume,
@@ -235,12 +257,22 @@ def train(args) -> Dict:
 
     # ---- Dataset ----
     print("\n  Loading dataset...")
+    cache_dir = args.cache_dir
+    if cache_dir is None:
+        cache_dir = os.path.join(
+            os.path.dirname(args.data_dir.rstrip("/")),
+            "cache",
+            os.path.basename(args.data_dir.rstrip("/")),
+        )
     dataset = Wav2Vec2LocalizationDataset(
         data_dir=args.data_dir,
         sr=16000,
         max_length_seconds=args.max_length_seconds,
+        sources=[s.strip() for s in args.sources.split(",")] if args.sources else None,
+        cache_dir=cache_dir,
     )
     print(f"  Total samples: {len(dataset)}")
+    print(f"  Cache: {cache_dir}")
 
     if len(dataset) == 0:
         print("  ERROR: No samples found. Check data_dir structure.")
@@ -255,9 +287,16 @@ def train(args) -> Dict:
 
     from model.data.augmentation import AugmentedDataset, AudioAugmentor
     from model.config.defaults import AUGMENTATION_ENABLED
-    if AUGMENTATION_ENABLED:
-        train_dataset = AugmentedDataset(train_dataset, augmentor=AudioAugmentor())
-        print(f"  Augmentation: ON")
+    if AUGMENTATION_ENABLED and args.augmentation:
+        train_dataset = AugmentedDataset(
+            train_dataset,
+            augmentor=AudioAugmentor(),
+            label_aligned=True,
+            frame_hop_samples=320,
+        )
+        print(f"  Augmentation: ON (label-aligned waveform)")
+    else:
+        print(f"  Augmentation: OFF")
 
     train_loader = DataLoader(
         train_dataset, batch_size=args.batch_size, shuffle=True,
@@ -292,7 +331,20 @@ def train(args) -> Dict:
         print("  Backbone unfrozen (resumed)")
 
     # ---- Loss & Optimizer ----
-    criterion = torch.nn.BCEWithLogitsLoss()
+    if args.pos_weight is None:
+        train_samples = [dataset.samples[i] for i in train_idx]
+        pos_weight = compute_frame_pos_weight(
+            train_samples,
+            num_frames=dataset.max_frames,
+            sr=16000,
+            hop_length=dataset.hop_samples,
+        )
+        print(f"  Auto pos_weight: {pos_weight} "
+              f"(from {len(train_samples)} training clips)")
+    else:
+        pos_weight = args.pos_weight
+        print(f"  pos_weight: {pos_weight} (explicit)")
+    criterion = build_localizer_criterion(pos_weight, device)
 
     # Always rebuild the FULL original schedule (total_steps over all epochs)
     # so a restored last_epoch maps correctly and LR is never pinned to 0.
@@ -319,21 +371,24 @@ def train(args) -> Dict:
     scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
 
     start_epoch = 1
-    best_f1 = 0.0
-    history = {"train_loss": [], "val_loss": [], "val_frame_f1": []}
+    best_score = 0.0
+    history = {"train_loss": [], "val_loss": [], "val_frame_f1": [], "val_mean_iou": [], "val_auroc": []}
     if resume_ckpt is not None:
         model.model.load_state_dict(resume_ckpt["model_state_dict"])
         optimizer.load_state_dict(resume_ckpt["optimizer_state_dict"])
         if resume_ckpt.get("scheduler_state_dict"):
             scheduler.load_state_dict(resume_ckpt["scheduler_state_dict"])
         start_epoch = resume_ckpt["epoch"] + 1
-        best_f1 = resume_ckpt["best_f1"]
+        best_score = resume_ckpt.get("best_f1", 0.0)
         history = resume_ckpt["history"]
-        print(f"  Resuming from epoch {resume_ckpt['epoch']} (best F1: {best_f1:.4f})")
+        for key in ("val_mean_iou",):
+            if key not in history:
+                history[key] = []
+        print(f"  Resuming from epoch {resume_ckpt['epoch']} (best score: {best_score:.4f})")
 
     # ---- Logging ----
     log_path = os.path.join(args.output_dir, f"{fp}_log.csv")
-    logger = CSVLogger(log_path, ["epoch", "train_loss", "val_loss", "val_frame_f1", "lr"])
+    logger = CSVLogger(log_path, ["epoch", "train_loss", "val_loss", "val_frame_f1", "val_mean_iou", "val_auroc", "lr"])
     early_stopping = EarlyStopping(patience=args.patience, mode="max")
 
     print(f"\n  Starting training for {args.epochs} epochs...\n")
@@ -358,41 +413,48 @@ def train(args) -> Dict:
         current_lr = optimizer.param_groups[0]["lr"]
 
         # Validate
-        val_f1, val_loss, _, _ = evaluate_model(model, val_loader, device)
+        val_f1, val_iou, val_auroc, val_loss, all_true, all_pred = evaluate_model(model, val_loader, device)
         epoch_time = time.time() - epoch_start
+
+        from model.evaluation.metrics import find_optimal_threshold
+        best_thresh, best_f1 = find_optimal_threshold(all_true, all_pred, metric="f1")
 
         # Log
         logger.log(
             epoch=epoch, train_loss=f"{train_loss:.4f}", val_loss=f"{val_loss:.4f}",
-            val_frame_f1=f"{val_f1:.4f}", lr=f"{current_lr:.2e}",
+            val_frame_f1=f"{val_f1:.4f}", val_mean_iou=f"{val_iou:.4f}",
+            val_auroc=f"{val_auroc:.4f}", lr=f"{current_lr:.2e}",
         )
 
         history["train_loss"].append(train_loss)
         history["val_loss"].append(val_loss)
         history["val_frame_f1"].append(val_f1)
+        history["val_mean_iou"].append(val_iou)
+        history["val_auroc"].append(val_auroc)
 
         print(
             f"  Epoch {epoch:3d}/{args.epochs} | "
             f"loss={train_loss:.4f} | val_loss={val_loss:.4f} | "
-            f"frame_F1={val_f1:.3f} | lr={current_lr:.2e} | {epoch_time:.1f}s"
+            f"frame_F1={val_f1:.3f} | F1@opt={best_f1:.3f}(t={best_thresh:.2f}) | "
+            f"IoU={val_iou:.3f} | AUROC={val_auroc:.3f} | lr={current_lr:.2e} | {epoch_time:.1f}s"
         )
 
         # Save resume checkpoint
-        save_resume_state(model, optimizer, scheduler, epoch, best_f1, history, args, fp,
+        save_resume_state(model, optimizer, scheduler, epoch, best_score, history, args, fp,
                           W2V2_LOCALIZER_RESUME_KEYS, backbone_frozen, completed=False)
 
-        # Checkpoint best
-        if val_f1 > best_f1:
-            best_f1 = val_f1
+        # Checkpoint best (threshold-free AUROC, not frame F1@0.5)
+        if val_auroc > best_score:
+            best_score = val_auroc
             ckpt_path = os.path.join(args.output_dir, f"{fp}_best.pt")
             model.save(ckpt_path)
 
-        if early_stopping.step(val_f1):
+        if early_stopping.step(val_auroc):
             print(f"\n  Early stopping at epoch {epoch}")
             break
 
     # Mark training as complete so future runs skip this model
-    save_resume_state(model, optimizer, scheduler, epoch, best_f1, history, args, fp,
+    save_resume_state(model, optimizer, scheduler, epoch, best_score, history, args, fp,
                       W2V2_LOCALIZER_RESUME_KEYS, backbone_frozen, completed=True)
 
     # Save final
@@ -403,7 +465,7 @@ def train(args) -> Dict:
     logger.close()
 
     print(f"\n  Training complete in {total_time:.1f}s")
-    print(f"  Best val frame F1: {best_f1:.4f}")
+    print(f"  Best val AUROC: {best_score:.4f}")
     print(f"  Saved: {final_path}")
 
     # Save training curves
@@ -434,9 +496,10 @@ def _save_training_curves(history: Dict, fp: str, output_dir: str) -> None:
     ax1.grid(True, alpha=0.3)
 
     ax2.plot(epochs, history["val_frame_f1"], label="Frame F1", marker="o", markersize=3, color="tab:green")
+    ax2.plot(epochs, history["val_mean_iou"], label="Mean IoU", marker="s", markersize=3, color="tab:orange")
     ax2.set_xlabel("Epoch")
     ax2.set_ylabel("Score")
-    ax2.set_title("Wav2Vec2 Localization — Frame F1")
+    ax2.set_title("Wav2Vec2 Localization — Frame F1 / IoU")
     ax2.legend()
     ax2.grid(True, alpha=0.3)
 

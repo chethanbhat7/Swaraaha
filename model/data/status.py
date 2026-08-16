@@ -28,19 +28,30 @@ def report():
     print(f"\n  Merged dataset: {merged_path}")
     print(f"  Total entries: {len(df)}")
 
-    # Label distribution
-    print(f"\n  Label distribution:")
-    for label in DYSFLUENCY_LABELS:
-        count = df[label].sum()
-        print(f"    {label}: {count} ({100 * count / len(df):.1f}%)")
+    if len(df) == 0:
+        print("  Merged dataset is empty; nothing to report.")
+        return
+
+    # Label distribution (only over columns actually present)
+    label_cols = [c for c in DYSFLUENCY_LABELS if c in df.columns]
+    if label_cols:
+        print(f"\n  Label distribution:")
+        for label in label_cols:
+            count = df[label].sum()
+            print(f"    {label}: {count} ({100 * count / len(df):.1f}%)")
+    else:
+        print(f"\n  Label distribution: no dysfluency label columns present")
 
     # Data health
-    missing = sum(1 for p in df["clip_file"] if not os.path.exists(p))
-    empty = sum(1 for p in df["clip_file"] if os.path.exists(p) and os.path.getsize(p) == 0)
-    print(f"\n  Data health:")
-    print(f"    Missing files: {missing}")
-    print(f"    Empty files: {empty}")
-    print(f"    Valid: {len(df) - missing - empty}")
+    if "clip_file" in df.columns:
+        missing = sum(1 for p in df["clip_file"] if not os.path.exists(p))
+        empty = sum(1 for p in df["clip_file"] if os.path.exists(p) and os.path.getsize(p) == 0)
+        print(f"\n  Data health:")
+        print(f"    Missing files: {missing}")
+        print(f"    Empty files: {empty}")
+        print(f"    Valid: {len(df) - missing - empty}")
+    else:
+        print(f"\n  Data health: clip_file column missing, skipped")
 
     # Interval CSVs
     labels_dir = merged_path.parent / "labels"
@@ -61,11 +72,14 @@ def report():
             print(f"    {split_name}: {len(clip_files)} entries, {broken} broken, {valid} valid")
 
         # Per-split label dist
-        print(f"\n  Per-split label counts (sample > 0):")
-        for split_name, clip_files in splits.items():
-            subset = df[df["clip_file"].isin(clip_files)]
-            counts = {label: int(subset[label].sum()) for label in DYSFLUENCY_LABELS}
-            print(f"    {split_name}: {counts}")
+        if "clip_file" in df.columns:
+            print(f"\n  Per-split label counts (sample > 0):")
+            for split_name, clip_files in splits.items():
+                subset = df[df["clip_file"].isin(clip_files)]
+                counts = {label: int(subset[label].sum()) for label in label_cols}
+                print(f"    {split_name}: {counts}")
+        else:
+            print(f"\n  Per-split label counts: clip_file column missing, skipped")
     else:
         print(f"\n  Splits: not yet created")
 

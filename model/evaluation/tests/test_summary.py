@@ -10,8 +10,11 @@ import pytest
 
 from model.evaluation import summary
 from model.evaluation.metrics import (
+    THRESHOLD_SWEEP,
     compute_binary_metrics,
+    compute_classification_metrics,
     compute_localization_metrics,
+    find_optimal_threshold,
 )
 
 # ---------------------------------------------------------------------------
@@ -82,6 +85,94 @@ def test_compute_localization_metrics_partial_overlap():
     assert m["event_level"]["num_pred_events"] == 1
     assert m["event_level"]["num_false_alarms"] == 1
     assert m["frame_level"]["f1"] > 0.0
+
+
+def test_compute_localization_metrics_all_negative_perfect():
+    """All-negative truth with all-negative predictions is perfect agreement:
+    frame F1 must be 1.0, consistent with the event-level 1.0/1.0."""
+    y_true = np.zeros(100, dtype=int)
+    y_pred = np.zeros(100)
+
+    m = compute_localization_metrics(y_true, y_pred, threshold=0.5, sr=16000, hop_length=512)
+
+    assert m["frame_level"]["precision"] == 1.0
+    assert m["frame_level"]["recall"] == 1.0
+    assert m["frame_level"]["f1"] == 1.0
+    assert m["event_level"]["detection_accuracy"] == 1.0
+    assert m["event_level"]["mean_iou"] == 1.0
+    assert m["event_level"]["num_true_events"] == 0
+    assert m["event_level"]["num_pred_events"] == 0
+    assert m["event_level"]["num_false_alarms"] == 0
+
+
+def test_compute_localization_metrics_all_negative_with_false_alarms():
+    """All-negative truth with predicted positives: every prediction is a false
+    alarm (precision 0.0), and recall is trivially 1.0 (nothing to miss)."""
+    y_true = np.zeros(100, dtype=int)
+    y_pred = np.zeros(100)
+    y_pred[30:45] = 1
+
+    m = compute_localization_metrics(y_true, y_pred, threshold=0.5, sr=16000, hop_length=512)
+
+    assert m["frame_level"]["precision"] == 0.0
+    assert m["frame_level"]["recall"] == 1.0
+    assert m["frame_level"]["f1"] == 0.0
+    assert m["event_level"]["detection_accuracy"] == 0.0
+    assert m["event_level"]["num_pred_events"] == 1
+    assert m["event_level"]["num_false_alarms"] == 1
+
+
+def test_compute_localization_metrics_all_positive_missed():
+    """All-positive truth with nothing predicted: recall 0.0, but precision is
+    trivially 1.0 (no false predictions)."""
+    y_true = np.ones(100, dtype=int)
+    y_pred = np.zeros(100)
+
+    m = compute_localization_metrics(y_true, y_pred, threshold=0.5, sr=16000, hop_length=512)
+
+    assert m["frame_level"]["precision"] == 1.0
+    assert m["frame_level"]["recall"] == 0.0
+    assert m["frame_level"]["f1"] == 0.0
+    assert m["event_level"]["detection_accuracy"] == 0.0
+
+
+# ---------------------------------------------------------------------------
+# Multi-class classification metrics
+# ---------------------------------------------------------------------------
+
+def test_compute_classification_metrics_degenerate_perfect():
+    """All samples are one class (index 1) and the model predicts them
+    perfectly: macro-F1 must be 1.0, not 0.5. The absent class 0 has no
+    support and no predictions, so it is trivially perfect (zero_division=1)."""
+    y_true = np.ones(50, dtype=int)
+    y_pred = np.ones(50, dtype=int)
+
+    m = compute_classification_metrics(y_true, y_pred, class_names=["a", "b"])
+
+    assert m["per_class"]["a"]["precision"] == 1.0
+    assert m["per_class"]["a"]["recall"] == 1.0
+    assert m["per_class"]["a"]["f1"] == 1.0
+    assert m["per_class"]["b"]["precision"] == 1.0
+    assert m["per_class"]["b"]["recall"] == 1.0
+    assert m["per_class"]["b"]["f1"] == 1.0
+    assert m["macro"]["f1"] == 1.0
+    assert m["accuracy"] == 1.0
+
+
+def test_compute_classification_metrics_degenerate_class_false_alarms():
+    """A class with no true samples but predicted samples scores 0: every
+    prediction is a false alarm, even with the zero_division=1 default."""
+    y_true = np.zeros(50, dtype=int)
+    y_pred = np.zeros(50, dtype=int)
+    y_pred[:10] = 1  # 10 false alarms of class 1
+
+    m = compute_classification_metrics(y_true, y_pred, class_names=["a", "b"])
+
+    assert m["per_class"]["a"]["recall"] == pytest.approx(0.8)
+    assert m["per_class"]["a"]["precision"] == 1.0
+    assert m["per_class"]["b"]["precision"] == 0.0
+    assert m["per_class"]["b"]["recall"] == 1.0
+    assert m["per_class"]["b"]["f1"] == 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -185,3 +276,100 @@ def test_build_classification_summary_passes_through_model_info():
     entry = summary_result["per_class"]["prolongation"]
     assert entry["model"]["fingerprint"] == "prolongation_e20_b16_..."
     assert entry["model"]["lr"] == 3e-05
+
+
+def _sample_nested_binary_result():
+    return {
+        "class_name": "prolongation",
+        "model_path": "model/weights/prolongation_e20_b8_best.pt",
+        "num_samples": 100,
+        "threshold": 0.5,
+        "binary": {"auroc": 0.8, "auprc": 0.7, "threshold": 0.5,
+                   "precision": 0.7, "recall": 0.6, "f1": 0.65,
+                   "specificity": 0.8, "accuracy": 0.75, "support": 100,
+                   "tn": 60, "fp": 15, "fn": 10, "tp": 15},
+        "threshold_sweep": {"best_f1": {"threshold": 0.4, "f1": 0.66}},
+        "model": {"fingerprint": "prolongation_e20_b8_best", "lr": 3e-05,
+                  "model_name": "facebook/wav2vec2-base"},
+    }
+
+
+def test_build_classification_summary_reads_nested_binary_metrics():
+    """evaluate_classifier returns metrics nested under 'binary'; the summary
+    must read them from there instead of flat keys."""
+    results = {"prolongation": _sample_nested_binary_result()}
+    result = summary.build_classification_summary(results, threshold=0.7)
+
+    entry = result["per_class"]["prolongation"]
+    assert entry["f1"] == 0.65
+    assert entry["precision"] == 0.7
+    assert entry["recall"] == 0.6
+    assert entry["support"] == 100
+    assert entry["auroc"] == 0.8
+    assert entry["auprc"] == 0.7
+    assert entry["specificity"] == 0.8
+    assert entry["threshold"] == 0.5
+    assert entry["model"]["fingerprint"] == "prolongation_e20_b8_best"
+    assert result["macro_f1"] == pytest.approx(0.65)
+    assert len(result["flagged"]) == 1
+
+
+def test_format_summary_markdown_survives_missing_metrics():
+    """The markdown renderer must not crash with 'Unknown format code f' when
+    a per-class result is missing precision/recall (e.g. an errored run)."""
+    classification = summary.build_classification_summary(
+        {"prolongation": {"status": "error", "model": {"fingerprint": ""}}},
+        threshold=0.7,
+    )
+    doc = summary.format_summary_markdown({"classification": classification})
+    assert "## Classification" in doc
+    assert "| prolongation |" in doc
+
+
+def test_format_summary_markdown_renders_nested_binary_summary():
+    results = {"prolongation": _sample_nested_binary_result()}
+    classification = summary.build_classification_summary(results, threshold=0.7)
+    doc = summary.format_summary_markdown({
+        "metadata": {"timestamp": "2026-01-01T00:00:00+00:00", "data_dir": "data",
+                     "flag_threshold": 0.7},
+        "classification": classification,
+    })
+
+    assert "| prolongation | 0.700 | 0.600 | 0.650 | 0.800 | 0.700 | 100 |" in doc
+    assert "Macro-averaged F1 (all 5 classes): 0.65" in doc
+
+
+# ---------------------------------------------------------------------------
+# find_optimal_threshold (M8)
+# ---------------------------------------------------------------------------
+
+def test_find_optimal_threshold_youden_reports_real_value():
+    """youden can be negative (worse than chance); the returned value must be
+    the youden actually achieved at the returned threshold, not a hardcoded
+    default of 0.0 (old code started best_val=0.0 and never updated)."""
+    y_true = np.array([1, 0, 1, 0, 1, 0])
+    y_scores = np.array([0.2, 0.8, 0.1, 0.9, 0.3, 0.7])
+
+    t, val = find_optimal_threshold(y_true, y_scores, metric="youden")
+
+    pred = (y_scores >= t).astype(int)
+    tp = int(np.sum((y_true == 1) & (pred == 1)))
+    fp = int(np.sum((y_true == 0) & (pred == 1)))
+    fn = int(np.sum((y_true == 1) & (pred == 0)))
+    tn = int(np.sum((y_true == 0) & (pred == 0)))
+    recall = tp / (tp + fn) if tp + fn > 0 else 0.0
+    specificity = tn / (tn + fp) if tn + fp > 0 else 0.0
+    assert val == pytest.approx(recall + specificity - 1.0)
+
+
+def test_find_optimal_threshold_sweep_matches_printed_grid():
+    """find_optimal_threshold must search the same grid the printed sweep
+    shows (THRESHOLD_SWEEP), so the reported optimum is always visible in the
+    table. Old code searched 0.05..0.95 while the table prints 0.10..0.90."""
+    y_true = np.array([1, 1, 1])
+    y_scores = np.array([0.99, 0.98, 0.97])
+
+    t, val = find_optimal_threshold(y_true, y_scores, metric="f1")
+
+    assert t in THRESHOLD_SWEEP
+    assert val == 1.0

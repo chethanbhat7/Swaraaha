@@ -33,7 +33,11 @@ Usage:
     # Everything at once — raw audio in, all results out
     m = ModelRegistry()
     all_results = m.run_all("recording.wav", text="the cat sat")
-    # all_results: {classification: {...}, localization: {...}, transcription: {...}}
+    # all_results: {classification: {...}, localization: {...}, transcription: {...},
+    #               multitask: {...}, cnn_multitask: {...}, combined: {...}}
+    # combined: localizer regions fused with per-class saliency from the
+    # multitask classifier — each region: {start, end, confidence, classes,
+    # primary_type, severity, syllables[]}
 """
 
 import json
@@ -90,6 +94,53 @@ def _load_classifier(class_name: str, path: str):
     instance.class_name = class_name
     instance.class_idx = DYSFLUENCY_CLASSES.index(class_name)
     return instance
+
+
+def _audio_is_empty(audio) -> bool:
+    """True when the input carries no samples (None or an empty ndarray).
+
+    Mirrors Transcriber.transcribe's empty-audio guard so Classifier/Localizer
+    analyze return a well-formed empty result instead of crashing on
+    np.abs(audio).max() over a zero-size array.
+    """
+    import numpy as np
+
+    return audio is None or (isinstance(audio, np.ndarray) and audio.size == 0)
+
+
+def _empty_classifier_output(include_logits: bool) -> Dict[str, float]:
+    """Well-formed 'not present' result for empty audio (no model run)."""
+    result: Dict[str, float] = {
+        "label": 0,
+        "confidence": 0.0,
+        "prob_present": 0.0,
+        "prob_not_present": 1.0,
+    }
+    if include_logits:
+        result["logits"] = {"not_present": 0.0, "present": 0.0}
+    return result
+
+
+def _registry_classification_names() -> List[str]:
+    """Canonical classification model names from the registry (M1 filtering)."""
+    from model.config.defaults import DYSFLUENCY_CLASSES
+
+    registry = _load_registry()
+    return [
+        name for name in registry.get("classification", {}) if name in DYSFLUENCY_CLASSES
+    ]
+
+
+def _load_multitask_classifier(path: str):
+    """Load a shared-backbone multitask classifier from either save format.
+
+    Handles the model's own save format (``model_name`` key) and the training
+    format produced by ``save_checkpoint`` (``model_state_dict``, no
+    ``model_name``); see ``model.evaluation.loader.load_multitask``.
+    """
+    from model.evaluation.loader import load_multitask
+
+    return load_multitask(path)
 
 
 def _preprocess_audio(
@@ -194,6 +245,41 @@ def _align_words_syllables(
         return [], []
 
 
+def _resolve_multitask_thresholds(entry, model_path):
+    if entry.get('thresholds'):
+        return {name: float(t) for name, t in entry['thresholds'].items()}
+    thresholds_path = entry.get('thresholds_path')
+    if thresholds_path:
+        thresholds_path = _resolve_path(thresholds_path)
+        if not os.path.exists(thresholds_path):
+            raise FileNotFoundError(f'Thresholds file not found: {thresholds_path}')
+    else:
+        candidate = os.path.join(os.path.dirname(model_path),
+                                 'multitask_thresholds.json')
+        thresholds_path = candidate if os.path.exists(candidate) else None
+    if not thresholds_path:
+        return {}
+    with open(thresholds_path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+    return {name: spec['f1_threshold']
+            for name, spec in data.get('thresholds', {}).items()}
+
+
+def _load_multitask_registry_entry(registry, entry_key):
+    entry = registry.get(entry_key)
+    if not entry:
+        raise FileNotFoundError(
+            f"No '{entry_key}' entry in registry. "
+            f"Add model/registry.json {entry_key}.path."
+        )
+    path = _resolve_path(entry['path'])
+    if not os.path.exists(path):
+        raise FileNotFoundError(f'Model file not found: {path}')
+    model = _load_multitask_classifier(path)
+    thresholds = _resolve_multitask_thresholds(entry, path)
+    return model, thresholds
+
+
 class Classifier:
     def __init__(self, class_name: Optional[str] = None):
         self.class_name = class_name
@@ -231,24 +317,33 @@ class Classifier:
                     f"Missing classification models in registry: {missing}"
                 )
 
+            from model.config.defaults import DYSFLUENCY_CLASSES
+
             self._models = {}
             for name, entry in classification.items():
+                if name not in DYSFLUENCY_CLASSES:
+                    print(
+                        f"WARNING: ignoring unknown classification entry '{name}' "
+                        f"in registry (expected one of {sorted(DYSFLUENCY_CLASSES)})"
+                    )
+                    continue
                 path = _resolve_path(entry)
                 self._models[name] = _load_classifier(name, path)
 
     def predict(
-        self, audio_tensor, threshold: float = 0.5
+        self, audio_tensor, threshold: Optional[float] = None
     ) -> Union[Dict[str, Tuple[int, float]], Tuple[int, float]]:
         if self._model is None and not self._models:
             self._load()
 
         if self.class_name is not None:
-            return self._model.predict(audio_tensor)
+            thr = self._resolve_thresholds(threshold)[self.class_name]
+            return self._model.predict(audio_tensor, threshold=thr)
         else:
-            return self.predict_all(audio_tensor)
+            return self.predict_all(audio_tensor, threshold)
 
     def predict_all(
-        self, audio_tensor
+        self, audio_tensor, threshold: Optional[float] = None
     ) -> Dict[str, Tuple[int, float]]:
         if self._model is None:
             self._load()
@@ -259,9 +354,10 @@ class Classifier:
                 "(call Classifier() without class_name)"
             )
 
+        thresholds = self._resolve_thresholds(threshold)
         results = {}
         for name, clf in self._models.items():
-            results[name] = clf.predict(audio_tensor)
+            results[name] = clf.predict(audio_tensor, threshold=thresholds[name])
         return results
 
     @staticmethod
@@ -289,6 +385,8 @@ class Classifier:
         return thresholds
 
     def _run_single(self, audio, threshold: Optional[float], include_logits: bool) -> Dict[str, Any]:
+        if _audio_is_empty(audio):
+            return _empty_classifier_output(include_logits)
         if self._model is None:
             self._load()
         tensor = _preprocess_audio(audio)
@@ -297,6 +395,16 @@ class Classifier:
         return _classifier_output(self._model, tensor, thr, include_logits)
 
     def _run_all(self, audio, threshold: Optional[float], include_logits: bool) -> Dict[str, Any]:
+        if _audio_is_empty(audio):
+            names = list(self._models) if self._models else _registry_classification_names()
+            results: Dict[str, Any] = {
+                name: _empty_classifier_output(include_logits) for name in names
+            }
+            results["summary"] = {
+                "detected": [],
+                "primary": names[0] if names else None,
+            }
+            return results
         if not self._models:
             self._load()
         tensor = _preprocess_audio(audio)
@@ -330,6 +438,144 @@ class Classifier:
     @property
     def is_loaded(self) -> bool:
         return self._model is not None or bool(self._models)
+
+
+class MultiTaskClassifier:
+    """Registry wrapper for the shared-backbone multitask classifier.
+
+    analyze() runs ONE forward pass and returns per-class
+    {label, confidence, prob_present, prob_not_present} plus a summary.
+    """
+
+    def __init__(self):
+        self._model = None
+        self._thresholds: Dict[str, float] = {}
+
+    REGISTRY_KEY = "classification_multitask"
+
+    def _load(self) -> None:
+        registry = _load_registry()
+        self._model, self._thresholds = _load_multitask_registry_entry(
+            registry, self.REGISTRY_KEY,
+        )
+
+    @staticmethod
+    def _empty_result(names: List[str]) -> Dict[str, Any]:
+        results: Dict[str, Any] = {
+            name: _empty_classifier_output(False) for name in names
+        }
+        results["summary"] = {
+            "detected": [],
+            "primary": names[0] if names else None,
+        }
+        return results
+
+    def _preprocess(self, audio):
+        return _preprocess_audio(audio)
+
+    def analyze(self, audio, threshold: Optional[float] = None) -> Dict[str, Any]:
+        """Run one forward pass and classify every class.
+
+        Mirrors ``Classifier.analyze``: an explicit ``threshold`` overrides
+        the loaded per-class thresholds for every class. When ``threshold``
+        is None (the default), the loaded per-class thresholds apply
+        (registry ``classification_multitask.thresholds``, ``thresholds_path``,
+        or a sibling ``multitask_thresholds.json`` next to the model file),
+        falling back to 0.5 for any class without a configured threshold.
+
+        Returns:
+            {class_name: {label, confidence, prob_present, prob_not_present},
+             summary: {detected, primary}}
+        """
+        import torch
+
+        if threshold is not None and not 0.0 <= threshold <= 1.0:
+            raise ValueError(f"threshold must be in [0, 1], got {threshold}")
+
+        if _audio_is_empty(audio):
+            names = (
+                list(self._model.class_names)
+                if self._model is not None
+                else _registry_classification_names()
+            )
+            return self._empty_result(names)
+
+        if self._model is None:
+            self._load()
+
+        tensor = self._preprocess(audio)
+        self._model.model.eval()
+        with torch.no_grad():
+            logits = self._model.forward(tensor)
+
+        results: Dict[str, Any] = {}
+        for name, lg in logits.items():
+            probs = torch.softmax(lg, dim=-1)
+            prob_present = probs[0, 1].item()
+            prob_not_present = probs[0, 0].item()
+            thr = threshold if threshold is not None else self._thresholds.get(name, 0.5)
+            label = 1 if prob_present >= thr else 0
+            confidence = prob_present if label == 1 else prob_not_present
+            results[name] = {
+                "label": label,
+                "confidence": confidence,
+                "prob_present": prob_present,
+                "prob_not_present": prob_not_present,
+            }
+
+        detected = [name for name, r in results.items() if r["label"] == 1]
+        primary = max(results.items(), key=lambda kv: kv[1]["prob_present"])[0]
+        results["summary"] = {"detected": detected, "primary": primary}
+        return results
+
+    def saliency(self, audio, max_length_seconds: float = 10.0) -> "torch.Tensor":
+        """Per-frame per-class prob_present saliency for the whole audio.
+
+        Returns a tensor of shape (1, T, num_classes); T = max_length_seconds
+        * sr / 320 frames at 16 kHz.
+        """
+        if _audio_is_empty(audio):
+            raise RuntimeError("Cannot compute saliency for empty audio")
+        if self._model is None:
+            self._load()
+        tensor = _preprocess_audio(audio, max_length_seconds=max_length_seconds)
+        return self._model.saliency(tensor)
+
+    @property
+    def is_loaded(self) -> bool:
+        return self._model is not None
+
+
+class CNNMultiTaskClassifier(MultiTaskClassifier):
+    """Registry-backed CNN multitask classifier.
+
+    Reuses ``MultiTaskClassifier.analyze``; only the preprocessing hook is
+    overridden to feed mel-spectrograms instead of raw waveforms.
+    """
+
+    REGISTRY_KEY = 'classification_multitask_cnn'
+
+    def _preprocess(self, audio):
+        import torch
+
+        from model.data.preprocessing import (
+            clean_audio,
+            generate_mel_spectrogram,
+            load_audio_input,
+            pad_to_length,
+            spectrogram_to_image_array,
+        )
+
+        max_frames = int(16000 * 10.0) // self._model.hop_length + 1
+        audio = clean_audio(load_audio_input(audio, sr=16000), sr=16000)
+        spec = generate_mel_spectrogram(
+            audio, sr=16000, n_mels=self._model.n_mels,
+            hop_length=self._model.hop_length,
+            n_fft=getattr(self._model, "n_fft", 2048),
+        )
+        spec = pad_to_length(spec, max_frames, axis=1, pad_value=float(spec.min()))
+        spec = spectrogram_to_image_array(spec)
+        return torch.from_numpy(spec).float().unsqueeze(0)
 
 
 class Localizer:
@@ -408,6 +654,14 @@ class Localizer:
             Single-type: {regions, [words], [syllables]}.
             All-types: {type: {...}} keyed by localizer type.
         """
+        if _audio_is_empty(audio):
+            types = [self.model_type] if self.model_type else list(self._models.keys())
+            empty: Dict[str, Any] = {"regions": []}
+            results = {lt: dict(empty) for lt in types}
+            if self.model_type is not None:
+                return results.get(self.model_type, empty)
+            return results
+
         if not self._models:
             self._load()
 
@@ -463,6 +717,8 @@ class ModelRegistry:
         self.classifier = Classifier()
         self.localizer = Localizer()
         self.transcriber = Transcriber()
+        self.multitask_classifier = MultiTaskClassifier()
+        self.cnn_multitask_classifier = CNNMultiTaskClassifier()
 
     def run_all(
         self,
@@ -482,8 +738,11 @@ class ModelRegistry:
             text: Optional transcript for word/syllable-level localization.
 
         Returns:
-            {"classification": ..., "localization": ..., "transcription": ...}
-            Sub-results become {"error": ...} if a model is unavailable.
+            {"classification": ..., "localization": ..., "transcription": ...,
+             "multitask": ..., "cnn_multitask": ..., "combined": ...}
+            "combined" fuses localizer regions with multitask saliency:
+            {regions: [...], audio_duration, total_stutters}. Sub-results
+            become {"error": ...} if a model is unavailable.
         """
         from model.transcription import WHISPER_LANG_CODES
 
@@ -493,8 +752,22 @@ class ModelRegistry:
             results["classification"] = self.classifier.analyze(
                 audio, threshold=classify_threshold
             )
-        except FileNotFoundError as e:
+        except Exception as e:
             results["classification"] = {"error": str(e)}
+
+        try:
+            results['cnn_multitask'] = self.cnn_multitask_classifier.analyze(
+                audio, threshold=classify_threshold,
+            )
+        except Exception as e: # noqa: BLE001
+            results['cnn_multitask'] = {'error' : str(e)}
+
+        try:
+            results['multitask'] = self.multitask_classifier.analyze(
+                audio, threshold=classify_threshold,
+            )
+        except Exception as e: # noqa: BLE001
+            results['multitask'] = {'error' : str(e)}
 
         try:
             iso = WHISPER_LANG_CODES.get(language.lower(), "en")
@@ -504,7 +777,7 @@ class ModelRegistry:
                 language=iso,
                 threshold=localize_threshold,
             )
-        except FileNotFoundError as e:
+        except Exception as e:
             results["localization"] = {"error": str(e)}
 
         try:
@@ -513,6 +786,36 @@ class ModelRegistry:
             )
         except Exception as e:
             results["transcription"] = {"error": str(e)}
+
+        try:
+            from model.config.defaults import DYSFLUENCY_CLASSES
+            from model.data.preprocessing import load_audio_input
+            from model.combiner import combine_regions
+
+            if _audio_is_empty(audio):
+                results["combined"] = {
+                    "regions": [], "audio_duration": 0.0, "total_stutters": 0,
+                }
+            else:
+                loc = results.get("localization")
+                if isinstance(loc, dict) and "error" not in loc:
+                    regions = loc.get("regions", [])
+                    syllables = loc.get("syllables") if isinstance(loc, dict) else None
+                else:
+                    regions, syllables = [], None
+                saliency = self.multitask_classifier.saliency(audio).squeeze(0)  # (T, C)
+                audio_array = load_audio_input(audio, sr=16000)
+                audio_duration = len(audio_array) / 16000
+                results["combined"] = combine_regions(
+                    regions,
+                    saliency.cpu().numpy(),
+                    class_names=list(DYSFLUENCY_CLASSES),
+                    thresholds=getattr(self.multitask_classifier, "_thresholds", {}) or None,
+                    syllables=syllables,
+                    audio_duration=audio_duration,
+                )
+        except Exception as e:  # noqa: BLE001
+            results["combined"] = {"error": str(e)}
 
         return results
 

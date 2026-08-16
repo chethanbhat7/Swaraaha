@@ -31,10 +31,15 @@ class CTCTimeAligner:
     producing word-level start/end times.
     """
 
-    def __init__(self, model_name: str = "facebook/wav2vec2-base"):
+    def __init__(self, model_name: str = "facebook/wav2vec2-base-960h"):
         """
         Args:
-            model_name: HuggingFace Wav2Vec2 model with CTC head.
+            model_name: HuggingFace Wav2Vec2 model with a CTC head.
+
+        The default is the LibriSpeech-960h fine-tuned checkpoint. The
+        pre-training checkpoint (facebook/wav2vec2-base) has NO trained CTC
+        head — Wav2Vec2ForCTC.from_pretrained would initialize it randomly,
+        producing silently meaningless alignment timestamps.
         """
         self.model_name = model_name
         self._processor = None

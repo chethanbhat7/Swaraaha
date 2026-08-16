@@ -77,12 +77,13 @@ class BaseWav2VecClassifier:
         """
         return self._model(input_values=input_values, attention_mask=attention_mask).logits
 
-    def predict(self, audio_tensor) -> Tuple[int, float]:
+    def predict(self, audio_tensor, threshold: float = 0.5) -> Tuple[int, float]:
         """
         Run inference on a single audio sample.
 
         Args:
             audio_tensor: torch.Tensor of shape [1, sequence_length] or [sequence_length].
+            threshold: probability threshold for the "present" label.
 
         Returns:
             Tuple of (label: int, confidence: float).
@@ -90,6 +91,9 @@ class BaseWav2VecClassifier:
             confidence: probability of the predicted class (0.0 - 1.0).
         """
         import torch
+
+        if not 0.0 <= threshold <= 1.0:
+            raise ValueError(f"threshold must be in [0, 1], got {threshold}")
 
         if audio_tensor.ndim == 1:
             audio_tensor = audio_tensor.unsqueeze(0)
@@ -99,7 +103,7 @@ class BaseWav2VecClassifier:
             logits = self.forward(audio_tensor)
             probs = torch.softmax(logits, dim=-1)
             prob = probs[0, 1].item()
-            label = 1 if prob >= 0.5 else 0
+            label = 1 if prob >= threshold else 0
             confidence = prob if label == 1 else 1.0 - prob
 
         return label, confidence
@@ -135,7 +139,11 @@ class BaseWav2VecClassifier:
         import torch
         checkpoint = torch.load(path, map_location="cpu", weights_only=False)
         instance = cls(model_name=checkpoint["model_name"])
-        instance._model.load_state_dict(checkpoint["model_state_dict"], strict=False)
+        state_dict = checkpoint["model_state_dict"]
+        state_dict = {
+            k.replace("_orig_mod.", ""): v for k, v in state_dict.items()
+        }
+        instance._model.load_state_dict(state_dict, strict=True)
         return instance
 
     def __repr__(self):

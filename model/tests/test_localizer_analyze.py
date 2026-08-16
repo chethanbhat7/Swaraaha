@@ -67,7 +67,38 @@ def test_localizer_analyze_wav2vec2(audio):
     assert result["regions"] == [{"start": 0.5, "end": 1.0, "confidence": 0.8}]
 
 
-def test_localizer_analyze_raises_when_not_loaded():
+def test_localizer_analyze_empty_audio_returns_empty_regions():
+    calls = []
+
+    class _Spy:
+        def predict(self, *a, **k):
+            calls.append(a)
+            return [(0.0, 0.5, 0.9)]
+
+    loc = Localizer("cnn")
+    loc._models = {"cnn": _Spy()}
+    result = loc.analyze(np.array([], dtype=np.float32))
+    assert result == {"regions": []}
+    assert calls == []
+
+
+def test_localizer_analyze_empty_audio_all_types():
+    class _Spy:
+        def predict(self, *a, **k):
+            raise AssertionError("model must not run on empty audio")
+
+    loc = Localizer()
+    loc._models = {"cnn": _Spy(), "wav2vec2": _Spy()}
+    result = loc.analyze(np.array([], dtype=np.float32))
+    assert result == {"cnn": {"regions": []}, "wav2vec2": {"regions": []}}
+
+
+def test_localizer_analyze_raises_when_not_loaded(monkeypatch):
+    # Registry points at a checkpoint file that does not exist.
+    monkeypatch.setattr(
+        "model.registry._load_registry",
+        lambda: {"localization": {"cnn": "model/weights/does_not_exist.pt"}},
+    )
     loc = Localizer("cnn")
     with pytest.raises(FileNotFoundError):
         loc.analyze(np.random.rand(16000).astype(np.float32))

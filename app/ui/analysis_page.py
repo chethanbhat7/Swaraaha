@@ -16,9 +16,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from app.core.report_builder import build_report_html
-from app.ui.report_export import PatientNameDialog, export_report_to_pdf
+from app.core.report_data import build_report_data
+from app.ui.report_export import PatientNameDialog
 from app.ui.results_panel import ResultsPanel
+from shared.reporting.report_builder import generate_report_pdf
 from app.ui.waveform_view import WaveformView
 
 
@@ -130,15 +131,17 @@ class AnalysisPage(QWidget):
         else:
             duration_sec = float((results.get("transcription") or {}).get("duration_sec", 0.0))
 
+        data = build_report_data(
+            results,
+            patient_name=patient_name,
+            filename=self._filename,
+            duration_sec=duration_sec,
+        )
+
         try:
-            report_html = build_report_html(
-                results,
-                filename=self._filename,
-                language=self._language,
-                duration_sec=duration_sec,
-                patient_name=patient_name,
-            )
-            export_report_to_pdf(report_html, path)
+            pdf_bytes = generate_report_pdf(data)
+            with open(path, "wb") as f:
+                f.write(pdf_bytes)
         except Exception as e:
             QMessageBox.critical(self.window(), "Export Failed", f"Could not export the report:\n{e}")
             return

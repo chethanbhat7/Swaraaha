@@ -21,11 +21,15 @@ Label CSV format:
     2.1,2.8,soundrep
 """
 
+import csv
+import hashlib
 import os
 import pickle
+import re
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
+from torch.utils.data import Dataset
 
 from model.config.defaults import DYSFLUENCY_CLASSES
 
@@ -86,7 +90,127 @@ def intervals_to_frame_mask(
     )
 
 
-class LocalizationDataset:
+def _load_source_map(data_dir):
+    csv_path = os.path.join(data_dir, 'sources.csv')
+    if not os.path.exists(csv_path):
+        return {}
+    source_map = {}
+    with open(csv_path, 'r', encoding='utf-8') as f:
+        for row in csv.DictReader(f):
+            clip_id = (row.get('clip_id') or '').strip()
+            source = (row.get('source') or '').strip()
+            if clip_id and source:
+                source_map[clip_id] = source
+    return source_map
+
+
+class _PickleCacheMixin:
+    """Pickle-based on-disk cache for preprocessed dataset items.
+
+    Cache entries are keyed by ``clip_id`` and validated against three
+    signatures so stale pickles are never served:
+
+      * label signature — hash of the label CSV contents
+      * config signature — dataset parameters that change the output
+        (sr, n_mels, hop_length, max length); defined per subclass
+      * audio signature — size + mtime of the source audio file
+
+    Writes are atomic (temp file + ``os.replace``), so concurrent
+    ``DataLoader`` workers never observe partially-written pickles.
+    """
+
+    def _init_cache(self, cache_dir: Optional[str]) -> None:
+        if cache_dir is None and getattr(self, "data_dir", None):
+            cache_dir = os.path.join(
+                os.path.dirname(self.data_dir.rstrip("/")),
+                "cache",
+                os.path.basename(self.data_dir.rstrip("/")),
+            )
+        self.use_cache = cache_dir is not None
+        if self.use_cache:
+            # Key the cache per dataset config so runs with different
+            # parameters (n_mels, hop_length, n_fft, ...) never overwrite
+            # each other's preprocessed pickles.
+            self.cache_dir = os.path.join(cache_dir, self._cache_config_key())
+            os.makedirs(self.cache_dir, exist_ok=True)
+        else:
+            self.cache_dir = cache_dir
+
+    def _cache_config_key(self) -> str:
+        """Short filesystem-safe key derived from the config signature."""
+        sig = self._config_signature()
+        key = re.sub(r"[^A-Za-z0-9]+", "_", sig).strip("_")
+        return key[:80]
+
+    def _cache_path(self, clip_id: str) -> str:
+        return os.path.join(self.cache_dir, f"{clip_id}.pkl")
+
+    def _label_signature(self, label_path: str) -> str:
+        """Hash of the label CSV contents, so regenerated labels invalidate
+        the pickle cache (which is keyed by clip_id only)."""
+        try:
+            with open(label_path, "rb") as f:
+                return hashlib.md5(f.read()).hexdigest()[:12]
+        except OSError:
+            return "missing"
+
+    def _audio_signature(self, audio_path: str) -> str:
+        """Identity of the source audio file (size + mtime), so replacing or
+        re-downloading a clip invalidates its cached preprocessed audio."""
+        try:
+            st = os.stat(audio_path)
+        except OSError:
+            return "missing"
+        return f"{st.st_size}:{st.st_mtime_ns}"
+
+    def _config_signature(self) -> str:
+        raise NotImplementedError
+
+    def _load_from_cache(
+        self,
+        clip_id: str,
+        label_signature: str,
+        config_signature: str,
+        audio_signature: str,
+    ) -> Optional[Tuple[np.ndarray, np.ndarray]]:
+        path = self._cache_path(clip_id)
+        if not os.path.isfile(path):
+            return None
+        try:
+            with open(path, "rb") as f:
+                payload = pickle.load(f)
+        except (pickle.UnpicklingError, EOFError):
+            return None
+        if (
+            isinstance(payload, tuple)
+            and len(payload) == 5
+            and payload[0] == label_signature
+            and payload[1] == config_signature
+            and payload[2] == audio_signature
+        ):
+            return payload[3], payload[4]
+        return None
+
+    def _save_to_cache(
+        self,
+        clip_id: str,
+        label_signature: str,
+        config_signature: str,
+        audio_signature: str,
+        data: Tuple[np.ndarray, np.ndarray],
+    ) -> None:
+        path = self._cache_path(clip_id)
+        tmp_path = f"{path}.tmp"
+        with open(tmp_path, "wb") as f:
+            pickle.dump(
+                (label_signature, config_signature, audio_signature, data[0], data[1]),
+                f,
+                protocol=pickle.HIGHEST_PROTOCOL,
+            )
+        os.replace(tmp_path, path)
+
+
+class LocalizationDataset(_PickleCacheMixin):
     """
     PyTorch Dataset for dysfluency localization.
 
@@ -98,7 +222,7 @@ class LocalizationDataset:
     (set via max_length_seconds in __init__).
 
     Usage:
-        dataset = LocalizationDataset(data_dir="data/train", max_length_seconds=10)
+        dataset = LocalizationDataset(data_dir="data/train", max_length_seconds=3)
         spec, labels = dataset[0]
     """
 
@@ -108,7 +232,9 @@ class LocalizationDataset:
         sr: int = 16000,
         n_mels: int = 128,
         hop_length: int = 512,
-        max_length_seconds: float = 10.0,
+        max_length_seconds: float = 3.0,
+        sources: Optional[List[str]] = None,
+        cache_dir: Optional[str] = None,
     ):
         """
         Args:
@@ -117,6 +243,11 @@ class LocalizationDataset:
             n_mels: Number of mel bins for spectrogram.
             hop_length: Hop length for spectrogram.
             max_length_seconds: Pad/truncate all audio to this length.
+            sources: If given, only include clips whose source (from
+                sources.csv) is in this list. Ignored when sources.csv is
+                missing.
+            cache_dir: Directory for the pickle cache of preprocessed items.
+                None (default) auto-derives <data_dir parent>/cache/<basename>.
         """
         self.data_dir = data_dir
         self.sr = sr
@@ -124,11 +255,17 @@ class LocalizationDataset:
         self.hop_length = hop_length
         self.max_samples = int(max_length_seconds * sr)
         self.max_frames = self.max_samples // hop_length
+        self.sources = set(sources) if sources else None
+        self._init_cache(cache_dir)
+        self._source_map = self._load_source_map()
 
         self.audio_dir = os.path.join(data_dir, "audio")
         self.labels_dir = os.path.join(data_dir, "labels")
 
         self.samples = self._scan_samples()
+
+    def _load_source_map(self):
+        return _load_source_map(self.data_dir)
 
     def _scan_samples(self) -> List[Dict]:
         """Scan the data directory and build a list of available samples."""
@@ -149,6 +286,11 @@ class LocalizationDataset:
             # Skip header-only WAV files (no audio data)
             if os.path.getsize(audio_path) <= 44:
                 continue
+
+            # Apply source filter if configured
+            if self.sources is not None and self._source_map:
+                if self._source_map.get(clip_id) not in self.sources:
+                    continue
 
             samples.append({
                 "clip_id": clip_id,
@@ -180,11 +322,25 @@ class LocalizationDataset:
 
         sample = self.samples[idx]
 
+        label_signature = self._label_signature(sample["label_path"])
+
+        if self.use_cache:
+            cached = self._load_from_cache(
+                sample["clip_id"],
+                label_signature,
+                self._config_signature(),
+                self._audio_signature(sample["audio_path"]),
+            )
+            if cached is not None:
+                return cached
+
         # Load audio
         audio, _ = load_audio(sample["audio_path"], sr=self.sr)
 
-        # Clean audio: DC removal, peak normalization, silence trimming
-        audio = clean_audio(audio, sr=self.sr)
+        # Clean audio: DC removal, peak normalization. Silence trimming is
+        # disabled — labels use the original timeline and trimming would
+        # shift frame labels off the spectrogram.
+        audio = clean_audio(audio, sr=self.sr, trim=False)
 
         # Load labels
         intervals = load_label_csv(sample["label_path"])
@@ -210,14 +366,29 @@ class LocalizationDataset:
         # Add channel dimension: (1, n_mels, max_frames)
         spec = spectrogram_to_image_array(spec)
 
-        return spec.astype(np.float32), frame_mask.astype(np.uint8)
+        result = (spec.astype(np.float32), frame_mask.astype(np.uint8))
+
+        if self.use_cache:
+            self._save_to_cache(
+                sample["clip_id"],
+                label_signature,
+                self._config_signature(),
+                self._audio_signature(sample["audio_path"]),
+                result,
+            )
+
+        return result
+
+    def _config_signature(self) -> str:
+        return (f"sr={self.sr};n_mels={self.n_mels};hop_length={self.hop_length};"
+                f"max_frames={self.max_frames}")
 
     def get_sample_info(self, idx: int) -> Dict:
         """Return metadata for a sample without loading audio."""
         return self.samples[idx].copy()
 
 
-class ClassificationDataset:
+class ClassificationDataset(_PickleCacheMixin):
     """
     PyTorch Dataset for dysfluency classification (multi-label).
 
@@ -230,29 +401,17 @@ class ClassificationDataset:
         (same as localization — we aggregate to multi-label here)
     """
 
-    def __init__(
-        self,
-        data_dir: str,
-        sr: int = 16000,
-        max_length_seconds: float = 10.0,
-        cache_dir: Optional[str] = None,
-    ):
+    def __init__(self, data_dir, sr=16000, max_length_seconds=3.0, cache_dir=None,
+                 sources=None):
         self.data_dir = data_dir
         self.sr = sr
+        self.max_length_seconds = max_length_seconds
         self.max_samples = int(max_length_seconds * sr)
-        self.use_cache = cache_dir is not None
-
-        if self.use_cache:
-            self.cache_dir = cache_dir
-            os.makedirs(self.cache_dir, exist_ok=True)
-            self._cache_index: Optional[Dict[str, str]] = None
-        else:
-            self.cache_dir = None
-            self._cache_index = None
-
-        self.audio_dir = os.path.join(data_dir, "audio")
-        self.labels_dir = os.path.join(data_dir, "labels")
-
+        self._init_cache(cache_dir)
+        self.audio_dir = os.path.join(data_dir, 'audio')
+        self.labels_dir = os.path.join(data_dir, 'labels')
+        self.sources = set(sources) if sources else None
+        self._source_map = _load_source_map(data_dir)
         self.samples = self._scan_samples()
 
     def _scan_samples(self) -> List[Dict]:
@@ -273,6 +432,10 @@ class ClassificationDataset:
             # Skip header-only WAV files (no audio data)
             if os.path.getsize(audio_path) <= 44:
                 continue
+
+            if self.sources is not None and self._source_map:
+                if self._source_map.get(clip_id) not in self.sources:
+                    continue
 
             samples.append({
                 "clip_id": clip_id,
@@ -295,8 +458,15 @@ class ClassificationDataset:
         """
         sample = self.samples[idx]
 
+        label_signature = self._label_signature(sample["label_path"])
+
         if self.use_cache:
-            cached = self._load_from_cache(sample["clip_id"])
+            cached = self._load_from_cache(
+                sample["clip_id"],
+                label_signature,
+                self._config_signature(),
+                self._audio_signature(sample["audio_path"]),
+            )
             if cached is not None:
                 return cached
 
@@ -320,24 +490,132 @@ class ClassificationDataset:
         result = (audio.astype(np.float32), label_vector)
 
         if self.use_cache:
-            self._save_to_cache(sample["clip_id"], result)
+            self._save_to_cache(
+                sample["clip_id"],
+                label_signature,
+                self._config_signature(),
+                self._audio_signature(sample["audio_path"]),
+                result,
+            )
 
         return result
 
-    def _cache_path(self, clip_id: str) -> str:
-        return os.path.join(self.cache_dir, f"{clip_id}.pkl")
-
-    def _load_from_cache(self, clip_id: str) -> Optional[Tuple[np.ndarray, np.ndarray]]:
-        path = self._cache_path(clip_id)
-        if not os.path.isfile(path):
-            return None
-        with open(path, "rb") as f:
-            return pickle.load(f)
-
-    def _save_to_cache(self, clip_id: str, data: Tuple[np.ndarray, np.ndarray]) -> None:
-        path = self._cache_path(clip_id)
-        with open(path, "wb") as f:
-            pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
+    def _config_signature(self) -> str:
+        return f"sr={self.sr};max_samples={self.max_samples}"
 
     def get_sample_info(self, idx: int) -> Dict:
         return self.samples[idx].copy()
+
+
+class SpectrogramClassificationDataset(_PickleCacheMixin, Dataset):
+    """Classification dataset that materialises mel-spectrograms on the fly.
+
+    Mirrors ``ClassificationDataset`` but returns ``(1, n_mels, n_frames)``
+    spectrogram tensors instead of waveforms, so a CNN classifier can consume
+    the same label format. Supports the same ``sources.csv`` filtering and the
+    same pickle cache for preprocessed spectrograms.
+    """
+
+    def __init__(self, data_dir, sr=16000, n_mels=128, hop_length=512,
+                 max_length_seconds=3.0, sources=None, cache_dir=None, n_fft=2048):
+        self.data_dir = data_dir
+        self.sr = sr
+        self.n_mels = n_mels
+        self.hop_length = hop_length
+        self.n_fft = n_fft
+        self.max_length_seconds = max_length_seconds
+        self.max_samples = int(max_length_seconds * sr)
+        self.max_frames = int(self.max_samples // hop_length) + 1
+        self.sources = set(sources) if sources else None
+        self._init_cache(cache_dir)
+        self._source_map = _load_source_map(data_dir)
+        self.samples = self._scan_samples()
+
+    def _scan_samples(self):
+        audio_dir = os.path.join(self.data_dir, 'audio')
+        labels_dir = os.path.join(self.data_dir, 'labels')
+        if not os.path.isdir(audio_dir):
+            return []
+        samples = []
+        for fname in sorted(os.listdir(audio_dir)):
+            if not fname.endswith(('.wav', '.flac', '.mp3')):
+                continue
+            clip_id = os.path.splitext(fname)[0]
+            label_path = os.path.join(labels_dir, f'{clip_id}.csv')
+            if not os.path.exists(label_path):
+                continue
+            audio_path = os.path.join(audio_dir, fname)
+            if os.path.getsize(audio_path) <= 44:
+                continue
+            if self.sources is not None and self._source_map:
+                if self._source_map.get(clip_id) not in self.sources:
+                    continue
+            samples.append({'clip_id': clip_id, 'audio_path': audio_path,
+                            'label_path': label_path})
+        return samples
+
+    @property
+    def label_vectors(self):
+        """Per-sample multi-hot label vectors (reads label files only).
+
+        Used by ``train_multitask_classifier.stratified_split`` so splitting
+        does not materialise 29k spectrograms just to read their labels.
+        """
+        return [self._label_vector(sample) for sample in self.samples]
+
+    def _label_vector(self, sample):
+        intervals = load_label_csv(sample['label_path'])
+        label_vector = np.zeros(NUM_CLASSES, dtype=np.uint8)
+        for _, _, dtype in intervals:
+            if dtype in CLASS_TO_IDX:
+                label_vector[CLASS_TO_IDX[dtype]] = 1
+        return label_vector
+
+    def __len__(self):
+        return len(self.samples)
+
+    def __getitem__(self, idx):
+        from model.data.preprocessing import (
+            clean_audio,
+            generate_mel_spectrogram,
+            load_audio,
+            pad_to_length,
+            spectrogram_to_image_array,
+        )
+
+        sample = self.samples[idx]
+        label_signature = self._label_signature(sample['label_path'])
+
+        if self.use_cache:
+            cached = self._load_from_cache(
+                sample['clip_id'],
+                label_signature,
+                self._config_signature(),
+                self._audio_signature(sample['audio_path']),
+            )
+            if cached is not None:
+                return cached
+
+        audio, _ = load_audio(sample['audio_path'], sr=self.sr)
+        audio = clean_audio(audio, sr=self.sr)
+        spec = generate_mel_spectrogram(audio, sr=self.sr, n_mels=self.n_mels,
+                                        hop_length=self.hop_length,
+                                        n_fft=self.n_fft)
+        spec = pad_to_length(spec, self.max_frames, axis=1, pad_value=spec.min())
+        spec = spectrogram_to_image_array(spec)
+        result = (spec.astype(np.float32), self._label_vector(sample))
+
+        if self.use_cache:
+            self._save_to_cache(
+                sample['clip_id'],
+                label_signature,
+                self._config_signature(),
+                self._audio_signature(sample['audio_path']),
+                result,
+            )
+
+        return result
+
+    def _config_signature(self) -> str:
+        return (f"sr={self.sr};n_mels={self.n_mels};hop_length={self.hop_length};"
+                f"n_fft={self.n_fft};max_frames={self.max_frames}")

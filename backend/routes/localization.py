@@ -3,6 +3,7 @@
 from fastapi import APIRouter, File, Form, UploadFile
 
 from backend.services.classifier import classify_audio_bytes
+from backend.services.fusion import combine_audio_bytes
 from backend.services.localizer import localize_audio_bytes
 from backend.services.transcriber import transcribe_audio_bytes
 
@@ -22,8 +23,10 @@ async def analyze_audio(file: UploadFile = File(...), language: str = Form("engl
     classification = classify_audio_bytes(audio_bytes)
     localization = localize_audio_bytes(audio_bytes)
     transcription = transcribe_audio_bytes(audio_bytes, language=language)
+    combined = combine_audio_bytes(audio_bytes, localization.get("regions", []))
     return {
         "classification": classification,
         "localization": localization,
         "transcription": transcription,
+        "combined": combined,
     }
