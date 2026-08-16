@@ -33,7 +33,11 @@ Usage:
     # Everything at once — raw audio in, all results out
     m = ModelRegistry()
     all_results = m.run_all("recording.wav", text="the cat sat")
-    # all_results: {classification: {...}, localization: {...}, transcription: {...}}
+    # all_results: {classification: {...}, localization: {...}, transcription: {...},
+    #               multitask: {...}, cnn_multitask: {...}, combined: {...}}
+    # combined: localizer regions fused with per-class saliency from the
+    # multitask classifier — each region: {start, end, confidence, classes,
+    # primary_type, severity, syllables[]}
 """
 
 import json
@@ -734,8 +738,11 @@ class ModelRegistry:
             text: Optional transcript for word/syllable-level localization.
 
         Returns:
-            {"classification": ..., "localization": ..., "transcription": ...}
-            Sub-results become {"error": ...} if a model is unavailable.
+            {"classification": ..., "localization": ..., "transcription": ...,
+             "multitask": ..., "cnn_multitask": ..., "combined": ...}
+            "combined" fuses localizer regions with multitask saliency:
+            {regions: [...], audio_duration, total_stutters}. Sub-results
+            become {"error": ...} if a model is unavailable.
         """
         from model.transcription import WHISPER_LANG_CODES
 
