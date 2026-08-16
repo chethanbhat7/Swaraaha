@@ -24,6 +24,8 @@ export interface ClassificationResults {
   [className: string]: {
     label: number;
     confidence: number;
+    prob_present?: number;
+    prob_not_present?: number;
   };
 }
 
@@ -74,6 +76,7 @@ export interface AnalyzeResults {
   classification: ClassificationResults;
   localization: {
     regions: LocalizationRegion[];
+    duration_sec?: number;
   };
   transcription: TranscriptionData;
   severity?: SeverityResult;

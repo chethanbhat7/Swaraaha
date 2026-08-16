@@ -3,19 +3,21 @@ import { useEffect, useState, useRef } from 'react'
 import { 
   ArrowLeft, 
   Volume2, 
-  ShieldCheck, 
   CheckCircle2, 
   Activity,
   Play,
   Pause,
   Download
 } from 'lucide-react'
-import { SeverityResult, TranscriptionData, RegionType, LocalizationRegion, CombinedResults, analyzeAudio, downloadReport } from '../api/client'
+import { ClassificationResults, SeverityResult, TranscriptionData, RegionType, LocalizationRegion, CombinedResults, analyzeAudio, downloadReport } from '../api/client'
 import { storeAudioFile } from '../utils/db'
 
 interface AnalysisResults {
-  classification: Record<string, { label: number; confidence: number }>
-  localization: { regions: LocalizationRegion[] }
+  classification: ClassificationResults
+  localization: { 
+    regions: LocalizationRegion[]
+    duration_sec?: number
+  }
   transcription?: TranscriptionData
   severity?: SeverityResult
   combined?: CombinedResults
@@ -64,7 +66,6 @@ function WaveformView({ file, regions, transcription }: WaveformViewProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const animationRef = useRef<number | null>(null)
   const [audioUrl, setAudioUrl] = useState<string | null>(null)
-
   useEffect(() => {
     const decodeAudio = async () => {
       try {
@@ -190,6 +191,15 @@ function WaveformView({ file, regions, transcription }: WaveformViewProps) {
           }
           ctx.stroke()
           ctx.restore()
+
+          // Draw label on coarse region if wide enough
+          if (x2 - x1 > 45) {
+            ctx.save()
+            ctx.fillStyle = style.color
+            ctx.font = 'bold 8px ui-sans-serif, system-ui'
+            ctx.fillText(style.label + ' (est.)', x1 + 4, 14)
+            ctx.restore()
+          }
           return
         }
 
@@ -204,6 +214,15 @@ function WaveformView({ file, regions, transcription }: WaveformViewProps) {
         ctx.moveTo(x2, 0)
         ctx.lineTo(x2, height)
         ctx.stroke()
+
+        // Draw label text on Waveform overlay if wide enough
+        if (x2 - x1 > 45) {
+          ctx.save()
+          ctx.fillStyle = style.color
+          ctx.font = 'bold 8px ui-sans-serif, system-ui'
+          ctx.fillText(style.label, x1 + 4, 14)
+          ctx.restore()
+        }
       })
 
       // 3. Waveform
@@ -231,6 +250,21 @@ function WaveformView({ file, regions, transcription }: WaveformViewProps) {
         ctx.lineTo(x, y2)
       }
       ctx.stroke()
+
+      // 3.5 Time axis labels (seconds along the bottom of the canvas)
+      ctx.fillStyle = 'rgba(100, 116, 139, 0.75)'
+      ctx.font = '8px ui-monospace, monospace'
+      ctx.textAlign = 'center'
+      const tickEvery = audioBuffer.duration > 30 ? 5 : 1
+      for (let t = 0; t <= audioBuffer.duration; t += tickEvery) {
+        const tx = (t / audioBuffer.duration) * width
+        ctx.beginPath()
+        ctx.moveTo(tx, height - 8)
+        ctx.lineTo(tx, height - 4)
+        ctx.strokeStyle = 'rgba(100, 116, 139, 0.4)'
+        ctx.stroke()
+        ctx.fillText(`${t}s`, tx, height - 10)
+      }
 
       // 4. Playhead cursor
       if (audioRef.current) {
@@ -616,15 +650,6 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
             </div>
           </div>
 
-          {/* Informational tips */}
-          <div className="pt-4 border-t border-border-color/50 w-full max-w-md flex justify-center text-[10px] text-text-secondary select-none">
-            <div className="flex items-center gap-2">
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-accent-teal" />
-              <span>Whisper-Tiny language adapters active</span>
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-accent-teal" />
-              <span>GPU/CPU inference optimized</span>
-            </div>
-          </div>
         </div>
       </div>
     )
@@ -661,16 +686,28 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
     ? results.combined
     : undefined
   const regions: DisplayRegion[] =
-    combined?.regions ?? results.localization.regions
+    combined?.regions && combined.regions.length > 0
+      ? combined.regions
+      : results.localization.regions
 
   // Calculate Speech Metrics
   const classes = Object.keys(results.classification).filter(
     c => results.classification[c] && typeof results.classification[c].confidence === 'number'
   )
-  const localizationCoverage = results.localization.regions.reduce(
-    (sum, r) => sum + Math.max(0, r.end - r.start),
-    0
-  )
+
+  // Aligned classification results matching localized/combined regions
+  const alignedClassification = {} as Record<string, { label: number; confidence: number; prob_present?: number; prob_not_present?: number }>
+  classes.forEach(name => {
+    const r = results.classification[name]
+    const isPresent = r.label === 1 || regions.some(reg => reg.type === name || reg.primary_type === name)
+    const presenceProbability = r.prob_present ?? (r.label === 1 ? r.confidence : 1 - r.confidence)
+    alignedClassification[name] = {
+      label: isPresent ? 1 : 0,
+      confidence: isPresent ? presenceProbability : (r.prob_not_present ?? r.confidence),
+      prob_present: presenceProbability,
+      prob_not_present: r.prob_not_present ?? (r.label === 0 ? r.confidence : 1 - r.confidence),
+    }
+  })
 
   // Helper to parse duration string (MM:SS or HH:MM:SS) to seconds
   const getDurationInSeconds = (durStr: string) => {
@@ -682,10 +719,19 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
   }
 
   const durationSec = getDurationInSeconds(duration)
+  const finalDuration = combined?.audio_duration 
+    || results.localization?.duration_sec 
+    || durationSec 
+    || 1.0;
+
+  const localizationCoverage = regions.reduce(
+    (sum, r) => sum + Math.max(0, r.end - r.start),
+    0
+  )
 
   // Stutter index: backend-computed when available, else derived from regions
   const stutterIndexValue = results.severity?.index_pct ??
-    (durationSec > 0 ? (localizationCoverage / durationSec) * 100 : 0)
+    (finalDuration > 0 ? (localizationCoverage / finalDuration) * 100 : 0)
 
   const SEVERITY_COLORS: Record<string, string> = {
     Fluent: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20",
@@ -722,7 +768,7 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
         patient: { name: patientName, phone: patientPhone },
         audio: { filename, size: filesize, duration },
         date: reportDate,
-        classification: results.classification,
+        classification: alignedClassification,
         severity: results.severity ?? {
           index_pct: stutterIndexValue,
           severity: computedSeverity.label.toLowerCase() as SeverityResult['severity'],
@@ -790,12 +836,14 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
             <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Diagnostic Severity</span>
             <Volume2 className="text-text-secondary" size={16} />
           </div>
-          <div className="mt-4">
-            <span className={`inline-block px-3 py-1 text-xs font-bold border rounded-full ${computedSeverity.color}`}>
-              {computedSeverity.label} Dysfluency
-            </span>
-            <p className="text-xs text-text-secondary mt-2">
-              Based on speech localization regions.
+          <div className="mt-4 space-y-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className={`inline-block px-3 py-1 text-xs font-bold border rounded-full ${computedSeverity.color}`}>
+                {computedSeverity.label} Dysfluency
+              </span>
+            </div>
+            <p className="text-xs text-text-secondary">
+              Based on speech localization regions. The stuttering index represents the percentage of dysfluent speech duration.
             </p>
           </div>
         </div>
@@ -836,7 +884,7 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
 
           <div className="space-y-4">
             {classes.map((name) => {
-              const r = results.classification[name]
+              const r = alignedClassification[name]
               const displayName = CLASS_DISPLAY_NAMES[name] || name
               
               return (
@@ -860,7 +908,7 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
                       className={`h-full rounded-full transition-all duration-300 ${
                         r.label ? 'bg-accent-teal' : 'bg-text-secondary/30'
                       }`}
-                      style={{ width: `${r.confidence * 100}%` }}
+                      style={{ width: `${(r.prob_present ?? 0) * 100}%` }}
                     />
                   </div>
                 </div>
@@ -916,11 +964,6 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
               </div>
             )}
           </div>
-
-          <div className="pt-3 border-t border-border-color/50 text-[10px] text-text-secondary flex items-center gap-1">
-            <ShieldCheck size={13} className="text-accent-teal shrink-0" />
-            <span>Secure clinical AI localization</span>
-          </div>
         </div>
       </div>
 
@@ -959,9 +1002,13 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
                         borderRight: r.coarse ? `1px dashed ${s.color}` : `1px solid ${s.color}`,
                         color: s.color,
                       }}
-                      title={`${s.label}${r.coarse ? ' (estimated)' : ''} at ${r.start.toFixed(1)}s - ${r.end.toFixed(1)}s`}
+                      title={`${s.label}${r.coarse ? ' (estimated)' : ''} at ${r.start.toFixed(2)}s - ${r.end.toFixed(2)}s`}
                     >
-                      !
+                      <span className="font-mono px-0.5 truncate max-w-full" style={{ backgroundColor: 'rgba(255,255,255,0.85)', borderRadius: '2px' }}>
+                        {r.end - r.start >= 0.8
+                          ? `${s.label} (${r.start.toFixed(1)}s)`
+                          : (r.end - r.start >= 0.4 ? `${r.start.toFixed(1)}s` : '!')}
+                      </span>
                     </div>
                   )
                 })}
