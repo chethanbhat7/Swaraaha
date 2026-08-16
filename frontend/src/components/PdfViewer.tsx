@@ -4,7 +4,6 @@ import {
   ChevronRight, 
   ZoomIn, 
   ZoomOut, 
-  Search, 
   Download, 
   Maximize2, 
   Minimize2, 
@@ -27,7 +26,6 @@ export default function PdfViewer({
 }) {
   const [currentDocIndex, setCurrentDocIndex] = useState(0)
   const [zoom, setZoom] = useState(100)
-  const [searchTerm, setSearchTerm] = useState('')
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [currentCustomPdfIndex, setCurrentCustomPdfIndex] = useState(0)
   const [activeDocType, setActiveDocType] = useState<'standard' | 'custom'>('standard')
@@ -148,14 +146,6 @@ export default function PdfViewer({
     }
   }
 
-  const filteredStandard = readingDocuments.filter(doc =>
-    doc.title.toLowerCase().includes(searchTerm.trim().toLowerCase())
-  )
-
-  const filteredCustom = customPdfs.filter(pdf =>
-    pdf.name.toLowerCase().includes(searchTerm.trim().toLowerCase())
-  )
-
   return (
     <div 
       ref={containerRef}
@@ -210,17 +200,6 @@ export default function PdfViewer({
           >
             <ZoomIn size={16} />
           </button>
-        </div>
-
-        <div className="relative flex items-center border border-border-color rounded-lg bg-bg-sidebar transition px-2 py-1 max-w-[140px] md:max-w-[180px]">
-          <Search size={14} className="text-text-secondary mr-1.5 shrink-0" />
-          <input
-            type="text"
-            placeholder="Filter documents..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="bg-transparent text-xs w-full text-text-primary focus:outline-none"
-          />
         </div>
 
         <div className="flex items-center gap-1">
@@ -291,7 +270,7 @@ export default function PdfViewer({
             onChange={handlePdfUpload}
           />
 
-          {filteredStandard.map((doc) => {
+          {readingDocuments.map((doc) => {
             const originalIndex = readingDocuments.indexOf(doc)
             return (
               <button
@@ -313,7 +292,7 @@ export default function PdfViewer({
             )
           })}
 
-          {filteredCustom.map((pdf) => {
+          {customPdfs.map((pdf) => {
             const originalIndex = customPdfs.indexOf(pdf)
             return (
               <div key={`custom-container-${originalIndex}`} className="relative flex-none group">
