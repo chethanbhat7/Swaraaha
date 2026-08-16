@@ -1,0 +1,21 @@
+{
+  "model_path": "arm01_5x_w2v2",
+  "source": "val_split (20%, seed 42)",
+  "thresholds": {
+    "prolongation": {
+      "f1_threshold": 0.5000000000000001
+    },
+    "block": {
+      "f1_threshold": 0.40000000000000013
+    },
+    "soundrep": {
+      "f1_threshold": 0.40000000000000013
+    },
+    "wordrep": {
+      "f1_threshold": 0.45000000000000007
+    },
+    "interjection": {
+      "f1_threshold": 0.5500000000000002
+    }
+  }
+}

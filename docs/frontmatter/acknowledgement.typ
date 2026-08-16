@@ -1,5 +1,4 @@
 #import "../lib.typ": *
-#import "../meta.typ": *
 
 // --- Acknowledgement ---
 #[
@@ -10,11 +9,11 @@
 
   We take this opportunity to express our deep heartfelt gratitude to all those people who have helped us in the successful completion of the project.
 
-  First and foremost, we would like to express our sincere gratitude to our guide and  major project coordinator, *#guide* for providing excellent guidance, encouragement and inspiration throughout the project work.
+  First and foremost, we would like to express our sincere gratitude to our guide and  major project coordinator, *Prof. Ajay Shastry C.G.* for providing excellent guidance, encouragement and inspiration throughout the project work.
   Without his invaluable guidance, this work would never have been a successful one.
 
-  We would like to express our sincere gratitude to the Head of the Department of #department, *#hod*, for her guidance and inspiration.
-  We would like to thank our Principal, *#principal*, for providing all the facilities and a proper environment to work in the college campus.
+  We would like to express our sincere gratitude to the Head of the Department of Artificial Intelligence & Machine Learning, *Dr. Radhika Shetty D S*, for her guidance and inspiration.
+  We would like to thank our Principal, *Dr. Mahesh Prasanna K*, for providing all the facilities and a proper environment to work in the college campus.
 
   We would like to thank our management for providing the necessary infrastructure to carry out the project work.
 

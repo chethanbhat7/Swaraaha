@@ -185,7 +185,6 @@
   This research provides valuable insight for the current project, particularly in the areas of cross-language model generalization and interpretability in dysfluency detection systems.
 ]
 
-
 #literature_survey(
   [F. Rahimi and D. Torres],
   [have presented],
@@ -197,7 +196,6 @@
   The study also highlights that pretraining large general speech datasets improves performance even on smaller stutter-specific corpora.
   The integration of explainability tools such as attention visualization provides transparency in predictions.
   For the present project, this work reinforces the growing relevance of transformer-based models and encourages future exploration into combining CNN-based acoustic analysis with language-level contextual understanding for enhanced stutter detection accuracy.
-
 ]
 
 #literature_survey(
@@ -223,10 +221,9 @@
   These findings provide biological validation for AI-based stutter detection systems, which often rely on acoustic signatures reflecting underlying neural control differences.
   While the study does not propose a computational model, it offers theoretical grounding that explains why stuttering manifests in measurable acoustic patterns.
   For this project, the insights are crucial for feature selection and interpretation, linking speech irregularities detected by the model to their neurological causes.
-
 ]
 
-== Summary of Literature Survey
+== SUMMARY OF LITERATURE SURVEY
 This section presents a summary of the reviewed literature on automated stutter
 detection and classification. The collective findings establish that deep learning,
 particularly CNN- and transformer-based architectures, represents the state of the art in

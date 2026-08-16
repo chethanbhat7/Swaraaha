@@ -1,0 +1,87 @@
+{
+  "per_class": {
+    "not_present": {
+      "precision": 0.36,
+      "recall": 0.9474,
+      "f1": 0.5217,
+      "support": 19
+    },
+    "present": {
+      "precision": 0.6667,
+      "recall": 0.0588,
+      "f1": 0.1081,
+      "support": 34
+    }
+  },
+  "macro": {
+    "precision": 0.5133,
+    "recall": 0.5031,
+    "f1": 0.3149
+  },
+  "accuracy": 0.3774,
+  "binary": {
+    "auroc": 0.5712,
+    "auprc": 0.7148,
+    "threshold": 0.5,
+    "precision": 0.6667,
+    "recall": 0.0588,
+    "f1": 0.1081,
+    "specificity": 0.9474,
+    "accuracy": 0.3774,
+    "support": 34,
+    "tn": 18,
+    "fp": 1,
+    "fn": 32,
+    "tp": 2
+  },
+  "class_name": "soundrep",
+  "model_path": "model/weights/soundrep_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml3_s42_train_w2v2base_best.pt",
+  "num_samples": 53,
+  "threshold": 0.5,
+  "model": {
+    "fingerprint": "soundrep_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml3_s42_train_w2v2base",
+    "class_name": "soundrep",
+    "epochs": 20,
+    "batch_size": 8,
+    "lr": 3e-05,
+    "freeze_backbone_epochs": 3,
+    "loss_type": "focal",
+    "focal_gamma": 2.0,
+    "gradient_accumulation_steps": 1,
+    "warmup_steps": 500,
+    "weight_decay": 0.01,
+    "max_length_seconds": 3.0,
+    "seed": 42,
+    "data_short": "train",
+    "model_name": "facebook/wav2vec2-base"
+  },
+  "threshold_sweep": {
+    "best_f1": {
+      "threshold": 0.1,
+      "f1": 0.7951807228915663
+    },
+    "best_specificity": {
+      "threshold": 0.5500000000000002,
+      "specificity": 1.0
+    },
+    "best_youden": {
+      "threshold": 0.3500000000000001,
+      "youden": 0.16563467492260053
+    }
+  },
+  "threshold_tuned": {
+    "auroc": 0.5712,
+    "auprc": 0.7148,
+    "threshold": 0.40000000000000013,
+    "precision": 0.6667,
+    "recall": 0.1765,
+    "f1": 0.2791,
+    "specificity": 0.8421,
+    "accuracy": 0.4151,
+    "support": 34,
+    "tn": 16,
+    "fp": 3,
+    "fn": 28,
+    "tp": 6
+  }
+}

@@ -92,6 +92,26 @@ class MultiTaskWav2VecClassifier:
         pooled = hidden.mean(dim=1)
         return self.model.heads[class_name](pooled)
 
+    def saliency(self, input_values) -> torch.Tensor:
+        """Per-frame per-class prob_present saliency.
+
+        CAM-style: run each frame's hidden state through the trained heads and
+        softmax over each class's 2 logits (same convention as predict()).
+
+        Returns a tensor of shape (B, T, num_classes) with values in [0, 1],
+        ordered by ``self.class_names``.
+        """
+        if input_values.ndim == 1:
+            input_values = input_values.unsqueeze(0)
+        self.model.eval()
+        with torch.no_grad():
+            hidden = self.model.wav2vec2(input_values).last_hidden_state  # (B, T, d)
+            frames = [
+                torch.softmax(self.model.heads[name](hidden), dim=-1)[..., 1]  # (B, T)
+                for name in self.class_names
+            ]
+        return torch.stack(frames, dim=-1)  # (B, T, num_classes)
+
     def predict(self, audio_tensor, threshold: float = 0.5) -> Dict[str, Tuple[int, float]]:
         """Classify one audio sample with all heads.
 

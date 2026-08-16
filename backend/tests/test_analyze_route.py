@@ -15,6 +15,8 @@ def test_analyze_returns_localizer_regions_and_severity():
               return_value={"regions": [{"start": 1.0, "end": 2.5, "confidence": 0.8}], "duration_sec": 10.0}),
         patch("backend.routes.localization.transcribe_audio_bytes",
               return_value={"text": "", "language": "English", "chunks": []}),
+        patch("backend.routes.localization.combine_audio_bytes",
+              return_value={"error": None}),
     ):
         response = client.post(
             "/api/analyze",
@@ -37,6 +39,8 @@ def test_analyze_with_no_localizer_regions_reports_fluent():
               return_value={"regions": [], "error": "no model", "duration_sec": 10.0}),
         patch("backend.routes.localization.transcribe_audio_bytes",
               return_value={"text": "", "language": "English", "chunks": []}),
+        patch("backend.routes.localization.combine_audio_bytes",
+              return_value={"error": None}),
     ):
         response = client.post(
             "/api/analyze",

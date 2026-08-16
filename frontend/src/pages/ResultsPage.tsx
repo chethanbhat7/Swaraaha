@@ -10,7 +10,7 @@ import {
   Pause,
   Download
 } from 'lucide-react'
-import { SeverityResult, TranscriptionData, RegionType, LocalizationRegion, analyzeAudio, downloadReport } from '../api/client'
+import { SeverityResult, TranscriptionData, RegionType, LocalizationRegion, CombinedResults, analyzeAudio, downloadReport } from '../api/client'
 import { storeAudioFile } from '../utils/db'
 
 interface AnalysisResults {
@@ -18,6 +18,7 @@ interface AnalysisResults {
   localization: { regions: LocalizationRegion[] }
   transcription?: TranscriptionData
   severity?: SeverityResult
+  combined?: CombinedResults
 }
 
 const CLASS_DISPLAY_NAMES: Record<string, string> = {
@@ -40,13 +41,17 @@ const REGION_STYLES: Record<string, { label: string; fill: string; stroke: strin
 
 const DEFAULT_REGION_STYLE = { label: "Stutter", fill: "rgba(239, 68, 68, 0.15)", stroke: "#EF4444", color: "#EF4444" }
 
-function regionStyle(type?: RegionType) {
+// Regions may come from the localizer (has `type`) or the fusion combiner
+// (has `primary_type`); both shapes are displayed uniformly.
+type DisplayRegion = LocalizationRegion & { primary_type?: string | null }
+
+function regionStyle(type?: RegionType | string | null) {
   return type && REGION_STYLES[type] ? REGION_STYLES[type] : DEFAULT_REGION_STYLE
 }
 
 interface WaveformViewProps {
   file: File | null
-  regions: LocalizationRegion[]
+  regions: DisplayRegion[]
   transcription?: TranscriptionData
 }
 
@@ -166,7 +171,7 @@ function WaveformView({ file, regions, transcription }: WaveformViewProps) {
       sortedRegions.forEach(region => {
         const x1 = (region.start / audioBuffer.duration) * width
         const x2 = (region.end / audioBuffer.duration) * width
-        const style = regionStyle(region.type)
+        const style = regionStyle(region.type ?? region.primary_type)
 
         if (region.coarse) {
           ctx.save()
@@ -382,12 +387,12 @@ function WaveformView({ file, regions, transcription }: WaveformViewProps) {
         <div className="flex items-center gap-4 text-[9px] text-text-secondary uppercase font-semibold flex-wrap">
           <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-accent-teal" /> Waveform</span>
           {(() => {
-            const types = Array.from(new Set(regions.map(r => r.type || 'stutter')))
+            const types = Array.from(new Set(regions.map(r => r.type ?? r.primary_type ?? 'stutter')))
             if (types.length === 0) {
               return <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: DEFAULT_REGION_STYLE.color }} /> Stutter</span>
             }
             return types.map(t => {
-              const s = regionStyle(t === 'stutter' ? undefined : t as RegionType)
+              const s = regionStyle(t === 'stutter' ? undefined : t)
               return (
                 <span key={t} className="flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: s.color }} /> {s.label}
@@ -652,6 +657,12 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
 
   if (!results) return null
 
+  const combined = results.combined && !('error' in results.combined)
+    ? results.combined
+    : undefined
+  const regions: DisplayRegion[] =
+    combined?.regions ?? results.localization.regions
+
   // Calculate Speech Metrics
   const classes = Object.keys(results.classification).filter(
     c => results.classification[c] && typeof results.classification[c].confidence === 'number'
@@ -717,6 +728,9 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
           severity: computedSeverity.label.toLowerCase() as SeverityResult['severity'],
           label: computedSeverity.label,
         },
+        combined: combined ?? undefined,
+        transcription: results.transcription,
+        localization: results.localization,
       })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -763,7 +777,7 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
       {/* INTERACTIVE WAVEFORM CARD (Hidden in Print) */}
       {results && (
         <div className="print:hidden">
-          <WaveformView file={analyzedFile} regions={results.localization.regions} transcription={results.transcription} />
+          <WaveformView file={analyzedFile} regions={regions} transcription={results.transcription} />
         </div>
       )}
 
@@ -858,18 +872,21 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
         {/* Right Side: Localization Regions List */}
         <div className="p-6 bg-bg-card border border-border-color rounded-xl space-y-4 shadow-xs flex flex-col justify-between" style={{ borderRadius: '16px' }}>
           <div className="space-y-3">
-            <div className="border-b border-border-color pb-3">
+            <div className="border-b border-border-color pb-3 flex items-center justify-between">
               <h3 className="text-sm font-bold">Dysfluency Localization</h3>
+              <span className="text-[10px] font-semibold text-text-secondary">
+                {(combined ? combined.total_stutters : regions.length)} Events
+              </span>
             </div>
             
-            {results.localization.regions.length === 0 ? (
+            {regions.length === 0 ? (
               <div className="py-8 text-center text-xs text-text-secondary space-y-2">
                 <CheckCircle2 className="mx-auto text-emerald-500" size={24} />
                 <p>No stuttering events localized in timestamps.</p>
               </div>
             ) : (
               <div className="space-y-2.5 max-h-[220px] overflow-y-auto pr-1">
-                {results.localization.regions.map((r, i) => (
+                {regions.map((r, i) => (
                   <div key={i} className="flex items-center justify-between p-2.5 bg-bg-sidebar border border-border-color rounded-lg text-xs">
                     <div className="flex flex-col gap-1 min-w-0">
                       <div className="font-mono font-bold text-text-primary">
@@ -878,13 +895,18 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
                       <div className="flex items-center gap-1">
                         <span
                           className="inline-block w-1.5 h-1.5 rounded-full shrink-0"
-                          style={{ backgroundColor: regionStyle(r.type).color }}
+                          style={{ backgroundColor: regionStyle(r.type ?? r.primary_type).color }}
                         />
                         <span className="text-[9px] font-bold uppercase tracking-wide text-text-secondary truncate">
-                          {regionStyle(r.type).label}
+                          {regionStyle(r.type ?? r.primary_type).label}
                           {r.coarse ? ' (est.)' : ''}
                         </span>
                       </div>
+                      {r.primary_type && (
+                        <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold text-text-primary">
+                          {CLASS_DISPLAY_NAMES[r.primary_type] ?? r.primary_type}
+                        </span>
+                      )}
                     </div>
                     <div className="text-[10px] font-semibold text-text-secondary shrink-0 ml-2">
                       Conf: {(r.confidence * 100).toFixed(0)}%
@@ -903,7 +925,7 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
       </div>
 
       {/* DYSFLUENCY VISUAL TIMELINE MAPPING */}
-      {results.localization.regions.length > 0 && (
+      {regions.length > 0 && (
         <div className="p-6 bg-bg-card border border-border-color rounded-xl space-y-4 shadow-xs print:hidden" style={{ borderRadius: '16px' }}>
           <div className="border-b border-border-color pb-2">
             <h3 className="text-sm font-bold">Stuttering Occurrence Timeline</h3>
@@ -915,12 +937,12 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
             <div className="relative h-6 bg-bg-sidebar border border-border-color rounded-lg overflow-hidden shadow-inner flex items-center">
               
               {/* Plot regions (coarse whole-clip regions first, precise on top) */}
-              {[...results.localization.regions]
+              {[...regions]
                 .sort((a, b) => a.confidence - b.confidence)
                 .map((r, i) => {
                   const leftPercent = (r.start / durationSec) * 100
                   const widthPercent = ((r.end - r.start) / durationSec) * 100
-                  const s = regionStyle(r.type)
+                  const s = regionStyle(r.type ?? r.primary_type)
                   
                   return (
                     <div 

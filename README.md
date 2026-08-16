@@ -91,14 +91,38 @@ tr.transcribe("recording.wav")               # {text, words, duration_sec}
 # Everything at once — raw audio in, all results out
 m = ModelRegistry()
 all_results = m.run_all("recording.wav", text="the cat sat")
-# {classification: {...}, localization: {...}, transcription: {...}}
+# {classification: {...}, cnn_multitask: {...}, multitask: {...},
+#  localization: {...}, transcription: {...},
+#  combined: {regions: [...], audio_duration, total_stutters}}
+
+# Combined output: localizer regions fused with per-class saliency
+# each region: {start, end, confidence, classes: {class: {label, confidence,
+#   prob_present, prob_not_present}}, primary_type, severity, syllables[]}
+# (syllables present only when text is provided)
 ```
+
+### Combiner & mismatch probe
+
+`combined` (from `ModelRegistry.run_all`) links each localizer region to
+per-class dysfluency scores via the multitask classifier's per-frame saliency.
+Regions are sorted by start, bounded by audio duration, and optionally snapped
+to syllable boundaries. The severity field is a `null` placeholder in v1.
+
+To measure how often high-confidence saliency spans have no overlapping
+localizer region (informs a future saliency-synthesis feature):
+
+```bash
+python -m model.evaluation.probe_combiner --data_dir data/test --max_length_seconds 3
+# {'mean_mismatch': ..., 'clips': ..., 'clips_with_mismatch': ...}
+```
+
+The `--data_dir` must be a split dir (e.g. `data/test`) with `audio/` + `labels/`.
 
 The registry (`model/registry.json`) maps task names to checkpoint paths and per-class label thresholds. To swap which checkpoint is active, update the path in the JSON file. No code changes needed.
 
 **Do not** import `ProlongationClassifier`, etc. directly — use `Classifier()` instead. This ensures models load from the registry and stay in sync with which checkpoints are active.
 
-**Localizer checkpoints do not exist yet** — `Localizer()` and `ModelRegistry.run_all()` currently return `{"localization": {"error": ...}}` (or raise `FileNotFoundError`) until a localizer is trained and registered. Do not bypass the API with manual preprocessing or ad-hoc model loading to fill that gap; wait for the trained model so everything flows through the registry.
+**Localizer checkpoints** — CNN and wav2vec2 localizers are registered under `model/registry.json` → `localization`. If a trained localizer is missing, `Localizer()` and `ModelRegistry.run_all()` return `{"localization": {"error": ...}}` (or raise `FileNotFoundError`) until a checkpoint is trained and registered. Do not bypass the API with manual preprocessing or ad-hoc model loading; wait for the trained model so everything flows through the registry.
 
 ## Dataset Setup
 

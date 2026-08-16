@@ -578,6 +578,22 @@ def test_build_classification_eval_sources_filter(tmp_path):
     assert len(dataset) == 1
 
 
+def test_build_localization_eval_sources_filter(tmp_path):
+    from model.evaluation import evaluate
+
+    data_dir = _make_data(tmp_path)
+    sources_csv = data_dir / 'sources.csv'
+    with open(sources_csv, 'w', encoding='utf-8') as f:
+        f.write('clip_id,source\n')
+        for i in range(5):
+            f.write(f'clip_{i:02d},sep28k\n')
+        f.write('clip_00,boli\n')
+    args = _args(data_dir=str(data_dir), max_length_seconds=2.0,
+                 full=True, sources=['boli'])
+    dataset, loader, indices = evaluate._build_localization_eval(args)
+    assert len(dataset) == 1
+
+
 def test_classifier_report_honors_thresholds_path(tmp_path):
     import json
 

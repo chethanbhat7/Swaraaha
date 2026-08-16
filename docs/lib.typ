@@ -44,7 +44,23 @@
 
     figure(
       tb,
-      caption: caption
+      caption: caption,
+    )
+  }
+}
+
+#let add_image(img, caption: none) = {
+  context {
+    set figure(
+      numbering: num => {
+        let chap = counter(heading).get().first()
+        numbering("1.1", chap, num)
+      }
+    )
+
+    figure(
+      img,
+      caption: caption,
     )
   }
 }
