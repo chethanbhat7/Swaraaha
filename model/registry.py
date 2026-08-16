@@ -33,7 +33,11 @@ Usage:
     # Everything at once — raw audio in, all results out
     m = ModelRegistry()
     all_results = m.run_all("recording.wav", text="the cat sat")
-    # all_results: {classification: {...}, localization: {...}, transcription: {...}}
+    # all_results: {classification: {...}, localization: {...}, transcription: {...},
+    #               multitask: {...}, cnn_multitask: {...}, combined: {...}}
+    # combined: localizer regions fused with per-class saliency from the
+    # multitask classifier — each region: {start, end, confidence, classes,
+    # primary_type, severity, syllables[]}
 """
 
 import json
@@ -524,6 +528,19 @@ class MultiTaskClassifier:
         results["summary"] = {"detected": detected, "primary": primary}
         return results
 
+    def saliency(self, audio, max_length_seconds: float = 10.0) -> "torch.Tensor":
+        """Per-frame per-class prob_present saliency for the whole audio.
+
+        Returns a tensor of shape (1, T, num_classes); T = max_length_seconds
+        * sr / 320 frames at 16 kHz.
+        """
+        if _audio_is_empty(audio):
+            raise RuntimeError("Cannot compute saliency for empty audio")
+        if self._model is None:
+            self._load()
+        tensor = _preprocess_audio(audio, max_length_seconds=max_length_seconds)
+        return self._model.saliency(tensor)
+
     @property
     def is_loaded(self) -> bool:
         return self._model is not None
@@ -721,8 +738,11 @@ class ModelRegistry:
             text: Optional transcript for word/syllable-level localization.
 
         Returns:
-            {"classification": ..., "localization": ..., "transcription": ...}
-            Sub-results become {"error": ...} if a model is unavailable.
+            {"classification": ..., "localization": ..., "transcription": ...,
+             "multitask": ..., "cnn_multitask": ..., "combined": ...}
+            "combined" fuses localizer regions with multitask saliency:
+            {regions: [...], audio_duration, total_stutters}. Sub-results
+            become {"error": ...} if a model is unavailable.
         """
         from model.transcription import WHISPER_LANG_CODES
 
@@ -766,6 +786,36 @@ class ModelRegistry:
             )
         except Exception as e:
             results["transcription"] = {"error": str(e)}
+
+        try:
+            from model.config.defaults import DYSFLUENCY_CLASSES
+            from model.data.preprocessing import load_audio_input
+            from model.combiner import combine_regions
+
+            if _audio_is_empty(audio):
+                results["combined"] = {
+                    "regions": [], "audio_duration": 0.0, "total_stutters": 0,
+                }
+            else:
+                loc = results.get("localization")
+                if isinstance(loc, dict) and "error" not in loc:
+                    regions = loc.get("regions", [])
+                    syllables = loc.get("syllables") if isinstance(loc, dict) else None
+                else:
+                    regions, syllables = [], None
+                saliency = self.multitask_classifier.saliency(audio).squeeze(0)  # (T, C)
+                audio_array = load_audio_input(audio, sr=16000)
+                audio_duration = len(audio_array) / 16000
+                results["combined"] = combine_regions(
+                    regions,
+                    saliency.cpu().numpy(),
+                    class_names=list(DYSFLUENCY_CLASSES),
+                    thresholds=getattr(self.multitask_classifier, "_thresholds", {}) or None,
+                    syllables=syllables,
+                    audio_duration=audio_duration,
+                )
+        except Exception as e:  # noqa: BLE001
+            results["combined"] = {"error": str(e)}
 
         return results
 
