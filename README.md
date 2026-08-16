@@ -169,11 +169,11 @@ See [`model/evaluation/README.md`](model/evaluation/README.md) for full document
 
 ### Backend
 
+Note: run the backend from the root `.venv` (Python 3.10, has all ML deps).
+Do not use `backend/.venv` — it is incomplete (missing numpy/torch).
+
 ```bash
-cd backend
-python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt ../model/requirements.txt
 uvicorn backend.main:app --reload --port 8000
 ```
 
