@@ -727,3 +727,72 @@ def test_multitask_thresholds_resolve_via_shared_helper(monkeypatch, tmp_path):
     entry = {"thresholds_path": str(thresholds_json)}
     assert _resolve_multitask_thresholds(entry, "model.pt") == {"block": 0.42}
 
+
+def test_run_all_adds_combined(monkeypatch):
+    reg = ModelRegistry()
+    monkeypatch.setattr(
+        reg.classifier, "analyze",
+        lambda audio, threshold=None: {"prolongation": {"label": 0}, "summary": {"detected": []}},
+    )
+    monkeypatch.setattr(
+        reg.multitask_classifier, "analyze",
+        lambda audio, threshold=None: {"block": {"label": 1}, "summary": {"detected": ["block"]}},
+    )
+    monkeypatch.setattr(
+        reg.cnn_multitask_classifier, "analyze",
+        lambda audio, threshold=None: {"block": {"label": 1}, "summary": {"detected": ["block"]}},
+    )
+    monkeypatch.setattr(
+        reg.localizer, "analyze",
+        lambda audio, text=None, language="en", threshold=0.3, max_length_seconds=10.0: {
+            "regions": [{"start": 0.0, "end": 0.5, "confidence": 0.9}]
+        },
+    )
+    monkeypatch.setattr(
+        reg.transcriber, "transcribe",
+        lambda audio, language="english", localizations=None, passage_text=None, sample_rate=16000: {
+            "text": "hello", "words": [], "duration_sec": 1.0
+        },
+    )
+
+    def fake_saliency(audio):
+        return torch.zeros((1, 500, 5))
+
+    monkeypatch.setattr(reg.multitask_classifier, "saliency", fake_saliency)
+
+    result = reg.run_all(np.zeros(16000, dtype=np.float32), text="hello world")
+    assert "combined" in result
+    assert result["combined"]["regions"]  # one region from localizer
+    assert set(result["combined"]["regions"][0]["classes"].keys()) == set(
+        ["prolongation", "block", "soundrep", "wordrep", "interjection"]
+    )
+
+
+def test_run_all_combined_errors_when_multitask_unavailable(monkeypatch):
+    reg = ModelRegistry()
+    monkeypatch.setattr(reg.classifier, "analyze",
+                        lambda audio, threshold=None: {"summary": {"detected": []}})
+    monkeypatch.setattr(reg.multitask_classifier, "analyze",
+                        lambda audio, threshold=None: {"summary": {"detected": []}})
+    monkeypatch.setattr(reg.cnn_multitask_classifier, "analyze",
+                        lambda audio, threshold=None: {"summary": {"detected": []}})
+    monkeypatch.setattr(reg.localizer, "analyze",
+                        lambda audio, text=None, language="en", threshold=0.3, max_length_seconds=10.0: {
+                            "regions": [{"start": 0.0, "end": 0.5, "confidence": 0.9}]
+                        })
+    monkeypatch.setattr(reg.transcriber, "transcribe",
+                        lambda audio, language="english", localizations=None, passage_text=None, sample_rate=16000: {
+                            "text": "", "words": [], "duration_sec": 1.0
+                        })
+    monkeypatch.setattr(reg.multitask_classifier, "saliency",
+                        lambda audio: (_ for _ in ()).throw(RuntimeError("no model")))
+
+    result = reg.run_all(np.zeros(16000, dtype=np.float32))
+    assert result["combined"]["error"]  # degraded gracefully
+
+
+def test_run_all_combined_empty_audio():
+    reg = ModelRegistry()
+    result = reg.run_all(np.zeros(0, dtype=np.float32))
+    assert result["combined"] == {"regions": [], "audio_duration": 0.0, "total_stutters": 0}
+
