@@ -64,6 +64,21 @@ def test_cnn_trainer_default_is_class_balanced(tmp_path):
     assert args.class_balanced is True
 
 
+def test_build_cnn_model_passes_spectrogram_config():
+    args = tcc.parse_args(['--n_mels', '256', '--hop_length', '256', '--n_fft', '1024'])
+    model = tcc._build_cnn_model(args)
+    assert model.n_mels == 256
+    assert model.hop_length == 256
+    assert model.n_fft == 1024
+
+
+def test_build_cnn_model_defaults():
+    args = tcc.parse_args([])
+    model = tcc._build_cnn_model(args)
+    assert model.hop_length == 512
+    assert model.n_fft == 2048
+
+
 def test_multitask_loss_with_multilabel_bce_criterion():
     torch.manual_seed(0)
     B = 4
