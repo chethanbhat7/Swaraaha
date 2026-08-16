@@ -73,6 +73,44 @@ def _collapse_runs(items, clean, max_run=3):
     return result
 
 
+def _collapse_phrase_runs(tokens, clean, max_run=3, max_phrase=20):
+    """Drop multi-word phrase loops that repeat more than ``max_run`` times.
+
+    Whisper occasionally hallucinates degenerate loops such as
+    "I was nervous I was nervous I was nervous ..." that repeat a whole phrase
+    many times. A word-by-word run check misses these because no single word
+    repeats consecutively (each word recurs only after the others). This
+    detects repeated blocks of any length up to ``max_phrase`` and keeps only
+    the first ``max_run`` repetitions, preserving genuine short stutters.
+    """
+    cleaned = [clean(t) for t in tokens]
+    result = []
+    i = 0
+    n = len(tokens)
+    while i < n:
+        best = None
+        for length in range(1, min(max_phrase, (n - i) // 2) + 1):
+            if cleaned[i:i + length] == cleaned[i + length:i + 2 * length]:
+                best = length
+                break
+        if best is None:
+            result.append(tokens[i])
+            i += 1
+            continue
+
+        phrase_clean = cleaned[i:i + best]
+        run = 1
+        j = i + best
+        while j + best <= n and cleaned[j:j + best] == phrase_clean:
+            run += 1
+            j += best
+
+        keep = min(run, max_run)
+        result.extend(tokens[i:i + best * keep])
+        i = j
+    return result
+
+
 def _clean(token: str) -> str:
     return token.lower().strip(".,?!;:-_\"'()[]{} ")
 
@@ -151,16 +189,21 @@ def transcribe_audio_bytes(audio_bytes: bytes, language: str = "english") -> dic
             if end is None:
                 end = 0.0
 
+            # Collapse multi-word hallucination loops inside each chunk too.
+            chunk_words = _collapse_phrase_runs(
+                str(chunk.get("text", "")).split(), _clean, max_run=3
+            )
+
             formatted_chunks.append({
-                "text": chunk.get("text", "").strip(),
+                "text": " ".join(chunk_words),
                 "start": round(start, 2),
                 "end": round(end, 2),
                 "language": selected_lang_str
             })
 
-        # Deduplicate individual consecutive words in the final text string,
+        # Deduplicate repeated words and multi-word phrases in the final text,
         # keeping genuine stuttered repetitions (up to 3).
-        words = _collapse_runs(text.split(), _clean, max_run=3)
+        words = _collapse_phrase_runs(text.split(), _clean, max_run=3)
         deduped_text = " ".join(words)
 
         return {
