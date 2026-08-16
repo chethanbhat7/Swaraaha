@@ -883,3 +883,48 @@ used `MultiTaskWav2VecClassifier.from_pretrained` only — crashes with
 which covered the evaluation loader). Test:
 `test_multitask_loader_handles_training_format`.
 
+## 22. Spectrogram ablation at 3 s (n_mels × hop_length) — CNN multitask arm
+
+**Purpose:** lock the spectrogram config for Part F training of all classifier
+arms at 3 s max length. Ablation grid: `n_mels ∈ {128, 256}` ×
+`hop_length ∈ {256, 512}` (n_fft fixed at 2048). All four runs: `--aggregator pool`
+`--epochs 20` `--batch_size 16` `--max_length_seconds 3` `--class_balanced`
+(default), 20% stratified val split seed 42, 5857 val samples. Early stopping
+kicked in at epochs 9–13; checkpoints are the per-run `_best.pt`.
+
+**Bug fixed along the way:** the trainer built `CNNMultitaskClassifier`
+**without** `hop_length`/`n_fft`, so every checkpoint recorded the constructor
+defaults (512/2048) regardless of the `--hop_length`/`--n_fft` used to train —
+the two h256 weights carried `hop_length=512` metadata, meaning their evals
+were actually re-processing audio with the wrong (512) hop. Fix: extracted
+`_build_cnn_model(args)` that forwards `n_mels`/`hop_length`/`n_fft`, used it in
+`train()`, and added regression tests. The h256 configs were then re-trained
+with the fixed trainer; checkpoint metadata now matches
+(`hop_length=256`, verified by reading the saved `_best.pt`). Old h256 weights
+would have been skipped on re-run as "already completed" — deleted them
+instead of relying on `--clean` (equivalent, `try_load_resume` honors `--clean`
+as `getattr(args, "clean", False)` → returns `None`).
+
+**Results (internal val split, macro F1):**
+
+| config       | macro F1@0.5 | macro F1@opt | prolong | block | soundrep | wordrep | interj |
+|--------------|--------------|--------------|---------|-------|----------|---------|--------|
+| n128_h512    | **0.1753**   | **0.2422**   | 0.1764  | 0.2627 | 0.2392   | 0.1788  | 0.3539 |
+| n128_256     | 0.1639       | 0.2403       | 0.1761  | 0.2495 | 0.2450   | 0.1769  | 0.3539 |
+| n256_256     | 0.1445       | 0.2401       | 0.1784  | 0.2482 | 0.2424   | 0.1775  | 0.3539 |
+| n256_512     | 0.1332       | 0.2416       | 0.1795  | 0.2549 | 0.2424   | 0.1769  | 0.3541 |
+
+**Decision (LOCKED):** `n_mels=128, hop_length=512` (the n128_h512 row is the
+winner on both macro F1@0.5 and macro F1@opt). All CNN classifier arms in
+Part F train with `--n_mels 128 --hop_length 512` (n_fft 2048, both already
+the CLI defaults). Spread across the grid is small (~0.002 at optimum; ~0.04 at
+0.5 threshold), so no config is materially better — default stays.
+
+**Artifacts:** `model/evaluation/reports/ablation/{n128_h512,n128_256,n256_256,n256_512}/*`
+(report + thresholds JSON per config). Note: the h256 configs' first-generation
+weights (buggy metadata) were discarded after re-training. The `ml10` weights at
+n128_h256/n256_h256 in `model/weights` were also trained with `--hop_length 256`
+and share the buggy metadata (records 512); they were **not** re-trained here —
+if they are ever used for evals, they must be re-trained with the fixed trainer
+first.
+
