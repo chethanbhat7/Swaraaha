@@ -97,3 +97,25 @@ def test_save_load_roundtrip(model, tmp_path):
     assert list(loaded_sd.keys()) == list(orig_sd.keys())
     for k in orig_sd:
         assert torch.equal(loaded_sd[k], orig_sd[k])
+
+
+def test_saliency_returns_per_frame_per_class_probs(model):
+    audio = torch.zeros(1, 6400)  # 20 frames at 320/frame
+    sal = model.saliency(audio)
+    assert sal.ndim == 3
+    assert sal.shape[0] == 1
+    assert sal.shape[1] == 6400 // 320
+    assert sal.shape[2] == len(CLASS_NAMES)
+    assert float(sal.min()) >= 0.0
+    assert float(sal.max()) <= 1.0
+
+
+def test_saliency_matches_pooled_forward_on_constant_input(model):
+    audio = torch.zeros(1, 6400)
+    sal = model.saliency(audio)              # (1, T, C)
+    logits = model.forward(audio)            # {name: (1, 2)}
+    for i, name in enumerate(CLASS_NAMES):
+        p_pooled = torch.softmax(logits[name], dim=-1)[0, 1]
+        # All frames are identical (zero input), so every frame's saliency
+        # equals the head output on the pooled representation.
+        assert sal[0, :, i].mean().item() == pytest.approx(p_pooled.item(), abs=1e-5)
