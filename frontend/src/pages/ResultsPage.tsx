@@ -10,12 +10,12 @@ import {
   Pause,
   Download
 } from 'lucide-react'
-import { SeverityResult, TranscriptionData, analyzeAudio, classifyAudio, downloadReport } from '../api/client'
+import { SeverityResult, TranscriptionData, RegionType, LocalizationRegion, analyzeAudio, downloadReport } from '../api/client'
 import { storeAudioFile } from '../utils/db'
 
 interface AnalysisResults {
   classification: Record<string, { label: number; confidence: number }>
-  localization: { regions: Array<{ start: number; end: number; confidence: number }> }
+  localization: { regions: LocalizationRegion[] }
   transcription?: TranscriptionData
   severity?: SeverityResult
 }
@@ -28,9 +28,25 @@ const CLASS_DISPLAY_NAMES: Record<string, string> = {
   interjection: "Interjection (Filler)"
 }
 
+// Per-type styling: fills/strokes for the waveform canvas, plus a solid color
+// used for badges, the timeline and the legend.
+const REGION_STYLES: Record<string, { label: string; fill: string; stroke: string; color: string }> = {
+  prolongation: { label: "Prolongation", fill: "rgba(196, 181, 253, 0.45)", stroke: "#8B5CF6", color: "#8B5CF6" },
+  block:        { label: "Block",        fill: "rgba(148, 163, 184, 0.45)", stroke: "#64748B", color: "#64748B" },
+  soundrep:     { label: "Sound Repetition", fill: "rgba(147, 197, 253, 0.45)", stroke: "#3B82F6", color: "#3B82F6" },
+  wordrep:      { label: "Word Repetition",  fill: "rgba(253, 186, 116, 0.45)", stroke: "#F97316", color: "#F97316" },
+  interjection: { label: "Interjection", fill: "rgba(254, 240, 138, 0.55)", stroke: "#EAB308", color: "#EAB308" },
+}
+
+const DEFAULT_REGION_STYLE = { label: "Stutter", fill: "rgba(239, 68, 68, 0.15)", stroke: "#EF4444", color: "#EF4444" }
+
+function regionStyle(type?: RegionType) {
+  return type && REGION_STYLES[type] ? REGION_STYLES[type] : DEFAULT_REGION_STYLE
+}
+
 interface WaveformViewProps {
   file: File | null
-  regions: Array<{ start: number; end: number; confidence: number }>
+  regions: LocalizationRegion[]
   transcription?: TranscriptionData
 }
 
@@ -145,15 +161,37 @@ function WaveformView({ file, regions, transcription }: WaveformViewProps) {
       ctx.lineTo(width, height / 2)
       ctx.stroke()
 
-      // 2. Overlays
-      regions.forEach(region => {
+      // 2. Overlays (coarse whole-clip estimates hatched, precise drawn on top)
+      const sortedRegions = [...regions].sort((a, b) => a.confidence - b.confidence)
+      sortedRegions.forEach(region => {
         const x1 = (region.start / audioBuffer.duration) * width
         const x2 = (region.end / audioBuffer.duration) * width
-        
-        ctx.fillStyle = 'rgba(239, 68, 68, 0.15)'
+        const style = regionStyle(region.type)
+
+        if (region.coarse) {
+          ctx.save()
+          ctx.beginPath()
+          ctx.rect(x1, 0, x2 - x1, height)
+          ctx.clip()
+          ctx.fillStyle = style.fill
+          ctx.fillRect(x1, 0, x2 - x1, height)
+          ctx.strokeStyle = style.stroke
+          ctx.globalAlpha = 0.55
+          ctx.lineWidth = 1
+          ctx.beginPath()
+          for (let x = x1 - height; x < x2 + height; x += 8) {
+            ctx.moveTo(x, height)
+            ctx.lineTo(x + height, 0)
+          }
+          ctx.stroke()
+          ctx.restore()
+          return
+        }
+
+        ctx.fillStyle = style.fill
         ctx.fillRect(x1, 0, x2 - x1, height)
 
-        ctx.strokeStyle = '#EF4444'
+        ctx.strokeStyle = style.stroke
         ctx.lineWidth = 1
         ctx.beginPath()
         ctx.moveTo(x1, 0)
@@ -341,9 +379,22 @@ function WaveformView({ file, regions, transcription }: WaveformViewProps) {
             </button>
           )}
         </div>
-        <div className="flex items-center gap-4 text-[9px] text-text-secondary uppercase font-semibold">
+        <div className="flex items-center gap-4 text-[9px] text-text-secondary uppercase font-semibold flex-wrap">
           <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-accent-teal" /> Waveform</span>
-          <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-error-red" /> Localized Stutter</span>
+          {(() => {
+            const types = Array.from(new Set(regions.map(r => r.type || 'stutter')))
+            if (types.length === 0) {
+              return <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: DEFAULT_REGION_STYLE.color }} /> Stutter</span>
+            }
+            return types.map(t => {
+              const s = regionStyle(t === 'stutter' ? undefined : t as RegionType)
+              return (
+                <span key={t} className="flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: s.color }} /> {s.label}
+                </span>
+              )
+            })
+          })()}
           <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-500" /> Playhead</span>
         </div>
       </div>
@@ -431,7 +482,6 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
     }, 800)
 
     try {
-      const mode = sessionStorage.getItem('analysis_mode') || 'full'
       const genReport = sessionStorage.getItem('generate_report') === 'true'
       const lang = sessionStorage.getItem('transcription_language') || 'english'
 
@@ -441,17 +491,7 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
       setTimeout(() => setLoadingStep("Transcribing speech..."), 5000)
       setTimeout(() => setLoadingStep("Generating clinical diagnostic report..."), 7000)
 
-      let res
-      if (mode === 'full') {
-        res = await analyzeAudio(file, lang)
-      } else {
-        const response = await classifyAudio(file, lang)
-        res = {
-          classification: response.classification,
-          localization: { regions: [] },
-          transcription: response.transcription
-        }
-      }
+      const res = await analyzeAudio(file, lang)
 
       clearInterval(progressInterval)
       setLoadingProgress(100)
@@ -470,7 +510,7 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
         name: file.name,
         size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
         duration: sessionStorage.getItem('duration') || '00:10',
-        mode: mode === 'full' ? 'Full Analysis' : 'Classification Only',
+        mode: 'Full Analysis',
         status: 'Completed',
         results: res,
         generateReport: genReport,
@@ -831,10 +871,22 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
               <div className="space-y-2.5 max-h-[220px] overflow-y-auto pr-1">
                 {results.localization.regions.map((r, i) => (
                   <div key={i} className="flex items-center justify-between p-2.5 bg-bg-sidebar border border-border-color rounded-lg text-xs">
-                    <div className="font-mono font-bold text-text-primary">
-                      {r.start.toFixed(2)}s &mdash; {r.end.toFixed(2)}s
+                    <div className="flex flex-col gap-1 min-w-0">
+                      <div className="font-mono font-bold text-text-primary">
+                        {r.start.toFixed(2)}s &mdash; {r.end.toFixed(2)}s
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span
+                          className="inline-block w-1.5 h-1.5 rounded-full shrink-0"
+                          style={{ backgroundColor: regionStyle(r.type).color }}
+                        />
+                        <span className="text-[9px] font-bold uppercase tracking-wide text-text-secondary truncate">
+                          {regionStyle(r.type).label}
+                          {r.coarse ? ' (est.)' : ''}
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-[10px] font-semibold text-text-secondary">
+                    <div className="text-[10px] font-semibold text-text-secondary shrink-0 ml-2">
                       Conf: {(r.confidence * 100).toFixed(0)}%
                     </div>
                   </div>
@@ -862,22 +914,35 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
             {/* Timeline scale track */}
             <div className="relative h-6 bg-bg-sidebar border border-border-color rounded-lg overflow-hidden shadow-inner flex items-center">
               
-              {/* Plot regions */}
-              {results.localization.regions.map((r, i) => {
-                const leftPercent = (r.start / durationSec) * 100
-                const widthPercent = ((r.end - r.start) / durationSec) * 100
-                
-                return (
-                  <div 
-                    key={i}
-                    className="absolute h-full bg-error-red/40 border-l border-r border-error-red flex items-center justify-center text-[8px] font-bold text-error-red select-none"
-                    style={{ left: `${leftPercent}%`, width: `${widthPercent}%` }}
-                    title={`Stutter at ${r.start.toFixed(1)}s - ${r.end.toFixed(1)}s`}
-                  >
-                    !
-                  </div>
-                )
-              })}
+              {/* Plot regions (coarse whole-clip regions first, precise on top) */}
+              {[...results.localization.regions]
+                .sort((a, b) => a.confidence - b.confidence)
+                .map((r, i) => {
+                  const leftPercent = (r.start / durationSec) * 100
+                  const widthPercent = ((r.end - r.start) / durationSec) * 100
+                  const s = regionStyle(r.type)
+                  
+                  return (
+                    <div 
+                      key={i}
+                      className="absolute h-full flex items-center justify-center text-[8px] font-bold select-none"
+                      style={{
+                        left: `${leftPercent}%`,
+                        width: `${widthPercent}%`,
+                        backgroundColor: r.coarse ? undefined : `${s.color}66`,
+                        backgroundImage: r.coarse
+                          ? `repeating-linear-gradient(45deg, ${s.color}55, ${s.color}55 4px, transparent 4px, transparent 8px)`
+                          : undefined,
+                        borderLeft: r.coarse ? `1px dashed ${s.color}` : `1px solid ${s.color}`,
+                        borderRight: r.coarse ? `1px dashed ${s.color}` : `1px solid ${s.color}`,
+                        color: s.color,
+                      }}
+                      title={`${s.label}${r.coarse ? ' (estimated)' : ''} at ${r.start.toFixed(1)}s - ${r.end.toFixed(1)}s`}
+                    >
+                      !
+                    </div>
+                  )
+                })}
 
               {/* Central base line */}
               <div className="w-full h-0.5 bg-border-color" />

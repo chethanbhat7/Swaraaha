@@ -33,11 +33,25 @@ export interface SeverityResult {
   label: string;
 }
 
+export type RegionType =
+  | 'prolongation'
+  | 'block'
+  | 'soundrep'
+  | 'wordrep'
+  | 'interjection'
+
+export interface LocalizationRegion {
+  start: number;
+  end: number;
+  confidence: number;
+  type?: RegionType;
+  coarse?: boolean;
+}
+
 export interface AnalyzeResults {
   classification: ClassificationResults;
   localization: {
-    regions: Array<{ start: number; end: number; confidence: number }>;
-    source?: 'model' | 'rule-based';
+    regions: LocalizationRegion[];
   };
   transcription: TranscriptionData;
   severity?: SeverityResult;
@@ -51,7 +65,7 @@ export async function classifyAudio(file: File, language: string = 'english'): P
   return parseOrThrow(res)
 }
 
-export async function localizeAudio(file: File): Promise<{ regions: Array<{ start: number; end: number; confidence: number }> }> {
+export async function localizeAudio(file: File): Promise<{ regions: LocalizationRegion[] }> {
   const form = new FormData()
   form.append('file', file)
   const res = await fetch(`${API_BASE}/localize`, { method: 'POST', body: form })
