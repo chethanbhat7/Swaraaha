@@ -1,10 +1,6 @@
-"""Export the assessment report to PDF using Qt's QPrinter. Qt layer only."""
+"""Export the assessment report to PDF via the shared Typst builder. Qt layer only."""
 
-import os
-
-from PySide6.QtCore import QMarginsF, Qt
-from PySide6.QtGui import QPageLayout, QPageSize, QTextDocument
-from PySide6.QtPrintSupport import QPrinter
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QDialog,
     QHBoxLayout,
@@ -13,21 +9,6 @@ from PySide6.QtWidgets import (
     QPushButton,
     QVBoxLayout,
 )
-
-
-def export_report_to_pdf(html_text: str, path: str) -> None:
-    """Render HTML to a PDF file at ``path``. Raises RuntimeError on failure."""
-    printer = QPrinter(QPrinter.PrinterMode.HighResolution)
-    printer.setOutputFormat(QPrinter.OutputFormat.PdfFormat)
-    printer.setOutputFileName(path)
-    printer.setPageSize(QPageSize(QPageSize.PageSizeId.A4))
-    printer.setPageMargins(QMarginsF(15, 15, 15, 15), QPageLayout.Unit.Millimeter)
-
-    doc = QTextDocument()
-    doc.setHtml(html_text)
-    doc.print_(printer)
-    if not os.path.exists(path) or os.path.getsize(path) == 0:
-        raise RuntimeError("PDF rendering failed")
 
 
 class PatientNameDialog(QDialog):

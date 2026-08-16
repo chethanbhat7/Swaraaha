@@ -53,3 +53,63 @@ def test_classify_propagates_model_errors(monkeypatch):
 
     with pytest.raises(FileNotFoundError):
         runner._classify(np.zeros(16000, dtype=np.float32))
+
+
+def test_analyze_includes_combined(monkeypatch):
+    class _FakeMultiTask:
+        def __init__(self):
+            self._thresholds = {}
+
+        def analyze(self, audio, threshold=None):
+            return {"block": {"label": 1, "confidence": 0.9}, "summary": {"detected": ["block"], "primary": "block"}}
+
+        def saliency(self, audio):
+            sal = np.zeros((1, 500, 5))
+            sal[:, :, 1] = 0.9  # block active every frame
+            return sal
+
+    class _FakeLocalizer:
+        def predict(self, spec, threshold=0.3):
+            return [(0.0, 0.5, 0.9)]
+
+    class _FakeTranscriber:
+        def transcribe(self, audio, localizations=None, language="english"):
+            return {"text": "hi", "words": [], "duration_sec": 0.5}
+
+    monkeypatch.setattr("model.registry.MultiTaskClassifier", _FakeMultiTask)
+    monkeypatch.setattr("model.registry.Localizer", lambda *a, **k: _FakeLocalizer())
+    runner = ModelRunner()
+    runner.transcriber = _FakeTranscriber()
+
+    results = runner.analyze(np.zeros(16000, dtype=np.float32))
+    assert set(results.keys()) == {"classifications", "localizations", "transcription", "combined"}
+    assert results["combined"]["total_stutters"] == 1
+    assert results["combined"]["regions"][0]["primary_type"] == "block"
+
+
+def test_analyze_combined_degrades_on_saliency_error(monkeypatch):
+    class _FailingMultiTask:
+        def __init__(self):
+            self._thresholds = {}
+
+        def analyze(self, audio, threshold=None):
+            return {"block": {"label": 0, "confidence": 0.5}, "summary": {"detected": [], "primary": None}}
+
+        def saliency(self, audio):
+            raise RuntimeError("no model")
+
+    class _FakeLocalizer:
+        def predict(self, spec, threshold=0.3):
+            return [(0.0, 0.5, 0.9)]
+
+    class _FakeTranscriber:
+        def transcribe(self, audio, localizations=None, language="english"):
+            return {"text": "hi", "words": [], "duration_sec": 0.5}
+
+    monkeypatch.setattr("model.registry.MultiTaskClassifier", _FailingMultiTask)
+    monkeypatch.setattr("model.registry.Localizer", lambda *a, **k: _FakeLocalizer())
+    runner = ModelRunner()
+    runner.transcriber = _FakeTranscriber()
+
+    results = runner.analyze(np.zeros(16000, dtype=np.float32))
+    assert "error" in results["combined"]
