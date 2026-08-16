@@ -1,0 +1,38 @@
+{
+  "model_path": "model/weights/cnnclf_aggtf1_e20_b16_lr3e-5_n128_h512_ml3_hd128_d0.4_pa5_wu500_wd0.01_ga1_s42_train_all_best.pt",
+  "source": "val_split (20%, seed 42)",
+  "thresholds": {
+    "prolongation": {
+      "f1_threshold": 0.1,
+      "youden_threshold": 0.55,
+      "f1_at_optimal": 0.4638,
+      "f1_at_0_5": 0.2143
+    },
+    "block": {
+      "f1_threshold": 0.5,
+      "youden_threshold": 0.5,
+      "f1_at_optimal": 0.8,
+      "f1_at_0_5": 0.8
+    },
+    "soundrep": {
+      "f1_threshold": 0.1,
+      "youden_threshold": 0.1,
+      "f1_at_optimal": 0.7816,
+      "f1_at_0_5": 0.5455
+    },
+    "wordrep": {
+      "f1_threshold": 0.45,
+      "youden_threshold": 0.45,
+      "f1_at_optimal": 0.4242,
+      "f1_at_0_5": 0.16
+    },
+    "interjection": {
+      "f1_threshold": 0.1,
+      "youden_threshold": 0.1,
+      "f1_at_optimal": 0.2903,
+      "f1_at_0_5": 0.2903
+    }
+  },
+  "macro_f1_at_0_5": 0.402,
+  "macro_f1_at_optimal": 0.552
+}

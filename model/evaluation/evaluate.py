@@ -161,6 +161,7 @@ def _build_localization_eval(args):
         dataset = LocalizationDataset(
             data_dir=args.data_dir, sr=16000, n_mels=args.n_mels,
             hop_length=args.hop_length, max_length_seconds=args.max_length_seconds,
+            sources=getattr(args, 'sources', None),
         )
     else:
         from model.localization.wav2vec2_dataset import Wav2Vec2LocalizationDataset
@@ -168,6 +169,7 @@ def _build_localization_eval(args):
 
         dataset = Wav2Vec2LocalizationDataset(
             data_dir=args.data_dir, sr=16000, max_length_seconds=args.max_length_seconds,
+            sources=getattr(args, 'sources', None),
         )
         # Reuse stratified split; localization split helper shares the same shape.
         def split_dataset(ds, val_ratio=0.2, seed=42):

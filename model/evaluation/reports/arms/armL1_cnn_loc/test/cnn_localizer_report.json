@@ -1,0 +1,23 @@
+{
+  "frame_level": {
+    "precision": 0.485,
+    "recall": 0.6905,
+    "f1": 0.5698,
+    "specificity": 0.3734
+  },
+  "event_level": {
+    "detection_accuracy": 0.2221,
+    "mean_iou": 0.7069,
+    "num_true_events": 995,
+    "num_pred_events": 10519,
+    "num_false_alarms": 10298,
+    "false_alarm_rate_per_min": 55.8872
+  },
+  "model_type": "cnn",
+  "model_path": "model/weights/cnnloc_e30_b8_lr0.001_n128_h512_ml3_d0.4_pa7_wd0.0001_vr0.2_s42_train_best.pt",
+  "num_samples": 3715,
+  "threshold": 0.5,
+  "model": {
+    "filename": "cnnloc_e30_b8_lr0.001_n128_h512_ml3_d0.4_pa7_wd0.0001_vr0.2_s42_train_best.pt"
+  }
+}
