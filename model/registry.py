@@ -840,3 +840,26 @@ class ModelRegistry:
     @property
     def is_loaded(self) -> bool:
         return self.classifier.is_loaded and self.localizer.is_loaded
+
+
+# ── Public re-exports ──────────────────────────────────────────────
+# Constants
+from model.config.defaults import DYSFLUENCY_CLASSES, MAX_AUDIO_LENGTH, SAMPLE_RATE  # noqa: F811, E402
+
+# Fusion
+from model.combiner import combine_regions  # noqa: F811, E402
+
+# Preprocessing
+from model.data.preprocessing import convert_to_wav, generate_mel_spectrogram  # noqa: F811, E402
+
+# Alignment
+from model.localization.ctc_alignment import SimpleForcedAligner  # noqa: F811, E402
+
+
+def load_synthesis_config() -> dict:
+    """Load localization_synthesis config from registry.json."""
+    try:
+        with open(_REGISTRY_PATH) as f:
+            return json.load(f).get("localization_synthesis", {})
+    except Exception:
+        return {}
