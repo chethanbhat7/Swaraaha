@@ -6,8 +6,7 @@ import numpy as np
 
 from backend.services import classifier
 from backend.services.audio_utils import convert_to_wav
-from model.combiner import combine_regions
-from model.config.defaults import DYSFLUENCY_CLASSES, MAX_AUDIO_LENGTH
+from model.registry import DYSFLUENCY_CLASSES, MAX_AUDIO_LENGTH, combine_regions
 
 SAMPLE_RATE = 16000
 
