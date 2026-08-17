@@ -6,35 +6,26 @@ classifier's per-frame saliency when the CNN localizer cannot be loaded.
 """
 
 import io
-import json
-import os
+
 from typing import Optional
 
 import numpy as np
 
 from backend.services.audio_utils import convert_to_wav
-from model.config.defaults import DYSFLUENCY_CLASSES, MAX_AUDIO_LENGTH
-from model.data.preprocessing import generate_mel_spectrogram
-from model.registry import Localizer, MultiTaskClassifier
+from model.registry import (
+    DYSFLUENCY_CLASSES,
+    MAX_AUDIO_LENGTH,
+    Localizer,
+    MultiTaskClassifier,
+    generate_mel_spectrogram,
+    load_synthesis_config,
+)
 
 _model: Optional[Localizer] = None
 _multitask: Optional[MultiTaskClassifier] = None
 
 SAMPLE_RATE = 16000
 FRAME_DURATION = 320 / SAMPLE_RATE  # 0.02 s per wav2vec2 frame
-_REGISTRY_PATH = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-    "model",
-    "registry.json",
-)
-
-
-def _synthesis_config() -> dict:
-    try:
-        with open(_REGISTRY_PATH) as f:
-            return json.load(f).get("localization_synthesis", {})
-    except Exception:
-        return {}
 
 
 def get_model() -> Localizer:
@@ -59,7 +50,7 @@ def _saliency_regions(saliency: np.ndarray, class_names, duration_sec: float) ->
     ``mean + adapt_k * std`` over the clip, floored by ``floor`` and capped
     by ``max_threshold``. Spans shorter than ``min_span_sec`` are dropped.
     """
-    cfg = _synthesis_config()
+    cfg = load_synthesis_config()
     min_span_frames = max(1, int(cfg.get("min_span_sec", 0.16) / FRAME_DURATION))
     adapt_k = float(cfg.get("adapt_k", 2.0))
     floor = float(cfg.get("floor", 0.6))
