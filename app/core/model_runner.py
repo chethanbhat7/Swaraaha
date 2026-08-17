@@ -52,7 +52,7 @@ class ModelRunner:
     def _localize(self, audio: np.ndarray) -> list:
         """Dysfluency regions as [(start_sec, end_sec, confidence), ...]."""
         try:
-            from model.data.preprocessing import generate_mel_spectrogram
+            from model.registry import generate_mel_spectrogram
             audio_np = np.asarray(audio, dtype=np.float32)
             if audio_np.ndim > 1:
                 audio_np = audio_np.mean(axis=1)
@@ -65,8 +65,7 @@ class ModelRunner:
     def _combine(self, audio: np.ndarray, localizations: list) -> dict:
         """Fuse localization tuples with classifier saliency into combined regions."""
         try:
-            from model.combiner import combine_regions
-            from model.config.defaults import DYSFLUENCY_CLASSES
+            from model.registry import DYSFLUENCY_CLASSES, combine_regions
 
             audio_np = np.asarray(audio, dtype=np.float32)
             if audio_np.ndim > 1:
