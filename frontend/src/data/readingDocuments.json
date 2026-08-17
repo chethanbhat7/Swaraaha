@@ -1,0 +1,66 @@
+[
+  {
+    "id": "assessment-passages",
+    "title": "Speech Assessment Reading Passage",
+    "subtitle": "Section I: Standardized Continuous Speech Passages",
+    "sections": [
+      {
+        "heading": "Instructions for Patient",
+        "content": "Read the following passages aloud in your normal speaking voice. Maintain a natural, comfortable pace. Try to read without stopping, even if you stumble or repeat words."
+      },
+      {
+        "heading": "1. The Grandfather Passage",
+        "content": "You wish to know all about my grandfather. Well, he is nearly ninety-three years old. He limits his spoon to three bites of food, yet he still thinks as swiftly as ever. A long, flowing beard clings to his chin, giving those who observe him a pronounced feeling of the utmost respect. When he speaks, his voice is just a bit cracked and quivers a trifle. In a double wooden box, he keeps an old, rusty knife which he uses to shave his grandfather's plug tobacco. Every day he plays a short round of golf on the links near the house. We have often urged him to walk more and play less, but he only nods his head and smiles. He is a grandfather we all love dearly."
+      },
+      {
+        "heading": "2. The Rainbow Passage",
+        "content": "When the sunlight strikes raindrops in the air, they act as a prism and form a rainbow. The rainbow is a division of white light into many beautiful colors. These take the shape of a long round arch, with its path high above, and its two ends apparently beyond the horizon. There is, according to legend, a boiling pot of gold at one end. People look, but no one ever finds it. When a man looks for something beyond his reach, his friends say he is looking for the pot of gold at the end of the rainbow."
+      }
+    ]
+  },
+  {
+    "id": "phonetically-balanced",
+    "title": "Phonetically Balanced Sentences",
+    "subtitle": "Section II: Standard Speech Assessment Sentences",
+    "sections": [
+      {
+        "heading": "Clinical Objective",
+        "content": "These sentences are phonetically balanced and contain key phoneme combinations frequently associated with speech dysfluencies (such as prolongations on sibilants, blocks on plosives, and word repetitions)."
+      },
+      {
+        "heading": "Reading Sentences",
+        "content": [
+          "1. The birch canoe slid on the smooth planks.",
+          "2. Glue the sheet to the dark blue background.",
+          "3. It's easy to tell the depth of a well.",
+          "4. These days a chicken leg is a rare dish.",
+          "5. Rice is often served in round bowls.",
+          "6. The juice of lemons makes fine punch.",
+          "7. The box was thrown beside the park gate.",
+          "8. The boy was silent when the grandfather spoke.",
+          "9. A king ruled the state with a fair hand.",
+          "10. Four hours of steady work faced us."
+        ]
+      }
+    ]
+  },
+  {
+    "id": "diagnostic-exercises",
+    "title": "Diagnostic Reading Exercises",
+    "subtitle": "Section III: Complex Speech Patterns",
+    "sections": [
+      {
+        "heading": "Exercise A: Prolongation Detection (Sibilants & Fricatives)",
+        "content": "Sally saw seven silly sheep sleeping silently in the summer sunshine. The sheep seemed somewhat sleepy, so Sally walked slowly past them, trying not to startle their quiet slumber."
+      },
+      {
+        "heading": "Exercise B: Plosive & Block Detection (Stop Consonants)",
+        "content": "Peter Piper picked a peck of pickled peppers. A peck of pickled peppers Peter Piper picked. If Peter Piper picked a peck of pickled peppers, where is the peck of pickled peppers Peter Piper picked?"
+      },
+      {
+        "heading": "Exercise C: Conversational Flow & Transition Phrases",
+        "content": "Yesterday morning, I woke up early, made a cup of warm tea, and went out for a brisk walk. The crisp air was refreshing, and the birds were singing in the trees. It was a perfect start to a busy day."
+      }
+    ]
+  }
+]

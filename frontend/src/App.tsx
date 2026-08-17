@@ -65,15 +65,6 @@ function DocumentsPage({
           <h3 className="font-bold text-sm">Speech Assessment Reading Passage</h3>
           <p className="text-xs text-text-secondary mt-1.5 leading-relaxed">Contains the Grandfather Passage, Rainbow Passage, and phonetically balanced sentences.</p>
         </div>
-        <div className="p-5 bg-bg-card border border-border-color rounded-xl opacity-60 hover:opacity-100 transition cursor-pointer">
-          <div className="flex items-center justify-between mb-3">
-            <span className="px-2.5 py-1 text-[10px] font-semibold text-text-secondary bg-hover-color rounded-full">Pediatric</span>
-            <span className="text-xs text-text-secondary">1 Page</span>
-          </div>
-          <h3 className="font-bold text-sm">Children's Picture Description Passage</h3>
-          <p className="text-xs text-text-secondary mt-1.5 leading-relaxed">Simplified vocabulary and structured stories tailored for pediatric dysfluency assessment.</p>
-        </div>
-
         {customPdfs.map((pdf, idx) => (
           <div key={`doc-pdf-${idx}`} className="p-5 bg-bg-card border border-border-color rounded-xl hover:border-accent-teal transition relative group flex flex-col justify-between min-h-[140px]">
             <div>
@@ -262,15 +253,6 @@ function SettingsPage() {
             <option>Default System Microphone</option>
             <option>External USB Speech Mic (High Definition)</option>
           </select>
-        </div>
-        <div className="space-y-2">
-          <label className="block text-sm font-bold">Dysfluency Detection Threshold</label>
-          <input type="range" min="1" max="100" defaultValue="50" className="w-full accent-accent-teal cursor-pointer" />
-          <div className="flex justify-between text-[10px] text-text-secondary font-mono">
-            <span>High Precision (Fewer false alarms)</span>
-            <span>Balanced</span>
-            <span>High Recall (Catch all stuttering)</span>
-          </div>
         </div>
         <div className="pt-4 border-t border-border-color flex justify-end gap-3">
           <button className="px-4 py-2 text-xs border border-border-color rounded-lg hover:bg-hover-color cursor-pointer transition">Reset</button>

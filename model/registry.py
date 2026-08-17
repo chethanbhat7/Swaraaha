@@ -538,8 +538,26 @@ class MultiTaskClassifier:
             raise RuntimeError("Cannot compute saliency for empty audio")
         if self._model is None:
             self._load()
+
+        import librosa
+        import torch
+        from model.data.preprocessing import load_audio_input
+
+        audio_array = load_audio_input(audio, sr=16000)
+        _, trim_index = librosa.effects.trim(audio_array, top_db=25)
+        trim_offset_samples = trim_index[0]
+        trim_offset_frames = int(round(trim_offset_samples / 320))
+
         tensor = _preprocess_audio(audio, max_length_seconds=max_length_seconds)
-        return self._model.saliency(tensor)
+        sal = self._model.saliency(tensor)
+
+        if trim_offset_frames > 0:
+            shifted = torch.zeros_like(sal)
+            if trim_offset_frames < sal.shape[1]:
+                shifted[:, trim_offset_frames:, :] = sal[:, :-trim_offset_frames, :]
+            sal = shifted
+
+        return sal
 
     @property
     def is_loaded(self) -> bool:

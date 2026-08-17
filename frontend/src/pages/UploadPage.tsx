@@ -178,8 +178,6 @@ export default function UploadPage({
   const animationFrameRef = useRef<number | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
 
-  // Analysis options
-  const [analysisMode, setAnalysisMode] = useState<'full' | 'classify'>('full')
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   const [selectedLanguage, setSelectedLanguage] = useState<'english' | 'kannada' | 'hindi'>('english')
@@ -434,7 +432,6 @@ export default function UploadPage({
 
     // Clear previous results & save analysis configs to sessionStorage
     sessionStorage.removeItem('results')
-    sessionStorage.setItem('analysis_mode', analysisMode)
     sessionStorage.setItem('generate_report', 'true')
 
     sessionStorage.setItem('transcription_language', selectedLanguage)
@@ -685,110 +682,47 @@ export default function UploadPage({
           </div>
         </section>
 
-        {/* STEP 3: ANALYSIS OPTIONS */}
+        {/* STEP 3: LANGUAGE SELECTION */}
         <section className="space-y-3">
           <div className="flex items-center gap-2">
             <span className="flex items-center justify-center w-5 h-5 rounded-full bg-teal-500/10 text-accent-teal text-xs font-bold">3</span>
-            <h3 className="text-sm font-bold">Analysis Options</h3>
+            <h3 className="text-sm font-bold">Transcription Language</h3>
           </div>
 
-          <div className="bg-bg-card border border-border-color rounded-xl p-5 space-y-4 shadow-xs" style={{ borderRadius: '16px' }}>
-
-            {/* Analysis Mode Radio Buttons */}
-            <div className="space-y-3">
-              <label className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Select Analysis Mode</label>
-
-              <div className="grid gap-3 sm:grid-cols-2">
-
-                {/* Full Analysis Option */}
-                <div
-                  onClick={() => setAnalysisMode('full')}
-                  className={`p-3.5 border rounded-xl cursor-pointer transition-all duration-200 select-none ${analysisMode === 'full'
-                    ? 'border-accent-teal bg-teal-500/5'
-                    : 'border-border-color bg-bg-sidebar hover:border-text-secondary'
-                    }`}
-                  style={{ borderRadius: '12px' }}
-                >
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      name="analysisMode"
-                      checked={analysisMode === 'full'}
-                      onChange={() => setAnalysisMode('full')}
-                      className="accent-accent-teal"
-                    />
-                    <span className="text-xs font-bold">Full Analysis</span>
-                    <span className="px-1.5 py-0.5 text-[8px] font-bold bg-teal-500/10 text-accent-teal rounded-full shrink-0">Recommended</span>
-                  </div>
-                  <p className="text-[10px] text-text-secondary mt-1.5 leading-relaxed">
-                    Runs Speech Dysfluency Classification and localization regions mapping.
-                  </p>
-                </div>
-
-                {/* Classification Only Option */}
-                <div
-                  onClick={() => setAnalysisMode('classify')}
-                  className={`p-3.5 border rounded-xl cursor-pointer transition-all duration-200 select-none ${analysisMode === 'classify'
-                    ? 'border-accent-teal bg-teal-500/5'
-                    : 'border-border-color bg-bg-sidebar hover:border-text-secondary'
-                    }`}
-                  style={{ borderRadius: '12px' }}
-                >
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      name="analysisMode"
-                      checked={analysisMode === 'classify'}
-                      onChange={() => setAnalysisMode('classify')}
-                      className="accent-accent-teal"
-                    />
-                    <span className="text-xs font-bold">Classification Only</span>
-                  </div>
-                  <p className="text-[10px] text-text-secondary mt-1.5 leading-relaxed">
-                    Predicts global stuttering categories without localizing timestamps.
-                  </p>
-                </div>
-
-              </div>
+          <div className="bg-bg-card border border-border-color rounded-xl p-5 space-y-2 select-none shadow-xs" style={{ borderRadius: '16px' }}>
+            <label className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Select Language</label>
+            <div className="flex gap-4 flex-wrap">
+              <label className="flex items-center gap-1.5 text-xs font-semibold cursor-pointer">
+                <input
+                  type="radio"
+                  name="transcriptionLanguage"
+                  checked={selectedLanguage === 'english'}
+                  onChange={() => setSelectedLanguage('english')}
+                  className="accent-accent-teal cursor-pointer"
+                />
+                <span>English</span>
+              </label>
+              <label className="flex items-center gap-1.5 text-xs font-semibold cursor-pointer">
+                <input
+                  type="radio"
+                  name="transcriptionLanguage"
+                  checked={selectedLanguage === 'kannada'}
+                  onChange={() => setSelectedLanguage('kannada')}
+                  className="accent-accent-teal cursor-pointer"
+                />
+                <span>ಕನ್ನಡ (Kannada)</span>
+              </label>
+              <label className="flex items-center gap-1.5 text-xs font-semibold cursor-pointer">
+                <input
+                  type="radio"
+                  name="transcriptionLanguage"
+                  checked={selectedLanguage === 'hindi'}
+                  onChange={() => setSelectedLanguage('hindi')}
+                  className="accent-accent-teal cursor-pointer"
+                />
+                <span>हिंदी (Hindi)</span>
+              </label>
             </div>
-
-            {/* Language Selection */}
-            <div className="pt-3 border-t border-border-color/50 space-y-2 select-none">
-              <label className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Transcription Language</label>
-              <div className="flex gap-4 flex-wrap">
-                <label className="flex items-center gap-1.5 text-xs font-semibold cursor-pointer">
-                  <input
-                    type="radio"
-                    name="transcriptionLanguage"
-                    checked={selectedLanguage === 'english'}
-                    onChange={() => setSelectedLanguage('english')}
-                    className="accent-accent-teal cursor-pointer"
-                  />
-                  <span>English</span>
-                </label>
-                <label className="flex items-center gap-1.5 text-xs font-semibold cursor-pointer">
-                  <input
-                    type="radio"
-                    name="transcriptionLanguage"
-                    checked={selectedLanguage === 'kannada'}
-                    onChange={() => setSelectedLanguage('kannada')}
-                    className="accent-accent-teal cursor-pointer"
-                  />
-                  <span>ಕನ್ನಡ (Kannada)</span>
-                </label>
-                <label className="flex items-center gap-1.5 text-xs font-semibold cursor-pointer">
-                  <input
-                    type="radio"
-                    name="transcriptionLanguage"
-                    checked={selectedLanguage === 'hindi'}
-                    onChange={() => setSelectedLanguage('hindi')}
-                    className="accent-accent-teal cursor-pointer"
-                  />
-                  <span>हिंदी (Hindi)</span>
-                </label>
-              </div>
-            </div>
-
           </div>
         </section>
 

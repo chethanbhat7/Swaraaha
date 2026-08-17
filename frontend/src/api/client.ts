@@ -24,7 +24,30 @@ export interface ClassificationResults {
   [className: string]: {
     label: number;
     confidence: number;
+    prob_present?: number;
+    prob_not_present?: number;
   };
+}
+
+export interface SeverityResult {
+  index_pct: number;
+  severity: 'fluent' | 'mild' | 'moderate' | 'severe';
+  label: string;
+}
+
+export type RegionType =
+  | 'prolongation'
+  | 'block'
+  | 'soundrep'
+  | 'wordrep'
+  | 'interjection'
+
+export interface LocalizationRegion {
+  start: number;
+  end: number;
+  confidence: number;
+  type?: RegionType;
+  coarse?: boolean;
 }
 
 export interface CombinedClass {
@@ -52,9 +75,11 @@ export interface CombinedResults {
 export interface AnalyzeResults {
   classification: ClassificationResults;
   localization: {
-    regions: Array<{ start: number; end: number; confidence: number }>;
+    regions: LocalizationRegion[];
+    duration_sec?: number;
   };
   transcription: TranscriptionData;
+  severity?: SeverityResult;
   combined?: CombinedResults;
 }
 
@@ -66,7 +91,7 @@ export async function classifyAudio(file: File, language: string = 'english'): P
   return parseOrThrow(res)
 }
 
-export async function localizeAudio(file: File): Promise<{ regions: Array<{ start: number; end: number; confidence: number }> }> {
+export async function localizeAudio(file: File): Promise<{ regions: LocalizationRegion[] }> {
   const form = new FormData()
   form.append('file', file)
   const res = await fetch(`${API_BASE}/localize`, { method: 'POST', body: form })
@@ -93,6 +118,7 @@ export interface ReportData {
   };
   date: string;
   classification: ClassificationResults;
+  severity?: SeverityResult;
   combined?: CombinedResults;
   transcription?: TranscriptionData;
   localization?: {

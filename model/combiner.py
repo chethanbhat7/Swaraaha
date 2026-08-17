@@ -88,7 +88,11 @@ def combine_regions(
         primary_type = None
         if n_frames > 0 and end_f > start_f:
             window = saliency[start_f:end_f]
-            best_prob = -1.0
+            best_prob_detected = -1.0
+            best_prob_any = -1.0
+            primary_type_detected = None
+            primary_type_any = None
+
             for i, name in enumerate(class_names):
                 if i >= window.shape[1]:
                     continue
@@ -104,9 +108,14 @@ def combine_regions(
                     "prob_present": round(prob_present, 4),
                     "prob_not_present": round(prob_not_present, 4),
                 }
-                if prob_present > best_prob:
-                    best_prob = prob_present
-                    primary_type = name
+                if label == 1 and prob_present > best_prob_detected:
+                    best_prob_detected = prob_present
+                    primary_type_detected = name
+                if prob_present > best_prob_any:
+                    best_prob_any = prob_present
+                    primary_type_any = name
+
+            primary_type = primary_type_detected if primary_type_detected is not None else primary_type_any
 
         entry["classes"] = classes
         entry["primary_type"] = primary_type

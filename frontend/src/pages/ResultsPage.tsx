@@ -3,20 +3,23 @@ import { useEffect, useState, useRef } from 'react'
 import { 
   ArrowLeft, 
   Volume2, 
-  ShieldCheck, 
   CheckCircle2, 
   Activity,
   Play,
   Pause,
   Download
 } from 'lucide-react'
-import { TranscriptionData, CombinedResults, analyzeAudio, classifyAudio, downloadReport } from '../api/client'
+import { ClassificationResults, SeverityResult, TranscriptionData, RegionType, LocalizationRegion, CombinedResults, analyzeAudio, downloadReport } from '../api/client'
 import { storeAudioFile } from '../utils/db'
 
 interface AnalysisResults {
-  classification: Record<string, { label: number; confidence: number }>
-  localization: { regions: Array<{ start: number; end: number; confidence: number }> }
+  classification: ClassificationResults
+  localization: { 
+    regions: LocalizationRegion[]
+    duration_sec?: number
+  }
   transcription?: TranscriptionData
+  severity?: SeverityResult
   combined?: CombinedResults
 }
 
@@ -28,9 +31,29 @@ const CLASS_DISPLAY_NAMES: Record<string, string> = {
   interjection: "Interjection (Filler)"
 }
 
+// Per-type styling: fills/strokes for the waveform canvas, plus a solid color
+// used for badges, the timeline and the legend.
+const REGION_STYLES: Record<string, { label: string; fill: string; stroke: string; color: string }> = {
+  prolongation: { label: "Prolongation", fill: "rgba(196, 181, 253, 0.45)", stroke: "#8B5CF6", color: "#8B5CF6" },
+  block:        { label: "Block",        fill: "rgba(148, 163, 184, 0.45)", stroke: "#64748B", color: "#64748B" },
+  soundrep:     { label: "Sound Repetition", fill: "rgba(147, 197, 253, 0.45)", stroke: "#3B82F6", color: "#3B82F6" },
+  wordrep:      { label: "Word Repetition",  fill: "rgba(253, 186, 116, 0.45)", stroke: "#F97316", color: "#F97316" },
+  interjection: { label: "Interjection", fill: "rgba(254, 240, 138, 0.55)", stroke: "#EAB308", color: "#EAB308" },
+}
+
+const DEFAULT_REGION_STYLE = { label: "Stutter", fill: "rgba(239, 68, 68, 0.15)", stroke: "#EF4444", color: "#EF4444" }
+
+// Regions may come from the localizer (has `type`) or the fusion combiner
+// (has `primary_type`); both shapes are displayed uniformly.
+type DisplayRegion = LocalizationRegion & { primary_type?: string | null }
+
+function regionStyle(type?: RegionType | string | null) {
+  return type && REGION_STYLES[type] ? REGION_STYLES[type] : DEFAULT_REGION_STYLE
+}
+
 interface WaveformViewProps {
   file: File | null
-  regions: Array<{ start: number; end: number; confidence: number }>
+  regions: DisplayRegion[]
   transcription?: TranscriptionData
 }
 
@@ -43,7 +66,6 @@ function WaveformView({ file, regions, transcription }: WaveformViewProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const animationRef = useRef<number | null>(null)
   const [audioUrl, setAudioUrl] = useState<string | null>(null)
-
   useEffect(() => {
     const decodeAudio = async () => {
       try {
@@ -145,15 +167,46 @@ function WaveformView({ file, regions, transcription }: WaveformViewProps) {
       ctx.lineTo(width, height / 2)
       ctx.stroke()
 
-      // 2. Overlays
-      regions.forEach(region => {
+      // 2. Overlays (coarse whole-clip estimates hatched, precise drawn on top)
+      const sortedRegions = [...regions].sort((a, b) => a.confidence - b.confidence)
+      sortedRegions.forEach(region => {
         const x1 = (region.start / audioBuffer.duration) * width
         const x2 = (region.end / audioBuffer.duration) * width
-        
-        ctx.fillStyle = 'rgba(239, 68, 68, 0.15)'
+        const style = regionStyle(region.type ?? region.primary_type)
+
+        if (region.coarse) {
+          ctx.save()
+          ctx.beginPath()
+          ctx.rect(x1, 0, x2 - x1, height)
+          ctx.clip()
+          ctx.fillStyle = style.fill
+          ctx.fillRect(x1, 0, x2 - x1, height)
+          ctx.strokeStyle = style.stroke
+          ctx.globalAlpha = 0.55
+          ctx.lineWidth = 1
+          ctx.beginPath()
+          for (let x = x1 - height; x < x2 + height; x += 8) {
+            ctx.moveTo(x, height)
+            ctx.lineTo(x + height, 0)
+          }
+          ctx.stroke()
+          ctx.restore()
+
+          // Draw label on coarse region if wide enough
+          if (x2 - x1 > 45) {
+            ctx.save()
+            ctx.fillStyle = style.color
+            ctx.font = 'bold 8px ui-sans-serif, system-ui'
+            ctx.fillText(style.label + ' (est.)', x1 + 4, 14)
+            ctx.restore()
+          }
+          return
+        }
+
+        ctx.fillStyle = style.fill
         ctx.fillRect(x1, 0, x2 - x1, height)
 
-        ctx.strokeStyle = '#EF4444'
+        ctx.strokeStyle = style.stroke
         ctx.lineWidth = 1
         ctx.beginPath()
         ctx.moveTo(x1, 0)
@@ -161,6 +214,15 @@ function WaveformView({ file, regions, transcription }: WaveformViewProps) {
         ctx.moveTo(x2, 0)
         ctx.lineTo(x2, height)
         ctx.stroke()
+
+        // Draw label text on Waveform overlay if wide enough
+        if (x2 - x1 > 45) {
+          ctx.save()
+          ctx.fillStyle = style.color
+          ctx.font = 'bold 8px ui-sans-serif, system-ui'
+          ctx.fillText(style.label, x1 + 4, 14)
+          ctx.restore()
+        }
       })
 
       // 3. Waveform
@@ -188,6 +250,21 @@ function WaveformView({ file, regions, transcription }: WaveformViewProps) {
         ctx.lineTo(x, y2)
       }
       ctx.stroke()
+
+      // 3.5 Time axis labels (seconds along the bottom of the canvas)
+      ctx.fillStyle = 'rgba(100, 116, 139, 0.75)'
+      ctx.font = '8px ui-monospace, monospace'
+      ctx.textAlign = 'center'
+      const tickEvery = audioBuffer.duration > 30 ? 5 : 1
+      for (let t = 0; t <= audioBuffer.duration; t += tickEvery) {
+        const tx = (t / audioBuffer.duration) * width
+        ctx.beginPath()
+        ctx.moveTo(tx, height - 8)
+        ctx.lineTo(tx, height - 4)
+        ctx.strokeStyle = 'rgba(100, 116, 139, 0.4)'
+        ctx.stroke()
+        ctx.fillText(`${t}s`, tx, height - 10)
+      }
 
       // 4. Playhead cursor
       if (audioRef.current) {
@@ -341,9 +418,22 @@ function WaveformView({ file, regions, transcription }: WaveformViewProps) {
             </button>
           )}
         </div>
-        <div className="flex items-center gap-4 text-[9px] text-text-secondary uppercase font-semibold">
+        <div className="flex items-center gap-4 text-[9px] text-text-secondary uppercase font-semibold flex-wrap">
           <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-accent-teal" /> Waveform</span>
-          <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-error-red" /> Localized Stutter</span>
+          {(() => {
+            const types = Array.from(new Set(regions.map(r => r.type ?? r.primary_type ?? 'stutter')))
+            if (types.length === 0) {
+              return <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: DEFAULT_REGION_STYLE.color }} /> Stutter</span>
+            }
+            return types.map(t => {
+              const s = regionStyle(t === 'stutter' ? undefined : t)
+              return (
+                <span key={t} className="flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: s.color }} /> {s.label}
+                </span>
+              )
+            })
+          })()}
           <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-500" /> Playhead</span>
         </div>
       </div>
@@ -431,7 +521,6 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
     }, 800)
 
     try {
-      const mode = sessionStorage.getItem('analysis_mode') || 'full'
       const genReport = sessionStorage.getItem('generate_report') === 'true'
       const lang = sessionStorage.getItem('transcription_language') || 'english'
 
@@ -441,17 +530,7 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
       setTimeout(() => setLoadingStep("Transcribing speech..."), 5000)
       setTimeout(() => setLoadingStep("Generating clinical diagnostic report..."), 7000)
 
-      let res
-      if (mode === 'full') {
-        res = await analyzeAudio(file, lang)
-      } else {
-        const response = await classifyAudio(file, lang)
-        res = {
-          classification: response.classification,
-          localization: { regions: [] },
-          transcription: response.transcription
-        }
-      }
+      const res = await analyzeAudio(file, lang)
 
       clearInterval(progressInterval)
       setLoadingProgress(100)
@@ -470,7 +549,7 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
         name: file.name,
         size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
         duration: sessionStorage.getItem('duration') || '00:10',
-        mode: mode === 'full' ? 'Full Analysis' : 'Classification Only',
+        mode: 'Full Analysis',
         status: 'Completed',
         results: res,
         generateReport: genReport,
@@ -571,15 +650,6 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
             </div>
           </div>
 
-          {/* Informational tips */}
-          <div className="pt-4 border-t border-border-color/50 w-full max-w-md flex justify-center text-[10px] text-text-secondary select-none">
-            <div className="flex items-center gap-2">
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-accent-teal" />
-              <span>Whisper-Tiny language adapters active</span>
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-accent-teal" />
-              <span>GPU/CPU inference optimized</span>
-            </div>
-          </div>
         </div>
       </div>
     )
@@ -615,17 +685,29 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
   const combined = results.combined && !('error' in results.combined)
     ? results.combined
     : undefined
-  const regions: Array<{ start: number; end: number; confidence: number; primary_type?: string | null }> =
-    combined?.regions ?? results.localization.regions
+  const regions: DisplayRegion[] =
+    combined?.regions && combined.regions.length > 0
+      ? combined.regions
+      : results.localization.regions
 
   // Calculate Speech Metrics
   const classes = Object.keys(results.classification).filter(
     c => results.classification[c] && typeof results.classification[c].confidence === 'number'
   )
-  const localizationCoverage = results.localization.regions.reduce(
-    (sum, r) => sum + Math.max(0, r.end - r.start),
-    0
-  )
+
+  // Aligned classification results matching localized/combined regions
+  const alignedClassification = {} as Record<string, { label: number; confidence: number; prob_present?: number; prob_not_present?: number }>
+  classes.forEach(name => {
+    const r = results.classification[name]
+    const isPresent = r.label === 1 || regions.some(reg => reg.type === name || reg.primary_type === name)
+    const presenceProbability = r.prob_present ?? (r.label === 1 ? r.confidence : 1 - r.confidence)
+    alignedClassification[name] = {
+      label: isPresent ? 1 : 0,
+      confidence: isPresent ? presenceProbability : (r.prob_not_present ?? r.confidence),
+      prob_present: presenceProbability,
+      prob_not_present: r.prob_not_present ?? (r.label === 0 ? r.confidence : 1 - r.confidence),
+    }
+  })
 
   // Helper to parse duration string (MM:SS or HH:MM:SS) to seconds
   const getDurationInSeconds = (durStr: string) => {
@@ -637,22 +719,40 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
   }
 
   const durationSec = getDurationInSeconds(duration)
+  const finalDuration = combined?.audio_duration 
+    || results.localization?.duration_sec 
+    || durationSec 
+    || 1.0;
 
-  // Determine Severity Level from localized dysfluency coverage
-  const stutterIndexValue = durationSec > 0 ? (localizationCoverage / durationSec) * 100 : 0
+  const localizationCoverage = regions.reduce(
+    (sum, r) => sum + Math.max(0, r.end - r.start),
+    0
+  )
 
-  let severity = "Fluent"
-  let severityColor = "text-emerald-500 bg-emerald-500/10 border-emerald-500/20"
-  if (stutterIndexValue >= 15) {
-    severity = "Severe"
-    severityColor = "text-error-red bg-error-red/10 border-error-red/20"
-  } else if (stutterIndexValue >= 5) {
-    severity = "Moderate"
-    severityColor = "text-warning-amber bg-warning-amber/10 border-warning-amber/20"
-  } else if (stutterIndexValue >= 2) {
-    severity = "Mild"
-    severityColor = "text-teal-500 bg-teal-500/10 border-teal-500/20"
+  // Stutter index: backend-computed when available, else derived from regions
+  const stutterIndexValue = results.severity?.index_pct ??
+    (finalDuration > 0 ? (localizationCoverage / finalDuration) * 100 : 0)
+
+  const SEVERITY_COLORS: Record<string, string> = {
+    Fluent: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20",
+    Mild: "text-teal-500 bg-teal-500/10 border-teal-500/20",
+    Moderate: "text-warning-amber bg-warning-amber/10 border-warning-amber/20",
+    Severe: "text-error-red bg-error-red/10 border-error-red/20",
   }
+
+  const computedSeverity = (() => {
+    if (results.severity?.label) {
+      return {
+        label: results.severity.label,
+        color: SEVERITY_COLORS[results.severity.label] ?? SEVERITY_COLORS.Fluent,
+      }
+    }
+    let label = 'Fluent'
+    if (stutterIndexValue >= 15) label = 'Severe'
+    else if (stutterIndexValue >= 5) label = 'Moderate'
+    else if (stutterIndexValue >= 2) label = 'Mild'
+    return { label, color: SEVERITY_COLORS[label] }
+  })()
 
   // Print clinical report
   const handlePrint = () => {
@@ -668,7 +768,12 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
         patient: { name: patientName, phone: patientPhone },
         audio: { filename, size: filesize, duration },
         date: reportDate,
-        classification: results.classification,
+        classification: alignedClassification,
+        severity: results.severity ?? {
+          index_pct: stutterIndexValue,
+          severity: computedSeverity.label.toLowerCase() as SeverityResult['severity'],
+          label: computedSeverity.label,
+        },
         combined: combined ?? undefined,
         transcription: results.transcription,
         localization: results.localization,
@@ -718,7 +823,7 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
       {/* INTERACTIVE WAVEFORM CARD (Hidden in Print) */}
       {results && (
         <div className="print:hidden">
-          <WaveformView file={analyzedFile} regions={results.localization.regions} transcription={results.transcription} />
+          <WaveformView file={analyzedFile} regions={regions} transcription={results.transcription} />
         </div>
       )}
 
@@ -731,12 +836,14 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
             <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Diagnostic Severity</span>
             <Volume2 className="text-text-secondary" size={16} />
           </div>
-          <div className="mt-4">
-            <span className={`inline-block px-3 py-1 text-xs font-bold border rounded-full ${severityColor}`}>
-              {severity} Dysfluency
-            </span>
-            <p className="text-xs text-text-secondary mt-2">
-              Based on speech localization regions.
+          <div className="mt-4 space-y-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className={`inline-block px-3 py-1 text-xs font-bold border rounded-full ${computedSeverity.color}`}>
+                {computedSeverity.label} Dysfluency
+              </span>
+            </div>
+            <p className="text-xs text-text-secondary">
+              Based on speech localization regions. The stuttering index represents the percentage of dysfluent speech duration.
             </p>
           </div>
         </div>
@@ -777,7 +884,7 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
 
           <div className="space-y-4">
             {classes.map((name) => {
-              const r = results.classification[name]
+              const r = alignedClassification[name]
               const displayName = CLASS_DISPLAY_NAMES[name] || name
               
               return (
@@ -801,7 +908,7 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
                       className={`h-full rounded-full transition-all duration-300 ${
                         r.label ? 'bg-accent-teal' : 'bg-text-secondary/30'
                       }`}
-                      style={{ width: `${r.confidence * 100}%` }}
+                      style={{ width: `${(r.prob_present ?? 0) * 100}%` }}
                     />
                   </div>
                 </div>
@@ -829,9 +936,19 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
               <div className="space-y-2.5 max-h-[220px] overflow-y-auto pr-1">
                 {regions.map((r, i) => (
                   <div key={i} className="flex items-center justify-between p-2.5 bg-bg-sidebar border border-border-color rounded-lg text-xs">
-                    <div className="space-y-0.5">
+                    <div className="flex flex-col gap-1 min-w-0">
                       <div className="font-mono font-bold text-text-primary">
                         {r.start.toFixed(2)}s &mdash; {r.end.toFixed(2)}s
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span
+                          className="inline-block w-1.5 h-1.5 rounded-full shrink-0"
+                          style={{ backgroundColor: regionStyle(r.type ?? r.primary_type).color }}
+                        />
+                        <span className="text-[9px] font-bold uppercase tracking-wide text-text-secondary truncate">
+                          {regionStyle(r.type ?? r.primary_type).label}
+                          {r.coarse ? ' (est.)' : ''}
+                        </span>
                       </div>
                       {r.primary_type && (
                         <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold text-text-primary">
@@ -839,7 +956,7 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
                         </span>
                       )}
                     </div>
-                    <div className="text-[10px] font-semibold text-text-secondary">
+                    <div className="text-[10px] font-semibold text-text-secondary shrink-0 ml-2">
                       Conf: {(r.confidence * 100).toFixed(0)}%
                     </div>
                   </div>
@@ -847,16 +964,11 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
               </div>
             )}
           </div>
-
-          <div className="pt-3 border-t border-border-color/50 text-[10px] text-text-secondary flex items-center gap-1">
-            <ShieldCheck size={13} className="text-accent-teal shrink-0" />
-            <span>Secure clinical AI localization</span>
-          </div>
         </div>
       </div>
 
       {/* DYSFLUENCY VISUAL TIMELINE MAPPING */}
-      {results.localization.regions.length > 0 && (
+      {regions.length > 0 && (
         <div className="p-6 bg-bg-card border border-border-color rounded-xl space-y-4 shadow-xs print:hidden" style={{ borderRadius: '16px' }}>
           <div className="border-b border-border-color pb-2">
             <h3 className="text-sm font-bold">Stuttering Occurrence Timeline</h3>
@@ -867,22 +979,39 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
             {/* Timeline scale track */}
             <div className="relative h-6 bg-bg-sidebar border border-border-color rounded-lg overflow-hidden shadow-inner flex items-center">
               
-              {/* Plot regions */}
-              {results.localization.regions.map((r, i) => {
-                const leftPercent = (r.start / durationSec) * 100
-                const widthPercent = ((r.end - r.start) / durationSec) * 100
-                
-                return (
-                  <div 
-                    key={i}
-                    className="absolute h-full bg-error-red/40 border-l border-r border-error-red flex items-center justify-center text-[8px] font-bold text-error-red select-none"
-                    style={{ left: `${leftPercent}%`, width: `${widthPercent}%` }}
-                    title={`Stutter at ${r.start.toFixed(1)}s - ${r.end.toFixed(1)}s`}
-                  >
-                    !
-                  </div>
-                )
-              })}
+              {/* Plot regions (coarse whole-clip regions first, precise on top) */}
+              {[...regions]
+                .sort((a, b) => a.confidence - b.confidence)
+                .map((r, i) => {
+                  const leftPercent = (r.start / durationSec) * 100
+                  const widthPercent = ((r.end - r.start) / durationSec) * 100
+                  const s = regionStyle(r.type ?? r.primary_type)
+                  
+                  return (
+                    <div 
+                      key={i}
+                      className="absolute h-full flex items-center justify-center text-[8px] font-bold select-none"
+                      style={{
+                        left: `${leftPercent}%`,
+                        width: `${widthPercent}%`,
+                        backgroundColor: r.coarse ? undefined : `${s.color}66`,
+                        backgroundImage: r.coarse
+                          ? `repeating-linear-gradient(45deg, ${s.color}55, ${s.color}55 4px, transparent 4px, transparent 8px)`
+                          : undefined,
+                        borderLeft: r.coarse ? `1px dashed ${s.color}` : `1px solid ${s.color}`,
+                        borderRight: r.coarse ? `1px dashed ${s.color}` : `1px solid ${s.color}`,
+                        color: s.color,
+                      }}
+                      title={`${s.label}${r.coarse ? ' (estimated)' : ''} at ${r.start.toFixed(2)}s - ${r.end.toFixed(2)}s`}
+                    >
+                      <span className="font-mono px-0.5 truncate max-w-full" style={{ backgroundColor: 'rgba(255,255,255,0.85)', borderRadius: '2px' }}>
+                        {r.end - r.start >= 0.8
+                          ? `${s.label} (${r.start.toFixed(1)}s)`
+                          : (r.end - r.start >= 0.4 ? `${r.start.toFixed(1)}s` : '!')}
+                      </span>
+                    </div>
+                  )
+                })}
 
               {/* Central base line */}
               <div className="w-full h-0.5 bg-border-color" />
