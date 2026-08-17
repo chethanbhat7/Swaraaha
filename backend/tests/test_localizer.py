@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from backend.services import localizer
-from model.config.defaults import DYSFLUENCY_CLASSES
+from model.registry import DYSFLUENCY_CLASSES
 
 
 def test_saliency_regions_finds_peak_spans():
