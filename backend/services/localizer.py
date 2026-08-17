@@ -14,7 +14,7 @@ _model: Optional[Localizer] = None
 def get_model() -> Localizer:
     global _model
     if _model is None:
-        _model = Localizer("cnn")
+        _model = Localizer("wav2vec2")
     return _model
 
 

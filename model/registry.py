@@ -975,8 +975,8 @@ def localize_audio_bytes(audio_bytes: bytes) -> dict:
     spec = generate_mel_spectrogram(audio_data, sr=SAMPLE_RATE)
 
     try:
-        loc = Localizer("cnn")
-        regions = loc.predict(spec)
+        loc = Localizer("wav2vec2")
+        regions = loc.predict(spec, sr=SAMPLE_RATE)
         return {
             "regions": [
                 {"start": round(s, 3), "end": round(e, 3), "confidence": round(c, 4)}
