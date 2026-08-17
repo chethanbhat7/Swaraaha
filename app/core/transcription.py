@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
-from model.localization.ctc_alignment import SimpleForcedAligner
+from model.registry import SimpleForcedAligner
 
 WHISPER_MODELS = {
     "english": "openai/whisper-tiny",
