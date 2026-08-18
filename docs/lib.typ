@@ -68,12 +68,10 @@
 #let literature_survey(author, conjunctive, title, body) = {
   lit_survey_counter.step()
 
-  strong(author)
-  [ *[#context lit_survey_counter.display()]*]
+  author
+  [ [#context lit_survey_counter.display()]]
   [
-    #conjunctive _"#title."_
-
-    #body
+    #conjunctive #body
   ]
   v(1em)
 }
