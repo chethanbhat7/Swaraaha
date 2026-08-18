@@ -33,7 +33,8 @@ def test_classify_uses_multitask_classifier(monkeypatch):
     results = runner._classify(audio)
 
     assert isinstance(captured["instance"], _FakeMultiTask)
-    assert captured["audio"] is audio
+    # Audio is loaded from WAV bytes, so check values match (not identity)
+    np.testing.assert_array_almost_equal(captured["audio"], audio)
     assert results == {
         "prolongation": (True, 0.87),
         "block": (False, 0.91),
