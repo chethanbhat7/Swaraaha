@@ -7,20 +7,15 @@ from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
     QFileDialog,
     QHBoxLayout,
-    QHeaderView,
     QLabel,
     QPushButton,
-    QTableWidget,
     QTextEdit,
     QVBoxLayout,
     QWidget,
 )
 
 from app.core.transcription import AudioTranscriber
-from app.ui.table_utils import MAX_HEIGHT_UNCAP, cap_table_height, populate_transcript_table
 from app.ui.theme import COLORS
-
-MAX_ROWS = 10
 
 
 class TranscriptionPanel(QWidget):
@@ -89,22 +84,7 @@ class TranscriptionPanel(QWidget):
         self._text_edit.setReadOnly(True)
         self._text_edit.setPlaceholderText("Transcription will appear here after loading audio or clicking Transcribe...")
         self._text_edit.setMinimumHeight(100)
-        self._text_edit.setMaximumHeight(160)
-        layout.addWidget(self._text_edit)
-
-        # Word Level Alignment Table
-        table_label = QLabel("Word-Level Timestamps & Alignment")
-        table_label.setStyleSheet("font-size: 14px; font-weight: 600; padding-top: 4px;")
-        layout.addWidget(table_label)
-
-        self._table = QTableWidget(0, 5)
-        self._table.setHorizontalHeaderLabels(["Word", "Start (s)", "End (s)", "Confidence", "Status"])
-        self._table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self._table.verticalHeader().setVisible(False)
-        self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
-        self._table.setAlternatingRowColors(True)
-        layout.addWidget(self._table, stretch=1)
+        layout.addWidget(self._text_edit, stretch=1)
 
     def set_audio(self, audio: np.ndarray, sample_rate: int = 16000, localizations=None, language: str = "english"):
         """Set audio array and automatically run transcription."""
@@ -131,19 +111,13 @@ class TranscriptionPanel(QWidget):
         """Display transcription dictionary."""
         self._transcription_data = data
         text = data.get("text", "")
-        words = data.get("words", [])
         self._text_edit.setPlainText(text)
-        populate_transcript_table(self._table, words)
-        cap_table_height(self._table, MAX_ROWS)
 
     def clear(self):
         """Clear transcription display."""
         self._audio = None
         self._transcription_data = {"text": "", "words": []}
         self._text_edit.clear()
-        self._table.setRowCount(0)
-        self._table.setMinimumHeight(0)
-        self._table.setMaximumHeight(MAX_HEIGHT_UNCAP)
         self._status_label.setText("No Audio Loaded")
 
     def _on_transcribe_click(self):

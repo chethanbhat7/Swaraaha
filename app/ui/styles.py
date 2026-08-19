@@ -261,8 +261,7 @@ def build_stylesheet():
 
     /* === Splitter === */
     QSplitter::handle {{
-        background-color: {COLORS['outline']}33;
-        border-radius: 2px;
+        background-color: transparent;
     }}
 
     /* === Tree View (PDF Browser) === */
@@ -323,9 +322,9 @@ def build_stylesheet():
     QTableWidget {{
         background-color: {COLORS['surface']};
         alternate-background-color: {COLORS['surface_variant']};
-        border: 1px solid {COLORS['outline']}33;
+        border: 1px solid {COLORS['outline']}22;
         border-radius: {RADIUS['md']}px;
-        gridline-color: {COLORS['outline']}22;
+        gridline-color: {COLORS['outline']}11;
     }}
     QTableWidget::item {{
         padding: {SPACING['sm']}px {SPACING['md']}px;
@@ -337,7 +336,7 @@ def build_stylesheet():
     QHeaderView::section {{
         background-color: {COLORS['surface_variant']};
         border: none;
-        border-bottom: 2px solid {COLORS['outline']}33;
+        border-bottom: 1px solid {COLORS['outline']}22;
         padding: {SPACING['sm']}px {SPACING['md']}px;
         font-weight: 600;
     }}
@@ -371,27 +370,39 @@ def build_stylesheet():
     /* === Table Scroll Bars (inset from border to avoid clashing with page scrollbar) === */
     QTableWidget QScrollBar:vertical {{
         background: transparent;
-        width: 8px;
-        margin: 2px 6px 2px 0;
+        width: 6px;
+        margin: 0px 4px 0px 0px;
+        border-radius: 3px;
     }}
     QTableWidget QScrollBar::handle:vertical {{
-        background: {COLORS['outline']}44;
-        border-radius: 4px;
-        min-height: 30px;
+        background: {COLORS['outline']}33;
+        border-radius: 3px;
+        min-height: 20px;
+    }}
+    QTableWidget QScrollBar::handle:vertical:hover {{
+        background: {COLORS['outline']}55;
     }}
     QTableWidget QScrollBar:horizontal {{
         background: transparent;
-        height: 8px;
-        margin: 0 2px 6px 2px;
+        height: 6px;
+        margin: 0px 0px 4px 0px;
+        border-radius: 3px;
     }}
     QTableWidget QScrollBar::handle:horizontal {{
-        background: {COLORS['outline']}44;
-        border-radius: 4px;
-        min-width: 30px;
+        background: {COLORS['outline']}33;
+        border-radius: 3px;
+        min-width: 20px;
+    }}
+    QTableWidget QScrollBar::handle:horizontal:hover {{
+        background: {COLORS['outline']}55;
     }}
     QTableWidget QScrollBar::add-line:vertical, QTableWidget QScrollBar::sub-line:vertical,
     QTableWidget QScrollBar::add-line:horizontal, QTableWidget QScrollBar::sub-line:horizontal {{
         width: 0;
         height: 0;
+    }}
+    QTableWidget QScrollBar::add-page:vertical, QTableWidget QScrollBar::sub-page:vertical,
+    QTableWidget QScrollBar::add-page:horizontal, QTableWidget QScrollBar::sub-page:horizontal {{
+        background: none;
     }}
     """

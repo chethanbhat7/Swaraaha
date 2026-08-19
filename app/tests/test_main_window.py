@@ -159,7 +159,6 @@ def test_start_home_transcription_populates_transcript(qapp, app_name):
     assert win._wait_dialog is None
     panel = win._home_page.get_transcription_panel()
     assert panel._text_edit.toPlainText() == "hello world"
-    assert panel._table.rowCount() == 2
 
 
 def test_home_transcription_error_is_handled(qapp, app_name):

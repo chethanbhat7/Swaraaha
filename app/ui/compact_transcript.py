@@ -1,21 +1,15 @@
-"""Compact transcript view: text area + word-level alignment table.
+"""Compact transcript view: text area only.
 
 Used as the bottom half of the Home Page right column once audio is loaded.
 Auto-runs transcription; intentionally has no header, status pill, or action buttons.
 """
 
 from PySide6.QtWidgets import (
-    QHeaderView,
     QLabel,
-    QTableWidget,
     QTextEdit,
     QVBoxLayout,
     QWidget,
 )
-
-from app.ui.table_utils import MAX_HEIGHT_UNCAP, cap_table_height, populate_transcript_table
-
-MAX_ROWS = 8
 
 
 class CompactTranscript(QWidget):
@@ -36,29 +30,13 @@ class CompactTranscript(QWidget):
         self._text_edit.setReadOnly(True)
         self._text_edit.setPlaceholderText("Transcription will appear here after loading audio...")
         self._text_edit.setMinimumHeight(90)
-        self._text_edit.setMaximumHeight(140)
-        layout.addWidget(self._text_edit)
-
-        self._table = QTableWidget(0, 5)
-        self._table.setHorizontalHeaderLabels(["Word", "Start (s)", "End (s)", "Confidence", "Status"])
-        self._table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self._table.verticalHeader().setVisible(False)
-        self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
-        self._table.setAlternatingRowColors(True)
-        layout.addWidget(self._table)
+        layout.addWidget(self._text_edit, stretch=1)
 
     def set_transcription(self, data: dict):
         """Display transcription dictionary."""
         text = data.get("text", "")
-        words = data.get("words", [])
         self._text_edit.setPlainText(text)
-        populate_transcript_table(self._table, words)
-        cap_table_height(self._table, MAX_ROWS)
 
     def clear(self):
         """Clear transcription display."""
         self._text_edit.clear()
-        self._table.setRowCount(0)
-        self._table.setMinimumHeight(0)
-        self._table.setMaximumHeight(MAX_HEIGHT_UNCAP)

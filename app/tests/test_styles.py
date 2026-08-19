@@ -13,7 +13,7 @@ def reset_theme():
 def test_stylesheet_has_table_scrollbar_inset():
     sheet = build_stylesheet()
     assert "QTableWidget QScrollBar:vertical" in sheet
-    assert "margin: 2px 6px 2px 0" in sheet
+    assert "margin: 0px 4px 0px 0px" in sheet
     assert "QTableWidget QScrollBar:horizontal" in sheet
 
 
