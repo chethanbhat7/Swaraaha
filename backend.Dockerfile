@@ -8,6 +8,7 @@ RUN pip install --no-cache-dir -r model-requirements.txt -r backend-requirements
 
 COPY model/ ./model/
 COPY backend/ ./backend/
+COPY shared/ ./shared/
 
 EXPOSE 8000
 
