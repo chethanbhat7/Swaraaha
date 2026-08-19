@@ -10,7 +10,7 @@ class _FakeCNN:
 
 
 class _FakeW2V2:
-    def predict(self, audio, sr=16000, threshold=0.5, max_length_seconds=10.0):
+    def predict(self, audio, sr=16000, threshold=0.5, max_length_seconds=3.0):
         return [(0.5, 1.0, 0.8)]
 
 

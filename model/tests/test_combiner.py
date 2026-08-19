@@ -65,14 +65,12 @@ def test_combine_snaps_region_boundaries_to_syllables():
     assert [s["syllable"] for s in r["syllables"]] == ["a", "b", "c"]
 
 
-def test_combine_region_out_of_bounds_gets_empty_classes():
+def test_combine_region_out_of_bounds_gets_dropped():
     saliency = np.zeros((10, 5))
     regions = [{"start": 5.0, "end": 6.0, "confidence": 0.5}]  # beyond 10 frames * 0.02 = 0.2s
     out = combine_regions(regions, saliency, class_names=CLASS_NAMES,
                           frame_duration=FRAME_DURATION, audio_duration=0.2)
-    r = out["regions"][0]
-    assert r["classes"] == {}
-    assert r["primary_type"] is None
+    assert out["regions"] == []
 
 
 def test_combine_empty_audio():

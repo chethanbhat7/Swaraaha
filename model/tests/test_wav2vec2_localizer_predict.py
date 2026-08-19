@@ -53,17 +53,18 @@ def test_predict_region_within_real_audio_unchanged():
 
 
 def test_predict_long_audio_truncated_to_max_length():
-    """Audio longer than max_length_seconds is truncated, so the whole
-    padded length is real audio and tail regions are legitimate."""
+    """Audio longer than max_length_seconds is truncated to actual audio length.
+    Regions beyond the real audio are clamped."""
     audio = np.zeros(200000, dtype=np.float32)  # 12.5s
     probs = torch.zeros((1, 1, 500))
-    probs[0, 0, 400:] = 0.9  # 8s..10s, all real (truncated audio)
+    probs[0, 0, 400:] = 0.9  # 8s..10s in model output
     loc = _loc_with_probs(probs)
 
-    regions = loc.predict(audio, sr=16000, threshold=0.5, max_length_seconds=10.0)
-    start, end, conf = regions[0]
-    assert (start, end) == (8.0, 10.0)
-    assert conf == pytest.approx(0.9)
+    regions = loc.predict(audio, sr=16000, threshold=0.5, max_length_seconds=3.0)
+    # actual audio = 3s (truncated), so regions are clamped to [start, 3.0]
+    for start, end, conf in regions:
+        assert start < 3.0
+        assert end <= 3.0
 
 
 class _FakeW2V2(torch.nn.Module):

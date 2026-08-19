@@ -131,7 +131,7 @@ class Wav2Vec2Localizer:
         audio: np.ndarray,
         sr: int = 16000,
         threshold: float = 0.5,
-        max_length_seconds: float = 10.0,
+        max_length_seconds: float = 3.0,
     ) -> List[Tuple[float, float, float]]:
         """
         Predict dysfluency regions from a raw audio array.
@@ -195,7 +195,7 @@ class Wav2Vec2Localizer:
         return [
             (start, min(end, actual_sec), conf)
             for start, end, conf in regions
-            if start < actual_sec
+            if start < actual_sec and start < min(end, actual_sec)
         ]
 
     def freeze_backbone(self):

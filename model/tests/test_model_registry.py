@@ -16,7 +16,7 @@ def test_run_all_composes(monkeypatch):
     )
     monkeypatch.setattr(
         reg.localizer, "analyze",
-        lambda audio, text=None, language="en", threshold=0.3, max_length_seconds=10.0: {
+        lambda audio, text=None, language="en", threshold=0.3, max_length_seconds=3.0: {
             "regions": [{"start": 0.0, "end": 0.5, "confidence": 0.9}]
         },
     )
@@ -37,7 +37,7 @@ def test_run_all_language_maps_to_iso(monkeypatch):
     reg = ModelRegistry()
     seen = {}
 
-    def fake_analyze(audio, text=None, language="en", threshold=0.3, max_length_seconds=10.0):
+    def fake_analyze(audio, text=None, language="en", threshold=0.3, max_length_seconds=3.0):
         seen["language"] = language
         return {"regions": []}
 
@@ -118,7 +118,7 @@ def test_run_all_runs_multitask_classifier(monkeypatch):
     )
     monkeypatch.setattr(
         reg.localizer, "analyze",
-        lambda audio, text=None, language="en", threshold=0.3, max_length_seconds=10.0: {
+        lambda audio, text=None, language="en", threshold=0.3, max_length_seconds=3.0: {
             "regions": []
         },
     )
@@ -744,7 +744,7 @@ def test_run_all_adds_combined(monkeypatch):
     )
     monkeypatch.setattr(
         reg.localizer, "analyze",
-        lambda audio, text=None, language="en", threshold=0.3, max_length_seconds=10.0: {
+        lambda audio, text=None, language="en", threshold=0.3, max_length_seconds=3.0: {
             "regions": [{"start": 0.0, "end": 0.5, "confidence": 0.9}]
         },
     )
@@ -777,7 +777,7 @@ def test_run_all_combined_errors_when_multitask_unavailable(monkeypatch):
     monkeypatch.setattr(reg.cnn_multitask_classifier, "analyze",
                         lambda audio, threshold=None: {"summary": {"detected": []}})
     monkeypatch.setattr(reg.localizer, "analyze",
-                        lambda audio, text=None, language="en", threshold=0.3, max_length_seconds=10.0: {
+                        lambda audio, text=None, language="en", threshold=0.3, max_length_seconds=3.0: {
                             "regions": [{"start": 0.0, "end": 0.5, "confidence": 0.9}]
                         })
     monkeypatch.setattr(reg.transcriber, "transcribe",
