@@ -65,7 +65,7 @@ class CTCTimeAligner:
         audio: np.ndarray,
         text: str,
         sr: int = 16000,
-        max_length_seconds: float = 10.0,
+        max_length_seconds: float = 3.0,
     ) -> List[WordTimestamp]:
         """
         Align transcript text with audio to produce word-level timestamps.
@@ -74,7 +74,7 @@ class CTCTimeAligner:
             audio: 1-D float32 audio array, values in [-1.0, 1.0].
             text: Transcript text to align.
             sr: Sample rate (must be 16000).
-            max_length_seconds: Max audio length.
+            max_length_seconds: Max audio length for model input.
 
         Returns:
             List of WordTimestamp with start/end times for each word.
@@ -235,7 +235,7 @@ class SimpleForcedAligner:
         audio: np.ndarray,
         text: str,
         sr: int = 16000,
-        max_length_seconds: float = 10.0,
+        max_length_seconds: float = 3.0,
     ) -> List[WordTimestamp]:
         """
         Estimate word boundaries using audio energy and text structure.

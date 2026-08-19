@@ -100,10 +100,15 @@ def load_multitask(model_path):
         state_dict = _strip_compile_prefix(checkpoint['model_state_dict'])
         instance.model.load_state_dict(state_dict, strict=True)
         return instance
-    from model.fingerprint import model_name_from_path
+    from model.fingerprint import model_name_from_path, parse_fingerprint_from_path
 
     model_name = model_name_from_path(model_path)
-    instance = MultiTaskWav2VecClassifier(model_name=model_name, hidden_dim=768,
+    try:
+        params = parse_fingerprint_from_path(model_path)
+        hidden_dim = params.get("hidden_dim", 768)
+    except (ValueError, KeyError):
+        hidden_dim = 768
+    instance = MultiTaskWav2VecClassifier(model_name=model_name, hidden_dim=hidden_dim,
                                           class_names=None)
     state_dict = _strip_compile_prefix(checkpoint['model_state_dict'])
     instance.model.load_state_dict(state_dict, strict=True)
