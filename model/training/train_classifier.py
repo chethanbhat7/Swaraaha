@@ -28,6 +28,7 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
+from model.config.defaults import SAMPLE_RATE
 from model.fingerprint import (
     FINGERPRINT_FMT,
     MODEL_ALIASES,
@@ -35,16 +36,7 @@ from model.fingerprint import (
     fingerprint,
     parse_fingerprint,
 )
-
-
-def compute_pos_weight(labels: np.ndarray) -> float:
-    """Compute pos_weight for BCEWithLogitsLoss from binary labels."""
-    labels = np.asarray(labels).flatten()
-    n_pos = int(labels.sum())
-    n_neg = len(labels) - n_pos
-    if n_pos == 0:
-        return 1.0
-    return round(n_neg / n_pos, 4)
+from model.training.utils import SubsetDataset, set_seed, stratified_split
 
 
 def parse_args():
@@ -79,72 +71,9 @@ def parse_args():
     return parser.parse_args()
 
 
-def set_seed(seed: int) -> None:
-    import random
-    import torch
-
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(seed)
-
-
 def get_class_index(class_name: str) -> int:
     from model.classification import DYSFLUENCY_CLASSES
     return DYSFLUENCY_CLASSES.index(class_name)
-
-
-def stratified_split(
-    dataset,
-    val_ratio: float = 0.2,
-    seed: int = 42,
-) -> Tuple[List[int], List[int]]:
-    """
-    Create stratified train/val splits from a ClassificationDataset.
-
-    Each sample's label_vector is reduced to a single class index for stratification.
-    If a sample has multiple classes, the first positive class is used.
-    """
-    rng = np.random.RandomState(seed)
-
-    labels = []
-    for i in range(len(dataset)):
-        _, label_vec = dataset[i]
-        label_vec = np.asarray(label_vec)
-        positives = np.where(label_vec > 0)[0]
-        labels.append(int(positives[0]) if len(positives) > 0 else -1)
-
-    labels = np.array(labels)
-    indices = np.arange(len(dataset))
-
-    train_indices, val_indices = [], []
-
-    for cls_label in np.unique(labels):
-        cls_indices = indices[labels == cls_label]
-        rng.shuffle(cls_indices)
-        n_val = max(1, int(len(cls_indices) * val_ratio))
-        val_indices.extend(cls_indices[:n_val].tolist())
-        train_indices.extend(cls_indices[n_val:].tolist())
-
-    rng.shuffle(train_indices)
-    rng.shuffle(val_indices)
-
-    return train_indices, val_indices
-
-
-class SubsetDataset:
-    """Wrapper that exposes a subset of a dataset by index list."""
-
-    def __init__(self, dataset, indices: List[int]):
-        self.dataset = dataset
-        self.indices = indices
-
-    def __len__(self):
-        return len(self.indices)
-
-    def __getitem__(self, idx):
-        return self.dataset[self.indices[idx]]
 
 
 def train_one_epoch(model, dataloader, optimizer, scheduler, criterion, device, accumulation_steps=1):
@@ -303,7 +232,7 @@ def train(args) -> Dict:
         )
     dataset = ClassificationDataset(
         data_dir=args.data_dir,
-        sr=16000,
+        sr=SAMPLE_RATE,
         max_length_seconds=args.max_length_seconds,
         cache_dir=cache_dir,
     )
@@ -357,14 +286,9 @@ def train(args) -> Dict:
 
     print(f"  Loading pretrained model: {args.model_name}...")
     model = ClassifierCls(model_name=args.model_name)
+    from model.training.utils import maybe_compile
     model.model.to(device)
-    if device.type == "cuda":
-        import warnings
-        warnings.filterwarnings("ignore", category=UserWarning, module="torch")
-        import logging
-        logging.getLogger("torch._dynamo").setLevel(logging.ERROR)
-        torch._dynamo.config.suppress_errors = True
-        model._model = torch.compile(model._model)
+    maybe_compile(model, device)
     total_params = sum(p.numel() for p in model.model.parameters())
     print(f"  Total parameters: {total_params:,}")
 

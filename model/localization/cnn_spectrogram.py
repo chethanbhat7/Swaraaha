@@ -14,6 +14,8 @@ from typing import List, Tuple
 
 import numpy as np
 
+from model.config.defaults import SAMPLE_RATE
+
 
 class CNNSpectrogramLocalizer:
     """
@@ -157,7 +159,7 @@ class CNNSpectrogramLocalizer:
     def predict(
         self,
         spectrogram: np.ndarray,
-        sr: int = 16000,
+        sr: int = SAMPLE_RATE,
         hop_length: int = 512,
         threshold: float = 0.5,
     ) -> List[Tuple[float, float, float]]:

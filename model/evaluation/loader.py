@@ -55,7 +55,7 @@ def load_classifier(class_name: str, model_path: str):
     state_dict = _strip_compile_prefix(checkpoint["model_state_dict"])
     model.load_state_dict(state_dict, strict=True)
 
-    from model.classification import BaseWav2VecClassifier
+    from model.classification.base import BaseWav2VecClassifier
 
     instance = BaseWav2VecClassifier.__new__(BaseWav2VecClassifier)
     instance.model_name = model_name

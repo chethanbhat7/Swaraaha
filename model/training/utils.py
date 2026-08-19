@@ -8,10 +8,97 @@ import csv
 import json
 import os
 import sys
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
-import torch
 import numpy as np
+import torch
+
+from model.config.defaults import SAMPLE_RATE
+
+
+def set_seed(seed: int) -> None:
+    """Set random seeds for reproducibility across Python, NumPy, and PyTorch."""
+    import random
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+
+
+class SubsetDataset:
+    """Wrapper that exposes a subset of a dataset by index list."""
+
+    def __init__(self, dataset, indices: List[int]):
+        self.dataset = dataset
+        self.indices = indices
+
+    def __len__(self):
+        return len(self.indices)
+
+    def __getitem__(self, idx):
+        return self.dataset[self.indices[idx]]
+
+
+def stratified_split(
+    dataset,
+    val_ratio: float = 0.2,
+    seed: int = 42,
+) -> Tuple[List[int], List[int]]:
+    """Stratified split by the first positive class.
+
+    Uses ``dataset.label_vectors`` when available (cheap: reads label files
+    only) instead of materialising samples via ``__getitem__``.
+    """
+    rng = np.random.RandomState(seed)
+    label_vectors = getattr(dataset, 'label_vectors', None)
+    labels = []
+    if label_vectors is not None:
+        for label_vec in label_vectors:
+            label_vec = np.asarray(label_vec)
+            positives = np.where(label_vec > 0)[0]
+            labels.append(int(positives[0]) if len(positives) > 0 else -1)
+    else:
+        for i in range(len(dataset)):
+            _, label_vec = dataset[i]
+            label_vec = np.asarray(label_vec)
+            positives = np.where(label_vec > 0)[0]
+            labels.append(int(positives[0]) if len(positives) > 0 else -1)
+
+    groups = {}
+    for idx, label in enumerate(labels):
+        groups.setdefault(label, []).append(idx)
+    train_idx: list = []
+    val_idx: list = []
+    for label, indices in sorted(groups.items()):
+        indices = list(indices)
+        rng.shuffle(indices)
+        n_val = max(1, int(len(indices) * val_ratio))
+        val_idx.extend(indices[:n_val])
+        train_idx.extend(indices[n_val:])
+    rng.shuffle(train_idx)
+    rng.shuffle(val_idx)
+    return train_idx, val_idx
+
+
+def split_dataset(dataset, val_ratio: float = 0.2, seed: int = 42) -> Tuple[List[int], List[int]]:
+    """Simple random split (localization labels are per-frame, not per-class)."""
+    rng = np.random.RandomState(seed)
+    indices = np.arange(len(dataset))
+    rng.shuffle(indices)
+    n_val = max(1, int(len(indices) * val_ratio))
+    return indices[n_val:].tolist(), indices[:n_val].tolist()
+
+
+def maybe_compile(model, device):
+    """Apply torch.compile to model if on CUDA. Safe no-op on CPU."""
+    if device.type == "cuda":
+        import warnings
+        import logging
+        warnings.filterwarnings("ignore", category=UserWarning, module="torch")
+        logging.getLogger("torch._dynamo").setLevel(logging.ERROR)
+        torch._dynamo.config.suppress_errors = True
+        model._model = torch.compile(model._model)
 
 
 def save_checkpoint(
@@ -393,7 +480,7 @@ def compute_event_mean_iou(y_true: np.ndarray, pred_bin: np.ndarray) -> float:
 def compute_frame_pos_weight(
     samples: List[Dict],
     num_frames: int,
-    sr: int = 16000,
+    sr: int = SAMPLE_RATE,
     hop_length: int = 512,
 ) -> float:
     """Compute inverse-frequency pos_weight from per-clip label CSVs.

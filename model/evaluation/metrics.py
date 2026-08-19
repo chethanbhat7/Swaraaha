@@ -11,6 +11,10 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
+from model.config.defaults import SAMPLE_RATE
+
+from model.training.utils import extract_regions as _extract_regions
+
 
 THRESHOLD_SWEEP = np.arange(0.1, 0.91, 0.05)
 """Canonical threshold grid for sweep-based optimal-threshold search.
@@ -328,7 +332,7 @@ def compute_localization_metrics(
     y_pred_frames: np.ndarray,
     threshold: float = 0.5,
     iou_threshold: float = 0.5,
-    sr: int = 16000,
+    sr: int = SAMPLE_RATE,
     hop_length: int = 512,
 ) -> Dict[str, object]:
     """
@@ -416,25 +420,6 @@ def compute_localization_metrics(
         "frame_level": frame_level,
         "event_level": event_level,
     }
-
-
-def _extract_regions(binary_mask: np.ndarray) -> List[Tuple[int, int]]:
-    """Extract contiguous positive regions from a binary mask. Returns (start, end) index pairs."""
-    regions = []
-    in_region = False
-    start = 0
-
-    for i, v in enumerate(binary_mask):
-        if v == 1 and not in_region:
-            in_region = True
-            start = i
-        elif v == 0 and in_region:
-            in_region = False
-            regions.append((start, i))
-    if in_region:
-        regions.append((start, len(binary_mask)))
-
-    return regions
 
 
 def _compute_event_metrics(

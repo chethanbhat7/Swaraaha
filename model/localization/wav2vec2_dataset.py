@@ -16,13 +16,13 @@ Expected directory layout:
 Frame resolution: 20ms per frame (320 samples at 16kHz)
 """
 
-import csv
 import os
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
-from model.data.dataset import _PickleCacheMixin, load_label_csv
+from model.config.defaults import SAMPLE_RATE
+from model.data.dataset import _PickleCacheMixin, _load_source_map, _scan_samples, load_label_csv
 
 
 class Wav2Vec2LocalizationDataset(_PickleCacheMixin):
@@ -39,7 +39,7 @@ class Wav2Vec2LocalizationDataset(_PickleCacheMixin):
     def __init__(
         self,
         data_dir: str,
-        sr: int = 16000,
+        sr: int = SAMPLE_RATE,
         max_length_seconds: float = 3.0,
         hop_samples: int = 320,  # Wav2Vec2 subsampling factor
         sources: Optional[List[str]] = None,
@@ -69,53 +69,10 @@ class Wav2Vec2LocalizationDataset(_PickleCacheMixin):
         self.audio_dir = os.path.join(data_dir, "audio")
         self.labels_dir = os.path.join(data_dir, "labels")
 
-        self.samples = self._scan_samples()
+        self.samples = _scan_samples(self.audio_dir, self.labels_dir, self.sources, self._source_map)
 
     def _load_source_map(self) -> Dict[str, str]:
-        """Load clip_id -> source mapping from sources.csv (if present)."""
-        path = os.path.join(self.data_dir, "sources.csv")
-        if not os.path.isfile(path):
-            return {}
-        source_map = {}
-        with open(path, "r") as f:
-            for row in csv.DictReader(f):
-                clip_id = row.get("clip_id", "").strip()
-                source = row.get("source", "").strip()
-                if clip_id and source:
-                    source_map[clip_id] = source
-        return source_map
-
-    def _scan_samples(self) -> List[Dict]:
-        samples = []
-        if not os.path.isdir(self.audio_dir):
-            return samples
-
-        for fname in sorted(os.listdir(self.audio_dir)):
-            if not fname.endswith((".wav", ".flac", ".mp3")):
-                continue
-            clip_id = os.path.splitext(fname)[0]
-            audio_path = os.path.join(self.audio_dir, fname)
-            label_path = os.path.join(self.labels_dir, f"{clip_id}.csv")
-
-            if not os.path.isfile(label_path):
-                continue
-
-            # Skip header-only WAV files (no audio data) — same guard as
-            # ClassificationDataset, so training never runs on empty silence.
-            if os.path.getsize(audio_path) <= 44:
-                continue
-
-            if self.sources is not None and self._source_map:
-                if self._source_map.get(clip_id) not in self.sources:
-                    continue
-
-            samples.append({
-                "clip_id": clip_id,
-                "audio_path": audio_path,
-                "label_path": label_path,
-            })
-
-        return samples
+        return _load_source_map(self.data_dir)
 
     def __len__(self) -> int:
         return len(self.samples)

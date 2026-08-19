@@ -20,6 +20,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+from model.config.defaults import SAMPLE_RATE
+
 
 def _wav2vec2_model_class():
     """Resolve the Wav2Vec2 backbone class (lazily, to avoid a heavy import)."""
@@ -129,7 +131,7 @@ class Wav2Vec2Localizer:
     def predict(
         self,
         audio: np.ndarray,
-        sr: int = 16000,
+        sr: int = SAMPLE_RATE,
         threshold: float = 0.5,
         max_length_seconds: float = 3.0,
     ) -> List[Tuple[float, float, float]]:

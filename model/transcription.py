@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
+from model.config.defaults import SAMPLE_RATE
 from model.data.preprocessing import load_audio_input
 from model.localization.ctc_alignment import SimpleForcedAligner
 
@@ -108,7 +109,7 @@ class Transcriber:
         language: str = "english",
         localizations: Optional[List[Tuple[float, float, float]]] = None,
         passage_text: Optional[str] = None,
-        sample_rate: int = 16000,
+        sample_rate: int = SAMPLE_RATE,
     ) -> Dict[str, Any]:
         """Transcribe audio into text and timestamped words.
 
@@ -135,14 +136,14 @@ class Transcriber:
         # non-16k input back down; ndarray input is already 16 kHz
         # (load_audio_from_array always targets 16000) and must not be
         # double-resampled.
-        if sample_rate != 16000 and not isinstance(audio, np.ndarray):
+        if sample_rate != SAMPLE_RATE and not isinstance(audio, np.ndarray):
             import librosa
 
             audio_array = librosa.resample(
-                audio_array, orig_sr=sample_rate, target_sr=16000
+                audio_array, orig_sr=sample_rate, target_sr=SAMPLE_RATE
             )
 
-        duration_sec = len(audio_array) / 16000
+        duration_sec = len(audio_array) / SAMPLE_RATE
 
         transcript_text = None
         word_list: List[Dict[str, Any]] = []
@@ -230,7 +231,7 @@ class Transcriber:
         )
 
         words_stamps = SimpleForcedAligner.align(
-            audio, default_passage, sr=16000, max_length_seconds=max(10.0, duration_sec)
+            audio, default_passage, sr=SAMPLE_RATE, max_length_seconds=max(10.0, duration_sec)
         )
 
         word_list = []
