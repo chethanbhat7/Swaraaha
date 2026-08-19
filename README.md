@@ -189,6 +189,74 @@ python -m model.evaluation.evaluate --model_type classifier \
 
 See [`model/evaluation/README.md`](model/evaluation/README.md) for full documentation.
 
+## Model Metrics
+
+Evaluation on the held-out test set (3,715 clips). The currently deployed models are:
+
+- **Classification:** Wav2Vec2-base multitask classifier (5 shared heads, frozen 3 epochs)
+- **Localization:** Wav2Vec2-base temporal localizer
+
+### Classification — Wav2Vec2 Multitask (ml3)
+
+**Per-class metrics at default threshold (0.5):**
+
+| Class | Accuracy | Precision | Recall | F1 | AUROC | Support |
+|---|---|---|---|---|---|---|
+| prolongation | 0.902 | 0.560 | 0.417 | 0.478 | 0.844 | 400 |
+| block | 0.861 | 0.638 | 0.150 | 0.243 | 0.735 | 553 |
+| soundrep | 0.882 | 0.564 | 0.490 | 0.524 | 0.860 | 494 |
+| wordrep | 0.912 | 0.581 | 0.383 | 0.461 | 0.830 | 366 |
+| interjection | 0.896 | 0.836 | 0.665 | 0.741 | 0.931 | 834 |
+| **Macro avg** | **0.891** | **0.636** | **0.421** | **0.490** | **0.860** | — |
+
+**Per-class metrics at tuned thresholds (val-optimized):**
+
+| Class | Threshold | Accuracy | Precision | Recall | F1 |
+|---|---|---|---|---|---|
+| prolongation | 0.45 | 0.870 | 0.467 | 0.500 | 0.483 |
+| block | 0.40 | 0.822 | 0.387 | 0.380 | 0.383 |
+| soundrep | 0.40 | 0.824 | 0.460 | 0.658 | 0.541 |
+| wordrep | 0.40 | 0.835 | 0.413 | 0.492 | 0.449 |
+| interjection | 0.40 | 0.844 | 0.731 | 0.772 | 0.751 |
+| **Macro avg** | — | **0.839** | **0.492** | **0.560** | **0.522** |
+
+**Best F1 per class (from threshold sweep):**
+
+| Class | Best Threshold | Best F1 | Best Youden's J |
+|---|---|---|---|
+| prolongation | 0.45 | 0.483 | 0.514 (t=0.35) |
+| block | 0.35 | 0.401 | 0.345 (t=0.35) |
+| soundrep | 0.45 | 0.551 | 0.571 (t=0.30) |
+| wordrep | 0.45 | 0.475 | 0.503 (t=0.30) |
+| interjection | 0.45 | 0.755 | 0.712 (t=0.30) |
+
+### Localization — Wav2Vec2 Localizer (ml3)
+
+| Metric | Value |
+|---|---|
+| Frame-level Precision | 0.676 |
+| Frame-level Recall | 0.065 |
+| Frame-level F1 | 0.119 |
+| Frame-level Specificity | 0.973 |
+| Event-level Detection Accuracy | 0.210 |
+| Event-level Mean IoU | 0.751 |
+| True Events | 995 |
+| Predicted Events | 2,852 |
+| False Alarms | 2,643 |
+| False Alarm Rate | 8.95/min |
+
+> **Note:** The localizer has high precision (0.676) but low recall (0.065) — it
+> is conservative and misses many dysfluency events. When it does predict, the
+> regions are reasonably accurate (mean IoU = 0.751). The combiner compensates
+> by fusing localizer regions with the classifier's per-frame saliency.
+
+### Key Observations
+
+- **Interjection** is the strongest class (F1=0.741, AUROC=0.931) — the model detects filler words well.
+- **Block** is the weakest class (F1=0.243) — silent pauses are hard to distinguish from normal speech pauses.
+- **Accuracy is high across all classes (0.82–0.91)** due to class imbalance — most clips do not contain a given dysfluency type, so predicting "not present" is correct most of the time. F1 is the more meaningful metric for detection performance.
+- **Localization** needs improvement — the low recall means many dysfluencies are missed at the temporal level.
+
 ## Running the Web App
 
 ### Backend

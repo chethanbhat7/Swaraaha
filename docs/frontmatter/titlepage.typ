@@ -70,7 +70,7 @@
   #v(-0.20pt)
   #align(center, text(weight: "bold", fill: rgb("#c00000"))[#title_guide])
   #v(-0.05pt)
-  #align(center, text(weight: "bold")[Assistant Professor])
+  #align(center, text(weight: "bold")[#guide_designation])
 
   // -- vcet logo --
   #v(9.62pt)
