@@ -84,8 +84,7 @@ class TranscriptionPanel(QWidget):
         self._text_edit.setReadOnly(True)
         self._text_edit.setPlaceholderText("Transcription will appear here after loading audio or clicking Transcribe...")
         self._text_edit.setMinimumHeight(100)
-        self._text_edit.setMaximumHeight(160)
-        layout.addWidget(self._text_edit)
+        layout.addWidget(self._text_edit, stretch=1)
 
     def set_audio(self, audio: np.ndarray, sample_rate: int = 16000, localizations=None, language: str = "english"):
         """Set audio array and automatically run transcription."""

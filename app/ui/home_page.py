@@ -77,7 +77,7 @@ class HomePage(QWidget):
         right_layout.setContentsMargins(0, 0, 0, 0)
 
         self._right_splitter = QSplitter(Qt.Orientation.Vertical)
-        self._right_splitter.setHandleWidth(1)
+        self._right_splitter.setHandleWidth(0)
 
         self._audio_controls = AudioControls()
 

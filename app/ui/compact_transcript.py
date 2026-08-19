@@ -30,8 +30,7 @@ class CompactTranscript(QWidget):
         self._text_edit.setReadOnly(True)
         self._text_edit.setPlaceholderText("Transcription will appear here after loading audio...")
         self._text_edit.setMinimumHeight(90)
-        self._text_edit.setMaximumHeight(140)
-        layout.addWidget(self._text_edit)
+        layout.addWidget(self._text_edit, stretch=1)
 
     def set_transcription(self, data: dict):
         """Display transcription dictionary."""
