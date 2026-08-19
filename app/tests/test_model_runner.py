@@ -70,7 +70,7 @@ def test_analyze_includes_combined(monkeypatch):
             return sal
 
     class _FakeLocalizer:
-        def predict(self, spec, threshold=0.3):
+        def predict(self, spec, sr=16000, threshold=0.3, max_length_seconds=3.0):
             return [(0.0, 0.5, 0.9)]
 
     class _FakeTranscriber:
@@ -100,7 +100,7 @@ def test_analyze_combined_degrades_on_saliency_error(monkeypatch):
             raise RuntimeError("no model")
 
     class _FakeLocalizer:
-        def predict(self, spec, threshold=0.3):
+        def predict(self, spec, sr=16000, threshold=0.3, max_length_seconds=3.0):
             return [(0.0, 0.5, 0.9)]
 
     class _FakeTranscriber:

@@ -131,9 +131,12 @@ def combine_regions(
                 for s in attached
             ]
         else:
-            entry["start"] = round(entry["start"], 3)
+            entry["start"] = round(min(entry["start"], audio_duration), 3)
             entry["end"] = round(min(entry["end"], audio_duration), 3)
             entry["syllables"] = []
+
+        if entry["start"] >= entry["end"]:
+            continue
 
         if any(c["label"] == 1 for c in classes.values()):
             total_stutters += 1

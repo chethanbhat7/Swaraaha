@@ -44,10 +44,46 @@ import json
 import os
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from model.fingerprint import model_name_from_path
+from model.config.defaults import AUDIO_DURATION_SECONDS, DYSFLUENCY_CLASSES, SAMPLE_RATE
+from model.fingerprint import model_name_from_path, parse_fingerprint_from_path
 from model.transcription import Transcriber
 
 _REGISTRY_PATH = os.path.join(os.path.dirname(__file__), "registry.json")
+
+
+def _max_length_from_path(path: str) -> float:
+    """Extract max_length_seconds from a fingerprint-encoded checkpoint path.
+
+    Falls back to ``AUDIO_DURATION_SECONDS`` when the path has no fingerprint
+    or parsing fails.
+    """
+    try:
+        params = parse_fingerprint_from_path(path)
+        return float(params.get("max_length_seconds", AUDIO_DURATION_SECONDS))
+    except (ValueError, KeyError):
+        return AUDIO_DURATION_SECONDS
+
+
+def _chunk_audio(audio_array, chunk_sec: float, sr: int = 16000, overlap_sec: float = 0.5):
+    """Yield (chunk, start_sample) pairs for sliding-window processing.
+
+    Each chunk is ``chunk_sec`` seconds long with ``overlap_sec`` overlap.
+    The last chunk may be shorter.
+    """
+    import numpy as np
+
+    n_samples = len(audio_array)
+    chunk_samples = int(chunk_sec * sr)
+    overlap_samples = int(overlap_sec * sr)
+    stride = max(chunk_samples - overlap_samples, 1)
+
+    start = 0
+    while start < n_samples:
+        end = min(start + chunk_samples, n_samples)
+        yield audio_array[start:end], start
+        if end >= n_samples:
+            break
+        start += stride
 
 
 def _load_registry() -> dict:
@@ -72,10 +108,13 @@ def _load_classifier(class_name: str, path: str):
     import torch
 
     checkpoint = torch.load(path, map_location="cpu", weights_only=False)
+    max_length = _max_length_from_path(path)
 
     if "model_name" in checkpoint:
         from model.classification import get_classifier_class
-        return get_classifier_class(class_name).from_pretrained(path)
+        instance = get_classifier_class(class_name).from_pretrained(path)
+        instance.max_length_seconds = max_length
+        return instance
 
     from transformers import Wav2Vec2ForSequenceClassification
 
@@ -93,6 +132,7 @@ def _load_classifier(class_name: str, path: str):
     instance._model = model
     instance.class_name = class_name
     instance.class_idx = DYSFLUENCY_CLASSES.index(class_name)
+    instance.max_length_seconds = max_length
     return instance
 
 
@@ -140,11 +180,13 @@ def _load_multitask_classifier(path: str):
     """
     from model.evaluation.loader import load_multitask
 
-    return load_multitask(path)
+    model = load_multitask(path)
+    model.max_length_seconds = _max_length_from_path(path)
+    return model
 
 
 def _preprocess_audio(
-    audio, sr: int = 16000, max_length_seconds: float = 10.0
+    audio, sr: int = 16000, max_length_seconds: float = AUDIO_DURATION_SECONDS
 ) -> "torch.Tensor":
     """Normalize audio input (path / bytes / ndarray) into a model-ready tensor.
 
@@ -407,12 +449,31 @@ class Classifier:
             return results
         if not self._models:
             self._load()
-        tensor = _preprocess_audio(audio)
-        thresholds = self._resolve_thresholds(threshold)
 
-        results: Dict[str, Any] = {}
-        for name, clf in self._models.items():
-            results[name] = _classifier_output(clf, tensor, thresholds[name], include_logits)
+        from model.data.preprocessing import load_audio_input
+
+        audio_array = load_audio_input(audio, sr=16000)
+        max_len = getattr(list(self._models.values())[0], "max_length_seconds", AUDIO_DURATION_SECONDS)
+        audio_sec = len(audio_array) / 16000
+
+        if audio_sec <= max_len + 0.1:
+            tensor = _preprocess_audio(audio)
+            thresholds = self._resolve_thresholds(threshold)
+            results: Dict[str, Any] = {}
+            for name, clf in self._models.items():
+                results[name] = _classifier_output(clf, tensor, thresholds[name], include_logits)
+        else:
+            thresholds = self._resolve_thresholds(threshold)
+            merged: Dict[str, Dict[str, float]] = {}
+            for chunk, _ in _chunk_audio(audio_array, max_len, sr=16000):
+                tensor = _preprocess_audio(chunk)
+                for name, clf in self._models.items():
+                    chunk_out = _classifier_output(clf, tensor, thresholds[name], include_logits)
+                    if name not in merged:
+                        merged[name] = chunk_out
+                    elif chunk_out["prob_present"] > merged[name]["prob_present"]:
+                        merged[name] = chunk_out
+            results = merged
 
         detected = [name for name, out in results.items() if out["label"] == 1]
         primary = max(results.items(), key=lambda kv: kv[1]["prob_present"])[0]
@@ -483,10 +544,15 @@ class MultiTaskClassifier:
         or a sibling ``multitask_thresholds.json`` next to the model file),
         falling back to 0.5 for any class without a configured threshold.
 
+        Audio longer than the model's max_length_seconds is processed in
+        overlapping chunks and the per-class probabilities are merged
+        (max prob_present across chunks).
+
         Returns:
             {class_name: {label, confidence, prob_present, prob_not_present},
              summary: {detected, primary}}
         """
+        import numpy as np
         import torch
 
         if threshold is not None and not 0.0 <= threshold <= 1.0:
@@ -502,6 +568,35 @@ class MultiTaskClassifier:
 
         if self._model is None:
             self._load()
+
+        from model.data.preprocessing import load_audio_input
+
+        audio_array = load_audio_input(audio, sr=16000)
+        max_len = getattr(self._model, "max_length_seconds", AUDIO_DURATION_SECONDS)
+        audio_sec = len(audio_array) / 16000
+
+        if audio_sec <= max_len + 0.1:
+            return self._analyze_chunk(audio, threshold)
+
+        merged: Dict[str, Dict[str, float]] = {}
+        for chunk, start_sample in _chunk_audio(audio_array, max_len, sr=16000):
+            chunk_result = self._analyze_chunk(chunk, threshold)
+            for name in list(chunk_result.keys()):
+                if name == "summary":
+                    continue
+                if name not in merged:
+                    merged[name] = chunk_result[name]
+                elif chunk_result[name]["prob_present"] > merged[name]["prob_present"]:
+                    merged[name] = chunk_result[name]
+
+        detected = [name for name, r in merged.items() if r["label"] == 1]
+        primary = max(merged.items(), key=lambda kv: kv[1]["prob_present"])[0] if merged else None
+        merged["summary"] = {"detected": detected, "primary": primary}
+        return merged
+
+    def _analyze_chunk(self, audio, threshold: Optional[float] = None) -> Dict[str, Any]:
+        """Classify a single chunk (up to max_length_seconds)."""
+        import torch
 
         tensor = self._preprocess(audio)
         self._model.model.eval()
@@ -528,17 +623,51 @@ class MultiTaskClassifier:
         results["summary"] = {"detected": detected, "primary": primary}
         return results
 
-    def saliency(self, audio, max_length_seconds: float = 10.0) -> "torch.Tensor":
+    def saliency(self, audio, max_length_seconds: Optional[float] = None) -> "torch.Tensor":
         """Per-frame per-class prob_present saliency for the whole audio.
 
-        Returns a tensor of shape (1, T, num_classes); T = max_length_seconds
-        * sr / 320 frames at 16 kHz.
+        Audio longer than max_length_seconds is processed in overlapping chunks
+        and concatenated. Returns a tensor of shape (1, T, num_classes).
         """
         if _audio_is_empty(audio):
             raise RuntimeError("Cannot compute saliency for empty audio")
         if self._model is None:
             self._load()
 
+        if max_length_seconds is None:
+            max_length_seconds = getattr(self._model, "max_length_seconds", AUDIO_DURATION_SECONDS)
+
+        import torch
+        from model.data.preprocessing import load_audio_input
+
+        audio_array = load_audio_input(audio, sr=16000)
+        audio_sec = len(audio_array) / 16000
+
+        if audio_sec <= max_length_seconds + 0.1:
+            return self._saliency_chunk(audio, max_length_seconds)
+
+        chunks = list(_chunk_audio(audio_array, max_length_seconds, sr=16000))
+        total_samples = len(audio_array)
+        total_frames = total_samples // 320
+        num_classes = len(getattr(self._model, "class_names", DYSFLUENCY_CLASSES))
+        full_sal = torch.zeros(1, total_frames, num_classes)
+
+        for chunk, start_sample in chunks:
+            sal = self._saliency_chunk(chunk, max_length_seconds)
+            start_frame = start_sample // 320
+            sal_np = sal.squeeze(0).cpu().numpy()
+            n_frames_chunk = sal_np.shape[0]
+            end_frame = min(start_frame + n_frames_chunk, total_frames)
+            actual = end_frame - start_frame
+            if actual > 0:
+                full_sal[0, start_frame:end_frame, :] = torch.tensor(
+                    sal_np[:actual], dtype=torch.float32
+                )
+
+        return full_sal
+
+    def _saliency_chunk(self, audio, max_length_seconds: float) -> "torch.Tensor":
+        """Compute saliency for a single chunk (≤ max_length_seconds)."""
         import librosa
         import torch
         from model.data.preprocessing import load_audio_input
@@ -584,7 +713,8 @@ class CNNMultiTaskClassifier(MultiTaskClassifier):
             spectrogram_to_image_array,
         )
 
-        max_frames = int(16000 * 10.0) // self._model.hop_length + 1
+        max_length = getattr(self._model, "max_length_seconds", AUDIO_DURATION_SECONDS)
+        max_frames = int(16000 * max_length) // self._model.hop_length + 1
         audio = clean_audio(load_audio_input(audio, sr=16000), sr=16000)
         spec = generate_mel_spectrogram(
             audio, sr=16000, n_mels=self._model.n_mels,
@@ -630,10 +760,14 @@ class Localizer:
 
             if lt == "cnn":
                 from model.localization.cnn_spectrogram import CNNSpectrogramLocalizer
-                self._models["cnn"] = CNNSpectrogramLocalizer.from_pretrained(path)
+                model = CNNSpectrogramLocalizer.from_pretrained(path)
+                model.max_length_seconds = AUDIO_DURATION_SECONDS
+                self._models["cnn"] = model
             elif lt == "wav2vec2":
                 from model.localization.wav2vec2_localizer import Wav2Vec2Localizer
-                self._models["wav2vec2"] = Wav2Vec2Localizer.from_pretrained(path)
+                model = Wav2Vec2Localizer.from_pretrained(path)
+                model.max_length_seconds = AUDIO_DURATION_SECONDS
+                self._models["wav2vec2"] = model
             else:
                 raise ValueError(f"Unknown localizer type: {lt}")
 
@@ -657,7 +791,7 @@ class Localizer:
         text: Optional[str] = None,
         language: str = "en",
         threshold: float = 0.3,
-        max_length_seconds: float = 10.0,
+        max_length_seconds: Optional[float] = None,
     ) -> Union[Dict[str, Any], Dict[str, Dict[str, Any]]]:
         """Analyze raw audio → dysfluency regions (+ words/syllables if text).
 
@@ -666,7 +800,8 @@ class Localizer:
             text: Optional transcript for word/syllable-level alignment.
             language: ISO language code for syllabification (en, kn, hi).
             threshold: Detection threshold for regions.
-            max_length_seconds: Max audio length to process.
+            max_length_seconds: Max audio length to process (defaults to model's
+                fingerprint value).
 
         Returns:
             Single-type: {regions, [words], [syllables]}.
@@ -683,27 +818,31 @@ class Localizer:
         if not self._models:
             self._load()
 
-        from model.data.preprocessing import generate_mel_spectrogram, load_audio_input
+        if max_length_seconds is None:
+            first_model = next(iter(self._models.values()), None)
+            max_length_seconds = getattr(first_model, "max_length_seconds", AUDIO_DURATION_SECONDS) if first_model is not None else AUDIO_DURATION_SECONDS
+
+        from model.data.preprocessing import load_audio_input
 
         audio_array = load_audio_input(audio, sr=16000)
+        audio_sec = len(audio_array) / 16000
 
         types = [self.model_type] if self.model_type else list(self._models.keys())
         results: Dict[str, Any] = {}
 
         for lt in types:
             model = self._models[lt]
-            if lt == "cnn":
-                spec = generate_mel_spectrogram(audio_array, sr=16000)
-                regions = model.predict(spec, sr=16000, threshold=threshold)
-            elif lt == "wav2vec2":
-                regions = model.predict(
-                    audio_array,
-                    sr=16000,
-                    threshold=threshold,
-                    max_length_seconds=max_length_seconds,
-                )
+
+            if audio_sec <= max_length_seconds + 0.1:
+                regions = self._localize_chunk(model, lt, audio_array, threshold, max_length_seconds)
             else:
-                raise ValueError(f"Unknown localizer type: {lt}")
+                regions = []
+                for chunk, start_sample in _chunk_audio(audio_array, max_length_seconds, sr=16000):
+                    chunk_regions = self._localize_chunk(model, lt, chunk, threshold, max_length_seconds)
+                    offset_sec = start_sample / 16000
+                    for s, e, c in chunk_regions:
+                        regions.append((round(s + offset_sec, 3), round(e + offset_sec, 3), c))
+                regions = self._dedupe_regions(regions)
 
             entry: Dict[str, Any] = {
                 "regions": [
@@ -724,6 +863,38 @@ class Localizer:
         if self.model_type is not None:
             return results[self.model_type]
         return results
+
+    @staticmethod
+    def _localize_chunk(model, lt, audio_array, threshold, max_length_seconds):
+        """Run localizer on a single chunk, return list of (start, end, conf)."""
+        from model.data.preprocessing import generate_mel_spectrogram
+
+        if lt == "cnn":
+            spec = generate_mel_spectrogram(audio_array, sr=16000)
+            return model.predict(spec, sr=16000, threshold=threshold)
+        elif lt == "wav2vec2":
+            return model.predict(
+                audio_array,
+                sr=16000,
+                threshold=threshold,
+                max_length_seconds=max_length_seconds,
+            )
+        raise ValueError(f"Unknown localizer type: {lt}")
+
+    @staticmethod
+    def _dedupe_regions(regions, iou_threshold: float = 0.5):
+        """Remove overlapping regions, keeping the one with higher confidence."""
+        if not regions:
+            return regions
+        regions = sorted(regions, key=lambda r: r[2], reverse=True)
+        kept = []
+        for start, end, conf in regions:
+            overlap = any(
+                start < ke and end > ks for ks, ke, _ in kept
+            )
+            if not overlap:
+                kept.append((start, end, conf))
+        return sorted(kept, key=lambda r: r[0])
 
     @property
     def is_loaded(self) -> bool:
@@ -888,7 +1059,7 @@ def load_audio_16k(audio_bytes: bytes):
         audio_data = librosa.resample(audio_data, orig_sr=sr, target_sr=SAMPLE_RATE)
     audio_data = _np.asarray(audio_data, dtype=_np.float32)
     duration_sec = round(len(audio_data) / SAMPLE_RATE, 3)
-    return audio_data[:MAX_AUDIO_LENGTH], duration_sec
+    return audio_data, duration_sec
 
 
 def saliency_regions(saliency, class_names, duration_sec: float) -> list:
