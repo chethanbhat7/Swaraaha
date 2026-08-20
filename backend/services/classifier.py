@@ -1,26 +1,16 @@
-"""Service layer for the classification pipeline."""
+"""Service layer for the classification pipeline.
 
-from typing import Optional
+Uses the easy-mode model API (model.analyze).
+"""
 
-from model.registry import MultiTaskRunner
-
-_clf: Optional[MultiTaskRunner] = None
-
-
-def get_model() -> MultiTaskRunner:
-    global _clf
-    if _clf is None:
-        _clf = MultiTaskRunner()
-    return _clf
+from model import analyze as _analyze
 
 
 def classify_audio_bytes(audio_bytes: bytes) -> dict:
-    """Classify audio from raw bytes via the registry API."""
-    model = get_model()
-    return model.analyze(audio_bytes)
+    """Classify audio from raw bytes."""
+    return _analyze(audio_bytes).get("classification", {})
 
 
 def classify_audio_file(path: str) -> dict:
-    """Classify audio from a file path via the registry API."""
-    model = get_model()
-    return model.analyze(path)
+    """Classify audio from a file path."""
+    return _analyze(path).get("classification", {})

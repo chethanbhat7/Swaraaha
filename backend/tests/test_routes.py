@@ -41,21 +41,15 @@ def _wav_bytes() -> bytes:
 
 
 def test_analyze_route_includes_combined(monkeypatch):
+    fake_results = {
+        "classification": {"prolongation": {"label": 1, "confidence": 0.9}},
+        "localization": {"regions": [{"start": 0.0, "end": 0.5, "confidence": 0.9}]},
+        "transcription": {"text": "hi", "language": "english", "chunks": []},
+        "combined": {"regions": [{"start": 0.0, "end": 0.5, "confidence": 0.9}], "audio_duration": 0.5, "total_stutters": 1},
+    }
     monkeypatch.setattr(
-        "backend.routes.localization.classify_audio_bytes",
-        lambda b: {"prolongation": {"label": 1, "confidence": 0.9}},
-    )
-    monkeypatch.setattr(
-        "backend.routes.localization.localize_audio_bytes",
-        lambda b: {"regions": [{"start": 0.0, "end": 0.5, "confidence": 0.9}]},
-    )
-    monkeypatch.setattr(
-        "backend.routes.localization.transcribe_audio_bytes",
-        lambda b, language="english": {"text": "hi", "language": language, "chunks": []},
-    )
-    monkeypatch.setattr(
-        "backend.routes.localization.combine_audio_bytes",
-        lambda b, regions: {"regions": regions, "audio_duration": 0.5, "total_stutters": 1},
+        "backend.routes.localization._analyze",
+        lambda audio_bytes, language="english": fake_results,
     )
 
     async def _call():

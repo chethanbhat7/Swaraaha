@@ -2,11 +2,10 @@
 
 from fastapi import APIRouter, File, Form, UploadFile
 
-from backend.services.classifier import classify_audio_bytes
-from backend.services.fusion import combine_audio_bytes
 from backend.services.localizer import localize_audio_bytes
 from backend.services.severity import compute_severity
-from backend.services.transcriber import transcribe_audio_bytes
+from model import analyze as _analyze
+
 router = APIRouter()
 
 
@@ -19,17 +18,17 @@ async def localize_audio(file: UploadFile = File(...), language: str = Form("eng
 @router.post("/analyze")
 async def analyze_audio(file: UploadFile = File(...), language: str = Form("english")):
     audio_bytes = await file.read()
-    classification = classify_audio_bytes(audio_bytes)
-    localization = localize_audio_bytes(audio_bytes)
-    transcription = transcribe_audio_bytes(audio_bytes, language=language)
-    severity = compute_severity(
-        localization["regions"], localization.get("duration_sec") or 0.0
-    )
-    combined = combine_audio_bytes(audio_bytes, localization.get("regions", []))
+    results = _analyze(audio_bytes, language=language)
+
+    localization = results.get("localization", {})
+    regions = localization.get("regions", []) if isinstance(localization, dict) else []
+    duration = localization.get("duration_sec", 0.0) if isinstance(localization, dict) else 0.0
+    severity = compute_severity(regions, duration)
+
     return {
-        "classification": classification,
+        "classification": results.get("classification", {}),
         "localization": localization,
-        "transcription": transcription,
+        "transcription": results.get("transcription", {}),
         "severity": severity,
-        "combined": combined,
+        "combined": results.get("combined", {}),
     }
