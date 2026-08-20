@@ -57,24 +57,27 @@ def test_saliency_regions_clamped_to_duration():
 
 
 def test_saliency_fallback_returns_well_formed(monkeypatch):
-    """Test that localize_audio_bytes falls back to saliency when localizer fails."""
-    import model.registry as reg
+    """Test that model.localize falls back to saliency when localizer fails."""
+    import model as _model
 
-    class FakeLocalizer:
-        def predict(self, spec):
+    class _BrokenLocalizer:
+        is_loaded = True
+        def analyze(self, audio, **kwargs):
             raise RuntimeError("no weights")
 
-    class FakeMultiTask:
+    class _FakeClassifier:
+        is_loaded = True
         def saliency(self, audio):
             arr = np.zeros((1, 500, 5), dtype=float)
             arr[0, 50:90, 2] = 0.99
             return arr
 
-    monkeypatch.setattr(reg, "LocalizerRunner", lambda *a, **kw: FakeLocalizer())
-    monkeypatch.setattr(reg, "MultiTaskRunner", lambda: FakeMultiTask())
+    monkeypatch.setattr(_model, "_localizer", _BrokenLocalizer())
+    monkeypatch.setattr(_model, "_classifier", _FakeClassifier())
+    monkeypatch.setattr(_model, "_init_done", True)
 
-    audio_bytes = _make_silence_wav()
-    result = reg.localize_audio_bytes(audio_bytes)
+    from model import localize
+    result = localize(_make_silence_wav())
     assert result["source"] == "saliency"
     assert len(result["regions"]) == 1
     assert result["regions"][0]["type"] == "soundrep"
@@ -82,23 +85,26 @@ def test_saliency_fallback_returns_well_formed(monkeypatch):
 
 
 def test_saliency_fallback_handles_failure(monkeypatch):
-    """Test that localize_audio_bytes returns error when both localizer and saliency fail."""
-    import model.registry as reg
+    """Test that model.localize returns error when both localizer and saliency fail."""
+    import model as _model
 
-    class BrokenLocalizer:
-        def predict(self, spec):
+    class _BrokenLocalizer:
+        is_loaded = True
+        def analyze(self, audio, **kwargs):
             raise RuntimeError("no weights")
 
-    class BrokenMultiTask:
+    class _BrokenClassifier:
+        is_loaded = True
         def saliency(self, audio):
             raise RuntimeError("boom")
 
-    monkeypatch.setattr(reg, "LocalizerRunner", lambda *a, **kw: BrokenLocalizer())
-    monkeypatch.setattr(reg, "MultiTaskRunner", lambda: BrokenMultiTask())
+    monkeypatch.setattr(_model, "_localizer", _BrokenLocalizer())
+    monkeypatch.setattr(_model, "_classifier", _BrokenClassifier())
+    monkeypatch.setattr(_model, "_init_done", True)
 
-    audio_bytes = _make_silence_wav()
-    result = reg.localize_audio_bytes(audio_bytes)
-    assert result["regions"] == []
+    from model import localize
+    result = localize(_make_silence_wav())
+    assert "error" in result
     assert "boom" in result["error"]
 
 

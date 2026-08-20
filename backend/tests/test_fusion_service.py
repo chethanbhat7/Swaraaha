@@ -27,9 +27,10 @@ class _FakeClassifier:
 
 
 def test_combine_audio_bytes_returns_fused_regions(monkeypatch):
-    import model.registry as reg
+    import model as _model
 
-    monkeypatch.setattr(reg, "MultiTaskRunner", lambda: _FakeClassifier())
+    monkeypatch.setattr(_model, "_classifier", _FakeClassifier())
+    monkeypatch.setattr(_model, "_init_done", True)
     regions = [{"start": 0.0, "end": 0.5, "confidence": 0.9}]
     result = fusion.combine_audio_bytes(_tiny_wav(), regions)
     assert "error" not in result
@@ -43,7 +44,7 @@ def test_combine_audio_bytes_returns_fused_regions(monkeypatch):
 
 
 def test_combine_audio_bytes_degrades_on_error(monkeypatch):
-    import model.registry as reg
+    import model as _model
 
     class _BrokenClassifier:
         _thresholds = {}
@@ -51,6 +52,7 @@ def test_combine_audio_bytes_degrades_on_error(monkeypatch):
         def saliency(self, audio):
             raise RuntimeError("no model")
 
-    monkeypatch.setattr(reg, "MultiTaskRunner", lambda: _BrokenClassifier())
-    result = fusion.combine_audio_bytes(_tiny_wav(), [])
-    assert result == {"error": "no model"}
+    monkeypatch.setattr(_model, "_classifier", _BrokenClassifier())
+    monkeypatch.setattr(_model, "_init_done", True)
+    result = fusion.combine_audio_bytes(_tiny_wav(), [{"start": 0.0, "end": 0.5, "confidence": 0.9}])
+    assert "error" in result

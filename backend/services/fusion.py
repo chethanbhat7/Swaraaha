@@ -1,12 +1,11 @@
 """Fusion service: combine localizer regions with classifier saliency.
 
-Delegates to model.registry.combine_with_saliency which handles
-audio loading, saliency computation, and region fusion internally.
+Uses model.fuse() for the core operation.
 """
 
-from model.registry import combine_with_saliency as _combine
+from model import fuse as _fuse
 
 
 def combine_audio_bytes(audio_bytes: bytes, regions: list) -> dict:
     """Fuse localizer regions with classifier saliency."""
-    return _combine(audio_bytes, regions)
+    return _fuse(audio_bytes, regions)

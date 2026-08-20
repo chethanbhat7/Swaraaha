@@ -1,7 +1,6 @@
 """ModelRegistry class and high-level audio pipeline functions."""
 
 import json
-import os
 from typing import Any, Dict, Optional
 
 from model.config.defaults import DYSFLUENCY_CLASSES, FRAME_DURATION, SAMPLE_RATE
@@ -31,19 +30,7 @@ class ModelRegistry:
     ) -> Dict[str, Any]:
         """Run classification, localization, and transcription on raw audio.
 
-        Args:
-            audio: File path, raw bytes, or 1-D numpy array.
-            classify_threshold: Label threshold for classifiers.
-            localize_threshold: Detection threshold for the localizer.
-            language: Whisper language name (english/kannada/hindi).
-            text: Optional transcript for word/syllable-level localization.
-
-        Returns:
-            {"classification": ..., "localization": ..., "transcription": ...,
-             "multitask": ..., "cnn_multitask": ..., "combined": ...}
-            "combined" fuses localizer regions with multitask saliency:
-            {regions: [...], audio_duration, total_stutters}. Sub-results
-            become {"error": ...} if a model is unavailable.
+        Prefer ``model.analyze()`` for new code.
         """
         from model.transcription import WHISPER_LANG_CODES
 
@@ -89,7 +76,6 @@ class ModelRegistry:
             results["transcription"] = {"error": str(e)}
 
         try:
-            from model.config.defaults import DYSFLUENCY_CLASSES
             from model.data.preprocessing import load_audio_input
             from model.combiner import combine_regions
 
@@ -104,7 +90,7 @@ class ModelRegistry:
                     syllables = loc.get("syllables") if isinstance(loc, dict) else None
                 else:
                     regions, syllables = [], None
-                saliency = self.multitask_classifier.saliency(audio).squeeze(0)  # (T, C)
+                saliency = self.multitask_classifier.saliency(audio).squeeze(0)
                 audio_array = load_audio_input(audio, sr=SAMPLE_RATE)
                 audio_duration = len(audio_array) / SAMPLE_RATE
                 results["combined"] = combine_regions(
@@ -125,6 +111,10 @@ class ModelRegistry:
         return self.classifier.is_loaded and self.localizer.is_loaded
 
 
+# ---------------------------------------------------------------------------
+# Utility functions (use model.classify / model.localize / model.fuse instead)
+# ---------------------------------------------------------------------------
+
 def load_synthesis_config() -> dict:
     """Load localization_synthesis config from registry.json."""
     try:
@@ -135,10 +125,7 @@ def load_synthesis_config() -> dict:
 
 
 def load_audio_16k(audio_bytes: bytes):
-    """Load audio bytes → (16kHz mono float32 array, duration_sec).
-
-    Handles format conversion, resampling, and mono downmix in one call.
-    """
+    """Load audio bytes -> (16kHz mono float32 array, duration_sec)."""
     import io as _io
 
     import librosa
@@ -159,12 +146,7 @@ def load_audio_16k(audio_bytes: bytes):
 
 
 def saliency_regions(saliency, class_names, duration_sec: float) -> list:
-    """Extract contiguous high-saliency spans per class into regions.
-
-    Adaptive thresholding per class: ``mean + adapt_k * std``, floored
-    and capped. Spans shorter than ``min_span_sec`` are dropped.
-    Overlapping regions are deduplicated by confidence.
-    """
+    """Extract contiguous high-saliency spans per class into regions."""
     import numpy as _np
 
     cfg = load_synthesis_config()
@@ -204,7 +186,6 @@ def saliency_regions(saliency, class_names, duration_sec: float) -> list:
 
     regions.sort(key=lambda r: r["start"])
 
-    # Drop lower-confidence regions that overlap an already-accepted one
     regions.sort(key=lambda r: r["confidence"], reverse=True)
     kept = []
     for region in regions:
@@ -218,91 +199,18 @@ def saliency_regions(saliency, class_names, duration_sec: float) -> list:
 
 
 def classify_audio_bytes(audio_bytes: bytes) -> dict:
-    """Full classification pipeline: raw bytes → per-class results.
-
-    Returns ``{class_name: {label, confidence, prob_present, prob_not_present},
-    summary: {detected, primary}}``.
-    """
-    import model.registry as _reg
-
-    audio_data, _duration = load_audio_16k(audio_bytes)
-    clf = _reg.MultiTaskClassifier()
-    return clf.analyze(audio_data)
+    """Classify audio from raw bytes. Prefer ``model.classify()`` for new code."""
+    from model import classify
+    return classify(audio_bytes)
 
 
 def localize_audio_bytes(audio_bytes: bytes) -> dict:
-    """Full localization pipeline: raw bytes → dysfluency regions.
-
-    Tries the dedicated localizer first; falls back to multitask saliency
-    when localizer weights are unavailable.
-
-    Returns ``{regions: [...], duration_sec, source?}``.
-    """
-    import numpy as _np
-
-    import model.registry as _reg
-    from model.data.preprocessing import generate_mel_spectrogram
-
-    audio_data, duration_sec = load_audio_16k(audio_bytes)
-    spec = generate_mel_spectrogram(audio_data, sr=SAMPLE_RATE)
-
-    try:
-        loc = _reg.LocalizerRunner("wav2vec2")
-        regions = loc.predict(spec, sr=SAMPLE_RATE)
-        return {
-            "regions": [
-                {"start": round(s, 3), "end": round(e, 3), "confidence": round(c, 4)}
-                for s, e, c in regions
-            ],
-            "duration_sec": duration_sec,
-        }
-    except Exception:
-        pass
-
-    # Dedicated localizer unavailable → saliency fallback
-    try:
-        mt = _reg.MultiTaskRunner()
-        sal = mt.saliency(audio_data).squeeze(0)
-        if hasattr(sal, "cpu"):
-            sal = sal.cpu()
-        sal = _np.asarray(sal, dtype=float)
-        regions = saliency_regions(sal, list(DYSFLUENCY_CLASSES), duration_sec)
-        return {
-            "regions": regions,
-            "duration_sec": duration_sec,
-            "source": "saliency",
-        }
-    except Exception as exc:
-        return {"regions": [], "error": str(exc), "duration_sec": duration_sec}
+    """Localize audio from raw bytes. Prefer ``model.localize()`` for new code."""
+    from model import localize
+    return localize(audio_bytes)
 
 
 def combine_with_saliency(audio_bytes: bytes, regions: list) -> dict:
-    """Full fusion pipeline: raw bytes + localizer regions → combined results.
-
-    Computes multitask saliency and fuses it with the given regions via
-    ``combine_regions``.
-
-    Returns ``{regions: [...], audio_duration, total_stutters}`` or
-    ``{"error": str}``.
-    """
-    import numpy as _np
-
-    import model.registry as _reg
-    from model.combiner import combine_regions
-
-    try:
-        audio_data, duration_sec = load_audio_16k(audio_bytes)
-        clf = _reg.MultiTaskRunner()
-        sal = clf.saliency(audio_data).squeeze(0)
-        if hasattr(sal, "cpu"):
-            sal = sal.cpu()
-        sal = _np.asarray(sal, dtype=float)
-        return combine_regions(
-            regions,
-            sal,
-            class_names=list(DYSFLUENCY_CLASSES),
-            thresholds=getattr(clf, "_thresholds", {}) or None,
-            audio_duration=duration_sec,
-        )
-    except Exception as exc:
-        return {"error": str(exc)}
+    """Fuse regions with saliency. Prefer ``model.fuse()`` for new code."""
+    from model import fuse
+    return fuse(audio_bytes, regions)
