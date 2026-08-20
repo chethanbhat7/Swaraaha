@@ -1,4 +1,4 @@
-"""MultiTaskClassifier and CNNMultiTaskClassifier — shared-backbone classification."""
+"""MultiTaskRunner and CNNMultiTaskRunner — shared-backbone classification."""
 
 from typing import Any, Dict, List, Optional
 
@@ -17,7 +17,7 @@ def _get_reg():
     return model.registry
 
 
-class MultiTaskClassifier:
+class MultiTaskRunner:
     """Registry wrapper for the shared-backbone multitask classifier.
 
     analyze() runs ONE forward pass and returns per-class
@@ -54,7 +54,7 @@ class MultiTaskClassifier:
     def analyze(self, audio, threshold: Optional[float] = None) -> Dict[str, Any]:
         """Run one forward pass and classify every class.
 
-        Mirrors ``Classifier.analyze``: an explicit ``threshold`` overrides
+        Mirrors ``ClassifierRunner.analyze``: an explicit ``threshold`` overrides
         the loaded per-class thresholds for every class. When ``threshold``
         is None (the default), the loaded per-class thresholds apply
         (registry ``classification_multitask.thresholds``, ``thresholds_path``,
@@ -210,10 +210,10 @@ class MultiTaskClassifier:
         return self._model is not None
 
 
-class CNNMultiTaskClassifier(MultiTaskClassifier):
+class CNNMultiTaskRunner(MultiTaskRunner):
     """Registry-backed CNN multitask classifier.
 
-    Reuses ``MultiTaskClassifier.analyze``; only the preprocessing hook is
+    Reuses ``MultiTaskRunner.analyze``; only the preprocessing hook is
     overridden to feed mel-spectrograms instead of raw waveforms.
     """
 

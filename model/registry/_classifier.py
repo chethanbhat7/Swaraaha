@@ -1,4 +1,4 @@
-"""Classifier class — individual and all-class dysfluency classification."""
+"""ClassifierRunner — individual and all-class dysfluency classification."""
 
 import os
 from typing import Any, Dict, Optional, Tuple, Union
@@ -20,7 +20,7 @@ def _get_reg():
     return model.registry
 
 
-class Classifier:
+class ClassifierRunner:
     def __init__(self, class_name: Optional[str] = None):
         self.class_name = class_name
         self._model = None
@@ -92,7 +92,7 @@ class Classifier:
         if self.class_name is not None:
             raise ValueError(
                 "predict_all() is only available when loading all classifiers "
-                "(call Classifier() without class_name)"
+                "(call ClassifierRunner() without class_name)"
             )
 
         thresholds = self._resolve_thresholds(threshold)

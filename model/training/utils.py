@@ -398,6 +398,93 @@ def align_frame_labels(frame_labels, logits):
     return torch.nn.functional.pad(frame_labels, (0, n - frame_labels.shape[-1]))
 
 
+def train_one_epoch(
+    model,
+    dataloader,
+    optimizer,
+    criterion,
+    device,
+    *,
+    scheduler=None,
+    accumulation_steps=1,
+    compute_loss_fn=None,
+    grad_clip_norm: float = 0.0,
+    use_amp: bool = False,
+    progress_desc: str = "  Train",
+    class_names=None,
+):
+    """Generic training loop for one epoch.
+
+    Args:
+        model: Must have .model (nn.Module) and .forward(data) -> logits.
+        dataloader: Yields (data, labels) batches.
+        optimizer: PyTorch optimizer.
+        criterion: Loss function (passed to compute_loss_fn).
+        device: torch.device.
+        scheduler: Optional LR scheduler (stepped per optim step when
+            accumulation_steps=1, else per accumulation cycle).
+        accumulation_steps: Gradient accumulation steps.
+        compute_loss_fn: Callable(model, batch_data, batch_labels, criterion,
+            device) -> scalar loss.  If None, default assumes binary
+            classification: model.forward(data) compared to labels.
+        grad_clip_norm: If > 0, clip gradients to this norm.
+        use_amp: Use torch.amp.autocast on CUDA.
+        progress_desc: tqdm description string.
+
+    Returns:
+        Average loss over the epoch.
+    """
+    import warnings
+    from tqdm import tqdm
+
+    warnings.filterwarnings(
+        "ignore",
+        "Detected call of.*lr_scheduler.step.*before.*optimizer.step",
+    )
+
+    actual_amp = use_amp and device.type == "cuda"
+    model.model.train()
+    total_loss = 0.0
+    num_batches = 0
+    optimizer.zero_grad()
+
+    for i, batch in enumerate(tqdm(dataloader, desc=progress_desc, leave=False)):
+        data, labels = batch[0].to(device), batch[1].to(device)
+
+        with torch.amp.autocast("cuda", enabled=actual_amp):
+            if compute_loss_fn is not None:
+                loss = compute_loss_fn(model, data, labels, criterion, device)
+            else:
+                logits = model.forward(data)
+                loss = criterion(logits, labels)
+            loss = loss / accumulation_steps
+
+        loss.backward()
+
+        if grad_clip_norm > 0:
+            torch.nn.utils.clip_grad_norm_(
+                model.model.parameters(), max_norm=grad_clip_norm,
+            )
+
+        if (i + 1) % accumulation_steps == 0:
+            optimizer.step()
+            optimizer.zero_grad()
+            if scheduler is not None:
+                scheduler.step()
+
+        total_loss += loss.item() * accumulation_steps
+        num_batches += 1
+
+    # Flush remaining gradients
+    if num_batches % accumulation_steps != 0:
+        optimizer.step()
+        optimizer.zero_grad()
+        if scheduler is not None:
+            scheduler.step()
+
+    return total_loss / max(num_batches, 1)
+
+
 def build_localizer_criterion(pos_weight: Optional[float] = None, device: str = "cpu"):
     """Build the BCEWithLogitsLoss criterion for localizer training.
 

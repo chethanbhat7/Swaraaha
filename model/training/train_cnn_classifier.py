@@ -33,7 +33,6 @@ from model.training.train_multitask_classifier import (
     compute_class_pos_weights,
     evaluate_multitask,
     multitask_loss,
-    train_one_epoch,
 )
 from model.training.utils import (
     CSVLogger,
@@ -46,6 +45,7 @@ from model.training.utils import (
     save_resume_state,
     set_seed,
     stratified_split,
+    train_one_epoch,
     try_load_resume,
 )
 
@@ -119,6 +119,12 @@ def _build_cnn_model(args):
         num_lstm_layers=args.num_lstm_layers,
         num_transformer_layers=args.num_transformer_layers,
     )
+
+
+def _cnn_multitask_loss(model, data, labels, criterion, device, _class_names=None):
+    logits = model.forward(data)
+    return multitask_loss(logits, labels, criterion, device,
+                          class_names=_class_names)
 
 
 def train(args):
@@ -237,9 +243,13 @@ def train(args):
         last_epoch = epoch
         epoch_start = time.time()
         train_loss = train_one_epoch(
-            model, train_loader, optimizer, scheduler, criterion, device,
+            model, train_loader, optimizer, criterion, device,
+            scheduler=scheduler,
             accumulation_steps=args.gradient_accumulation_steps,
-            class_names=args.class_names,
+            compute_loss_fn=lambda m, d, l, c, dev: _cnn_multitask_loss(
+                m, d, l, c, dev, _class_names=args.class_names,
+            ),
+            use_amp=True,
         )
         current_lr = optimizer.param_groups[0]['lr']
         val_acc, macro_f1, val_loss = evaluate_multitask(

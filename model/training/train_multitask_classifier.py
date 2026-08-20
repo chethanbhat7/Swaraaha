@@ -28,7 +28,7 @@ from model.fingerprint import (
     MULTITASK_RESUME_KEYS,
     multitask_fingerprint,
 )
-from model.training.utils import SubsetDataset, set_seed, stratified_split
+from model.training.utils import SubsetDataset, set_seed, stratified_split, train_one_epoch as _train_one_epoch
 
 
 def parse_args(argv: Optional[List[str]] = None):
@@ -118,6 +118,25 @@ def multitask_loss(logits: Dict[str, "torch.Tensor"], labels: "torch.Tensor",
     return total
 
 
+def _multitask_loss(model, data, labels, criterion, device):
+    logits = model.forward(data)
+    return multitask_loss(logits, labels, criterion, device)
+
+
+def train_one_epoch(model, dataloader, optimizer, scheduler, criterion, device,
+                    accumulation_steps=1, class_names=None):
+    """Backward-compat wrapper — delegates to the shared training loop."""
+    def _loss(model, data, labels, criterion, device):
+        logits = model.forward(data)
+        return multitask_loss(logits, labels, criterion, device,
+                              class_names=class_names)
+    return _train_one_epoch(
+        model, dataloader, optimizer, criterion, device,
+        scheduler=scheduler, accumulation_steps=accumulation_steps,
+        compute_loss_fn=_loss, use_amp=True,
+    )
+
+
 def _partition_model_params(model) -> Tuple[List, List]:
     """Split the shared-backbone model into head vs backbone parameters.
 
@@ -134,49 +153,6 @@ def _partition_model_params(model) -> Tuple[List, List]:
         else:
             backbone_params.append(param)
     return backbone_params, head_params
-
-
-def train_one_epoch(model, dataloader, optimizer, scheduler, criterion, device, accumulation_steps=1, class_names=None):
-    """Train for one epoch. Returns average loss."""
-    import warnings
-    import torch
-    from tqdm import tqdm
-
-    warnings.filterwarnings("ignore", "Detected call of.*lr_scheduler.step.*before.*optimizer.step")
-
-    use_amp = device.type == "cuda"
-    model.model.train()
-    total_loss = 0.0
-    num_batches = 0
-    optimizer.zero_grad()
-
-    for i, (audio, labels) in enumerate(tqdm(dataloader, desc="  Train", leave=False)):
-        audio = audio.to(device)
-
-        with torch.amp.autocast("cuda", enabled=use_amp):
-            logits = model.forward(audio)
-            loss = multitask_loss(logits, labels, criterion, device,
-                                  class_names=class_names)
-            loss = loss / accumulation_steps
-
-        loss.backward()
-
-        if (i + 1) % accumulation_steps == 0:
-            optimizer.step()
-            optimizer.zero_grad()
-            if scheduler is not None:
-                scheduler.step()
-
-        total_loss += loss.item() * accumulation_steps
-        num_batches += 1
-
-    if num_batches % accumulation_steps != 0:
-        optimizer.step()
-        optimizer.zero_grad()
-        if scheduler is not None:
-            scheduler.step()
-
-    return total_loss / max(num_batches, 1)
 
 
 def evaluate_multitask(model, dataloader, device, class_names=None) -> Tuple[float, float, float]:
@@ -455,7 +431,13 @@ def train(args) -> Dict:
             backbone_frozen = False
             print(f"  >>> Backbone UNFROZEN at epoch {epoch} (head LR={args.lr:.2e}, backbone LR={args.lr*0.1:.2e})")
 
-        train_loss = train_one_epoch(model, train_loader, optimizer, scheduler, criterion, device, args.gradient_accumulation_steps)
+        train_loss = _train_one_epoch(
+            model, train_loader, optimizer, criterion, device,
+            scheduler=scheduler,
+            accumulation_steps=args.gradient_accumulation_steps,
+            compute_loss_fn=_multitask_loss,
+            use_amp=True,
+        )
         current_lr = optimizer.param_groups[0]["lr"]
 
         val_acc, macro_f1, val_loss = evaluate_multitask(model, val_loader, device)

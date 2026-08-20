@@ -2,17 +2,17 @@
 Model Registry — loads trained models and exposes a clean predict API.
 
 Usage:
-    from model.registry import Classifier, Localizer, ModelRegistry
+    from model.registry import ClassifierRunner, LocalizerRunner, ModelRegistry
 
     # All classifiers
-    clf = Classifier()
+    clf = ClassifierRunner()
     result = clf.analyze("recording.wav")        # path
     result = clf.analyze(audio_bytes)            # bytes
     result = clf.analyze(np_array, sr=16000)     # numpy array
     # result: {prolongation: {...}, ..., summary: {detected: [...], primary: ...}}
 
     # Single classifier
-    clf = Classifier("prolongation")
+    clf = ClassifierRunner("prolongation")
     result = clf.analyze(audio)                  # {label, confidence, prob_present, prob_not_present}
 
     # Advanced: adds raw logits
@@ -22,7 +22,7 @@ Usage:
     result = clf.analyze(audio, threshold=0.6)
 
     # Localizer (regions always; words/syllables when text is provided)
-    loc = Localizer()                            # type comes from registry.json
+    loc = LocalizerRunner()                      # type comes from registry.json
     result = loc.analyze("recording.wav", text="the cat sat", language="en")
     # result: {regions: [...], words: [...], syllables: [...]}
 
@@ -57,9 +57,13 @@ from ._utils import (
     _resolve_multitask_thresholds,
     _resolve_path,
 )
-from ._classifier import Classifier
-from ._localizer import Localizer
-from ._multitask import CNNMultiTaskClassifier, MultiTaskClassifier
+from ._classifier import ClassifierRunner
+from ._classifier import ClassifierRunner as Classifier
+from ._localizer import LocalizerRunner
+from ._localizer import LocalizerRunner as Localizer
+from ._multitask import CNNMultiTaskRunner, MultiTaskRunner
+from ._multitask import CNNMultiTaskRunner as CNNMultiTaskClassifier
+from ._multitask import MultiTaskRunner as MultiTaskClassifier
 from ._pipelines import (
     ModelRegistry,
     classify_audio_bytes,

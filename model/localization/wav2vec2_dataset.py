@@ -139,27 +139,11 @@ class Wav2Vec2LocalizationDataset(_PickleCacheMixin):
         intervals: List[Tuple[float, float, str]],
         num_frames: int,
     ) -> np.ndarray:
-        """
-        Create frame labels at Wav2Vec2 resolution (20ms = 320 samples).
-
-        Args:
-            intervals: List of (start_sec, end_sec, dysfluency_type).
-            num_frames: Number of output frames.
-
-        Returns:
-            Binary mask of shape (num_frames,).
-        """
-        mask = np.zeros(num_frames, dtype=np.uint8)
-        frame_duration = self.hop_samples / self.sr  # 0.02 seconds
-
-        for start_sec, end_sec, _ in intervals:
-            start_frame = int(start_sec / frame_duration)
-            end_frame = int(end_sec / frame_duration)
-            start_frame = max(0, start_frame)
-            end_frame = min(num_frames, end_frame)
-            mask[start_frame:end_frame] = 1
-
-        return mask
+        from model.data.preprocessing.frame_labels import create_frame_labels
+        return create_frame_labels(
+            intervals, num_frames, sr=self.sr, hop_length=self.hop_samples,
+            units="seconds", end_rounding="floor",
+        )
 
     def get_sample_info(self, idx: int) -> Dict:
         """Return metadata for a sample without loading audio."""

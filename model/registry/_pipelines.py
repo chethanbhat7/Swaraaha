@@ -7,19 +7,19 @@ from typing import Any, Dict, Optional
 from model.config.defaults import DYSFLUENCY_CLASSES, FRAME_DURATION, SAMPLE_RATE
 from model.transcription import Transcriber
 
-from ._classifier import Classifier
-from ._localizer import Localizer
-from ._multitask import CNNMultiTaskClassifier, MultiTaskClassifier
+from ._classifier import ClassifierRunner
+from ._localizer import LocalizerRunner
+from ._multitask import CNNMultiTaskRunner, MultiTaskRunner
 from ._utils import _REGISTRY_PATH, _audio_is_empty
 
 
 class ModelRegistry:
     def __init__(self):
-        self.classifier = Classifier()
-        self.localizer = Localizer()
+        self.classifier = ClassifierRunner()
+        self.localizer = LocalizerRunner()
         self.transcriber = Transcriber()
-        self.multitask_classifier = MultiTaskClassifier()
-        self.cnn_multitask_classifier = CNNMultiTaskClassifier()
+        self.multitask_classifier = MultiTaskRunner()
+        self.cnn_multitask_classifier = CNNMultiTaskRunner()
 
     def run_all(
         self,
@@ -247,7 +247,7 @@ def localize_audio_bytes(audio_bytes: bytes) -> dict:
     spec = generate_mel_spectrogram(audio_data, sr=SAMPLE_RATE)
 
     try:
-        loc = _reg.Localizer("wav2vec2")
+        loc = _reg.LocalizerRunner("wav2vec2")
         regions = loc.predict(spec, sr=SAMPLE_RATE)
         return {
             "regions": [
@@ -261,7 +261,7 @@ def localize_audio_bytes(audio_bytes: bytes) -> dict:
 
     # Dedicated localizer unavailable → saliency fallback
     try:
-        mt = _reg.MultiTaskClassifier()
+        mt = _reg.MultiTaskRunner()
         sal = mt.saliency(audio_data).squeeze(0)
         if hasattr(sal, "cpu"):
             sal = sal.cpu()
@@ -292,7 +292,7 @@ def combine_with_saliency(audio_bytes: bytes, regions: list) -> dict:
 
     try:
         audio_data, duration_sec = load_audio_16k(audio_bytes)
-        clf = _reg.MultiTaskClassifier()
+        clf = _reg.MultiTaskRunner()
         sal = clf.saliency(audio_data).squeeze(0)
         if hasattr(sal, "cpu"):
             sal = sal.cpu()

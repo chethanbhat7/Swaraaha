@@ -1,4 +1,4 @@
-"""Localizer class — dysfluency region detection with word/syllable alignment."""
+"""LocalizerRunner — dysfluency region detection with word/syllable alignment."""
 
 import os
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -19,7 +19,7 @@ def _get_reg():
     return model.registry
 
 
-class Localizer:
+class LocalizerRunner:
     def __init__(self, model_type: Optional[str] = None):
         self.model_type = model_type
         self._models: Dict[str, Any] = {}

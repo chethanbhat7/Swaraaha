@@ -36,7 +36,7 @@ from model.fingerprint import (
     fingerprint,
     parse_fingerprint,
 )
-from model.training.utils import SubsetDataset, set_seed, stratified_split
+from model.training.utils import SubsetDataset, set_seed, stratified_split, train_one_epoch
 
 
 def parse_args():
@@ -76,48 +76,10 @@ def get_class_index(class_name: str) -> int:
     return DYSFLUENCY_CLASSES.index(class_name)
 
 
-def train_one_epoch(model, dataloader, optimizer, scheduler, criterion, device, accumulation_steps=1):
-    """Train for one epoch. Returns average loss."""
-    import warnings
-    import torch
-    from tqdm import tqdm
-
-    warnings.filterwarnings("ignore", "Detected call of.*lr_scheduler.step.*before.*optimizer.step")
-
-    use_amp = device.type == "cuda"
-    model.model.train()
-    total_loss = 0.0
-    num_batches = 0
-    optimizer.zero_grad()
-
-    for i, (audio, labels) in enumerate(tqdm(dataloader, desc="  Train", leave=False)):
-        audio = audio.to(device)
-        class_idx = model.class_idx
-        binary_labels = labels[:, class_idx].long().to(device)
-
-        with torch.amp.autocast("cuda", enabled=use_amp):
-            logits = model.forward(audio)
-            loss = criterion(logits, binary_labels)
-            loss = loss / accumulation_steps
-
-        loss.backward()
-
-        if (i + 1) % accumulation_steps == 0:
-            optimizer.step()
-            optimizer.zero_grad()
-            if scheduler is not None:
-                scheduler.step()
-
-        total_loss += loss.item() * accumulation_steps
-        num_batches += 1
-
-    if num_batches % accumulation_steps != 0:
-        optimizer.step()
-        optimizer.zero_grad()
-        if scheduler is not None:
-            scheduler.step()
-
-    return total_loss / max(num_batches, 1)
+def _classifier_loss(model, data, labels, criterion, device):
+    binary_labels = labels[:, model.class_idx].long().to(device)
+    logits = model.forward(data)
+    return criterion(logits, binary_labels)
 
 
 def evaluate_classifier(model, dataloader, device) -> Tuple[float, float, float, np.ndarray, np.ndarray]:
@@ -400,7 +362,13 @@ def train(args) -> Dict:
             print(f"  >>> Backbone UNFROZEN at epoch {epoch} (head LR={args.lr:.2e}, backbone LR={args.lr*0.1:.2e})")
 
         # Train
-        train_loss = train_one_epoch(model, train_loader, optimizer, scheduler, criterion, device, args.gradient_accumulation_steps)
+        train_loss = train_one_epoch(
+            model, train_loader, optimizer, criterion, device,
+            scheduler=scheduler,
+            accumulation_steps=args.gradient_accumulation_steps,
+            compute_loss_fn=_classifier_loss,
+            use_amp=True,
+        )
         current_lr = optimizer.param_groups[0]["lr"]
 
         # Validate

@@ -29,7 +29,7 @@ from typing import Dict, List, Tuple
 import numpy as np
 
 from model.config.defaults import SAMPLE_RATE
-from model.training.utils import SubsetDataset, align_frame_labels, set_seed, split_dataset
+from model.training.utils import SubsetDataset, align_frame_labels, set_seed, split_dataset, train_one_epoch
 
 
 def parse_args():
@@ -96,33 +96,13 @@ def collate_wav2vec2(batch):
     return waveforms, labels
 
 
-def train_one_epoch(model, dataloader, optimizer, criterion, device, scheduler=None):
-    """Train for one epoch. Returns average loss."""
-    import torch
-    from tqdm import tqdm
-
-    model.model.train()
-    total_loss = 0.0
-    num_batches = 0
-
-    for waveforms, frame_labels in tqdm(dataloader, desc="  Train", leave=False):
-        waveforms = waveforms.to(device)
-        frame_labels = frame_labels.float().to(device)
-
-        optimizer.zero_grad()
-        logits = model.forward(waveforms).squeeze(1)  # (B, T)
-        frame_labels = align_frame_labels(frame_labels, logits)
-        loss = criterion(logits, frame_labels)
-        loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.model.parameters(), max_norm=1.0)
-        optimizer.step()
-        if scheduler:
-            scheduler.step()
-
-        total_loss += loss.item()
-        num_batches += 1
-
-    return total_loss / max(num_batches, 1)
+def _w2v2_localizer_loss(model, data, labels, criterion, device):
+    from model.training.utils import align_frame_labels
+    waveforms = data
+    frame_labels = labels.float().to(device)
+    logits = model.forward(waveforms).squeeze(1)
+    frame_labels = align_frame_labels(frame_labels, logits)
+    return criterion(logits, frame_labels)
 
 
 def evaluate_model(model, dataloader, device, threshold: float = 0.5):
@@ -378,7 +358,12 @@ def train(args) -> Dict:
             backbone_frozen = False
 
         # Train
-        train_loss = train_one_epoch(model, train_loader, optimizer, criterion, device, scheduler)
+        train_loss = train_one_epoch(
+            model, train_loader, optimizer, criterion, device,
+            scheduler=scheduler,
+            compute_loss_fn=_w2v2_localizer_loss,
+            grad_clip_norm=1.0,
+        )
         current_lr = optimizer.param_groups[0]["lr"]
 
         # Validate
