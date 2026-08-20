@@ -9,7 +9,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir \
         torch --index-url https://download.pytorch.org/whl/cpu && \
     pip install --no-cache-dir \
-        $(grep -v -iE '^(torch|#|$)' model-requirements.txt | tr '\n' ' ') && \
+        $(grep -v -i '^torch' model-requirements.txt | tr '\n' ' ') && \
     pip install --no-cache-dir -r backend-requirements.txt
 
 COPY model/ ./model/
