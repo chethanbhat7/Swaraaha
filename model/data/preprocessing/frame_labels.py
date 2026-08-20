@@ -6,7 +6,7 @@ import numpy as np
 
 
 def create_frame_labels(
-    intervals: List[Tuple[Union[float, int], Union[float, int], ...]],
+    intervals: List[Tuple[Union[float, int], ...]],
     num_frames: int,
     sr: int = 16000,
     hop_length: int = 512,
