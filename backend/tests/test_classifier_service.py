@@ -21,7 +21,7 @@ def test_classify_audio_bytes_delegates_to_multitask_classifier(monkeypatch):
                 },
             }
 
-    monkeypatch.setattr(classifier_service, "MultiTaskClassifier", _FakeMultiTask)
+    monkeypatch.setattr(classifier_service, "MultiTaskRunner", _FakeMultiTask)
     monkeypatch.setattr(classifier_service, "_clf", None)
 
     result = classifier_service.classify_audio_bytes(b"fake-wav-bytes")
