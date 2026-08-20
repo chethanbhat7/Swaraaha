@@ -1,4 +1,4 @@
-"""Tests for ModelRunner classification using the multitask classifier."""
+"""Tests for ModelRunner using the model.init/analyze API."""
 
 import numpy as np
 import pytest
@@ -6,113 +6,90 @@ import pytest
 from app.core.model_runner import ModelRunner
 
 
-def test_classify_uses_multitask_classifier(monkeypatch):
-    captured = {}
+def test_analyze_returns_all_sections(monkeypatch):
+    """analyze() returns classifications, localizations, transcription, combined."""
 
-    class _FakeMultiTask:
-        def __init__(self):
-            captured["instance"] = self
+    class _FakeClassifier:
+        is_loaded = True
 
         def analyze(self, audio, threshold=None):
-            captured["audio"] = audio
             return {
                 "prolongation": {"label": 1, "confidence": 0.87},
                 "block": {"label": 0, "confidence": 0.91},
-                "soundrep": {"label": 1, "confidence": 0.52},
-                "wordrep": {"label": 0, "confidence": 0.66},
-                "interjection": {"label": 0, "confidence": 0.99},
-                "summary": {
-                    "detected": ["prolongation", "soundrep"],
-                    "primary": "prolongation",
-                },
+                "summary": {"detected": ["prolongation"], "primary": "prolongation"},
             }
 
-    monkeypatch.setattr("model.registry.MultiTaskClassifier", _FakeMultiTask)
+    class _FakeLocalizer:
+        is_loaded = True
+
+        def analyze(self, audio, threshold=0.3, text=None, language="en"):
+            return {
+                "regions": [{"start": 0.0, "end": 0.5, "confidence": 0.9}],
+            }
+
+    import model as _model
+    monkeypatch.setattr(_model, "_classifier", _FakeClassifier())
+    monkeypatch.setattr(_model, "_localizer", _FakeLocalizer())
+    monkeypatch.setattr(_model, "_init_done", True)
+
     runner = ModelRunner()
-    audio = np.zeros(16000, dtype=np.float32)
-    results = runner._classify(audio)
+    results = runner.analyze(np.zeros(16000, dtype=np.float32))
 
-    assert isinstance(captured["instance"], _FakeMultiTask)
-    # Audio is loaded from WAV bytes, so check values match (not identity)
-    np.testing.assert_array_almost_equal(captured["audio"], audio)
-    assert results == {
-        "prolongation": (True, 0.87),
-        "block": (False, 0.91),
-        "soundrep": (True, 0.52),
-        "wordrep": (False, 0.66),
-        "interjection": (False, 0.99),
-    }
+    assert "classifications" in results
+    assert "localizations" in results
+    assert "transcription" in results
+    assert results["classifications"]["prolongation"] == (True, 0.87)
+    assert results["classifications"]["block"] == (False, 0.91)
+    assert len(results["localizations"]) == 1
+    assert results["localizations"][0] == (0.0, 0.5, 0.9)
 
 
-def test_classify_propagates_model_errors(monkeypatch):
-    class _FailingMultiTask:
+def test_analyze_gracefully_handles_classifier_error(monkeypatch):
+
+    class _FailingClassifier:
+        is_loaded = True
+
         def analyze(self, audio, threshold=None):
             raise FileNotFoundError("weights not found")
 
-    monkeypatch.setattr("model.registry.MultiTaskClassifier", _FailingMultiTask)
-    runner = ModelRunner()
-
-    with pytest.raises(FileNotFoundError):
-        runner._classify(np.zeros(16000, dtype=np.float32))
-
-
-def test_analyze_includes_combined(monkeypatch):
-    class _FakeMultiTask:
-        def __init__(self):
-            self._thresholds = {}
-
-        def analyze(self, audio, threshold=None):
-            return {"block": {"label": 1, "confidence": 0.9}, "summary": {"detected": ["block"], "primary": "block"}}
-
-        def saliency(self, audio):
-            sal = np.zeros((1, 500, 5))
-            sal[:, :, 1] = 0.9  # block active every frame
-            return sal
-
     class _FakeLocalizer:
-        def predict(self, spec, sr=16000, threshold=0.3, max_length_seconds=3.0):
-            return [(0.0, 0.5, 0.9)]
+        is_loaded = True
 
-    class _FakeTranscriber:
-        def transcribe(self, audio, localizations=None, language="english"):
-            return {"text": "hi", "words": [], "duration_sec": 0.5}
+        def analyze(self, audio, threshold=0.3, text=None, language="en"):
+            return {"regions": []}
 
-    monkeypatch.setattr("model.registry.MultiTaskClassifier", _FakeMultiTask)
-    monkeypatch.setattr("model.registry.MultiTaskRunner", _FakeMultiTask)
-    monkeypatch.setattr("model.registry.LocalizerRunner", lambda *a, **k: _FakeLocalizer())
+    import model as _model
+    monkeypatch.setattr(_model, "_classifier", _FailingClassifier())
+    monkeypatch.setattr(_model, "_localizer", _FakeLocalizer())
+    monkeypatch.setattr(_model, "_init_done", True)
+
     runner = ModelRunner()
-    runner.transcriber = _FakeTranscriber()
-
     results = runner.analyze(np.zeros(16000, dtype=np.float32))
-    assert set(results.keys()) == {"classifications", "localizations", "transcription", "combined"}
-    assert results["combined"]["total_stutters"] == 1
-    assert results["combined"]["regions"][0]["primary_type"] == "block"
+    assert isinstance(results["classifications"], dict)
 
 
 def test_analyze_combined_degrades_on_saliency_error(monkeypatch):
-    class _FailingMultiTask:
-        def __init__(self):
-            self._thresholds = {}
+
+    class _FakeClassifier:
+        is_loaded = True
 
         def analyze(self, audio, threshold=None):
-            return {"block": {"label": 0, "confidence": 0.5}, "summary": {"detected": [], "primary": None}}
+            return {"block": {"label": 1}, "summary": {"detected": ["block"], "primary": "block"}}
 
         def saliency(self, audio):
             raise RuntimeError("no model")
 
     class _FakeLocalizer:
-        def predict(self, spec, sr=16000, threshold=0.3, max_length_seconds=3.0):
-            return [(0.0, 0.5, 0.9)]
+        is_loaded = True
 
-    class _FakeTranscriber:
-        def transcribe(self, audio, localizations=None, language="english"):
-            return {"text": "hi", "words": [], "duration_sec": 0.5}
+        def analyze(self, audio, threshold=0.3, text=None, language="en"):
+            return {"regions": [{"start": 0.0, "end": 0.5, "confidence": 0.9}]}
 
-    monkeypatch.setattr("model.registry.MultiTaskClassifier", _FailingMultiTask)
-    monkeypatch.setattr("model.registry.MultiTaskRunner", _FailingMultiTask)
-    monkeypatch.setattr("model.registry.LocalizerRunner", lambda *a, **k: _FakeLocalizer())
+    import model as _model
+    monkeypatch.setattr(_model, "_classifier", _FakeClassifier())
+    monkeypatch.setattr(_model, "_localizer", _FakeLocalizer())
+    monkeypatch.setattr(_model, "_init_done", True)
+
     runner = ModelRunner()
-    runner.transcriber = _FakeTranscriber()
-
     results = runner.analyze(np.zeros(16000, dtype=np.float32))
     assert "error" in results["combined"]

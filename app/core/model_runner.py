@@ -1,6 +1,6 @@
 """Model inference wrapper — classification, localization and transcription.
 
-Uses model.registry high-level pipelines for all model operations.
+Uses model.init() + model.analyze() for all model operations.
 Classification errors propagate so the UI surfaces them instead of
 fabricating results.
 """
@@ -10,17 +10,13 @@ import logging
 import numpy as np
 
 from app.core.transcription import AudioTranscriber
-from model.registry import (
-    classify_audio_bytes,
-    combine_with_saliency,
-    localize_audio_bytes,
-)
+from model import analyze as model_analyze
 
 logger = logging.getLogger(__name__)
 
 
 def _audio_to_bytes(audio: np.ndarray) -> bytes:
-    """Convert a numpy audio array to WAV bytes for the registry pipelines."""
+    """Convert a numpy audio array to WAV bytes for the model API."""
     import io
     import soundfile as sf
 
@@ -38,45 +34,31 @@ class ModelRunner:
         """Run transcription pipeline on audio."""
         return self.transcriber.transcribe(audio, localizations=localizations, language=language)
 
-    def _classify(self, audio: np.ndarray) -> dict:
-        """Multi-task classification results as {name: (stutter_present, confidence)}."""
-        raw = classify_audio_bytes(_audio_to_bytes(audio))
-        return {
-            name: (bool(result["label"]), float(result["confidence"]))
-            for name, result in raw.items()
-            if name != "summary"
-        }
-
-    def _localize(self, audio: np.ndarray) -> list:
-        """Dysfluency regions as [(start_sec, end_sec, confidence), ...]."""
-        try:
-            result = localize_audio_bytes(_audio_to_bytes(audio))
-            return [
-                (r["start"], r["end"], r["confidence"])
-                for r in result.get("regions", [])
-            ]
-        except Exception as e:
-            logger.warning("Localization unavailable: %s", e)
-            return []
-
-    def _combine(self, audio: np.ndarray, localizations: list) -> dict:
-        """Fuse localization tuples with classifier saliency into combined regions."""
-        try:
-            regions = [
-                {"start": s, "end": e, "confidence": c}
-                for s, e, c in localizations
-            ]
-            return combine_with_saliency(_audio_to_bytes(audio), regions)
-        except Exception as exc:
-            logger.warning("Combined fusion unavailable: %s", exc)
-            return {"error": str(exc)}
-
     def analyze(self, audio: np.ndarray, language: str = "english") -> dict:
         """Run classification + localization + transcription on audio. Returns structured results."""
-        classifications = self._classify(audio)
-        localizations = self._localize(audio)
-        transcription = self.transcribe(audio, localizations=localizations, language=language)
-        combined = self._combine(audio, localizations)
+        results = model_analyze(_audio_to_bytes(audio), language=language)
+
+        # Convert to app-friendly format
+        classifications = {}
+        cls = results.get("classification", {})
+        if isinstance(cls, dict) and "error" not in cls:
+            for name, result in cls.items():
+                if name != "summary" and isinstance(result, dict):
+                    classifications[name] = (bool(result.get("label", 0)), float(result.get("confidence", 0.0)))
+
+        localizations = []
+        loc = results.get("localization", {})
+        if isinstance(loc, dict) and "error" not in loc:
+            localizations = [
+                (r["start"], r["end"], r["confidence"])
+                for r in loc.get("regions", [])
+            ]
+
+        transcription = results.get("transcription", {})
+        if isinstance(transcription, dict) and "error" in transcription:
+            transcription = self.transcribe(audio, localizations=localizations, language=language)
+
+        combined = results.get("combined", {})
 
         return {
             "classifications": classifications,

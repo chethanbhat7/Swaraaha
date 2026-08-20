@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from model import ModelRegistry
+from model.registry import ModelRegistry
 from model.registry import Classifier
 
 import torch

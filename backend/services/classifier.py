@@ -2,15 +2,15 @@
 
 from typing import Optional
 
-from model.registry import MultiTaskClassifier
+from model.registry import MultiTaskRunner
 
-_clf: Optional[MultiTaskClassifier] = None
+_clf: Optional[MultiTaskRunner] = None
 
 
-def get_model() -> MultiTaskClassifier:
+def get_model() -> MultiTaskRunner:
     global _clf
     if _clf is None:
-        _clf = MultiTaskClassifier()
+        _clf = MultiTaskRunner()
     return _clf
 
 
