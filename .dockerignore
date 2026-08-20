@@ -1,0 +1,60 @@
+# Git
+.git/
+.gitignore
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+venv/
+backend/.venv/
+
+# Model weights (large, deployed separately)
+model/weights/
+swaraaha-models.zip
+*.zip
+
+# Evaluation reports (not needed at runtime)
+model/evaluation/reports/
+
+# Frontend (separate build)
+frontend/
+node_modules/
+
+# Data
+RawData/
+/data/
+model/data/debug/
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Credentials
+.env
+.env.*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Deployment configs (not needed in image)
+docker-compose.yml
+render.yaml
+railway.toml
+.python-version
+
+# Typst paper
+docs/paper/
