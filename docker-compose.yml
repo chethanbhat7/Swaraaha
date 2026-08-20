@@ -9,3 +9,5 @@ services:
       - ./model/weights:/app/model/weights
     environment:
       - PYTHONUNBUFFERED=1
+      - PORT=8000
+      - ALLOWED_ORIGINS=http://localhost:5173
