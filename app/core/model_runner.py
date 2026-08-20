@@ -27,6 +27,8 @@ def _audio_to_bytes(audio: np.ndarray) -> bytes:
 class ModelRunner:
     def __init__(self, models_dir: str = ""):
         self.models_dir = models_dir
+        from app.core.transcription import AudioTranscriber
+        self.transcriber = AudioTranscriber()
 
     def analyze(self, audio: np.ndarray, language: str = "english") -> dict:
         """Run classification + localization + transcription on audio. Returns structured results."""

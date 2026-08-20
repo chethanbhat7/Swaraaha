@@ -196,6 +196,8 @@ def localize(
 ) -> Dict[str, Any]:
     """Run localization only (dysfluency region detection).
 
+    Falls back to classifier saliency when the localizer is unavailable.
+
     Args:
         audio: File path, raw bytes, or 1-D numpy array.
         language: Whisper language name (english / kannada / hindi).
@@ -204,19 +206,41 @@ def localize(
 
     Returns::
 
-        {regions: [...], [words], [syllables]}
+        {regions: [...], [words], [syllables], [source?]}
     """
     _ensure_init()
-    if _localizer is None:
-        return {"error": "no localizer loaded"}
-    try:
-        loc_kwargs: Dict[str, Any] = {"threshold": localize_threshold}
-        if text is not None:
-            loc_kwargs["text"] = text
-            loc_kwargs["language"] = _whisper_iso(language)
-        return _localizer.analyze(audio, **loc_kwargs)
-    except Exception as exc:
-        return {"error": str(exc)}
+
+    if _localizer is not None:
+        try:
+            loc_kwargs: Dict[str, Any] = {"threshold": localize_threshold}
+            if text is not None:
+                loc_kwargs["text"] = text
+                loc_kwargs["language"] = _whisper_iso(language)
+            return _localizer.analyze(audio, **loc_kwargs)
+        except Exception:
+            pass
+
+    # Fallback: saliency-based localization via classifier
+    if _classifier is not None and hasattr(_classifier, "saliency"):
+        try:
+            from model.config.defaults import DYSFLUENCY_CLASSES, SAMPLE_RATE
+            from model.data.preprocessing import load_audio_input
+            from model.registry._pipelines import saliency_regions
+
+            audio_array = load_audio_input(audio, sr=SAMPLE_RATE)
+            duration_sec = len(audio_array) / SAMPLE_RATE
+            sal = _classifier.saliency(audio_array)
+            if hasattr(sal, "cpu"):
+                sal = sal.cpu()
+            import numpy as _np
+            sal = _np.asarray(sal, dtype=float)
+            sal = sal.squeeze(0) if sal.ndim == 3 else sal
+            regions = saliency_regions(sal, list(DYSFLUENCY_CLASSES), duration_sec)
+            return {"regions": regions, "duration_sec": duration_sec, "source": "saliency"}
+        except Exception as exc:
+            return {"error": str(exc)}
+
+    return {"error": "no localizer loaded"}
 
 
 def fuse(
@@ -239,9 +263,12 @@ def fuse(
     _ensure_init()
     if _classifier is None:
         return {"error": "no classifier loaded"}
-    results: Dict[str, Any] = {}
-    _fuse_combined(results, audio, regions, syllables)
-    return results.get("combined", {"error": "fusion failed"})
+    try:
+        results: Dict[str, Any] = {}
+        _fuse_combined(results, audio, regions, syllables)
+        return results.get("combined", {"error": "fusion failed"})
+    except Exception as exc:
+        return {"error": str(exc)}
 
 
 def status() -> Dict[str, bool]:
@@ -331,7 +358,11 @@ def _fuse_combined(
         results["combined"] = {"error": "classifier does not support saliency"}
         return
 
-    sal = _classifier.saliency(audio_array)
+    try:
+        sal = _classifier.saliency(audio_array)
+    except Exception as exc:
+        results["combined"] = {"error": str(exc)}
+        return
     if hasattr(sal, "cpu"):
         sal = sal.cpu()
     import numpy as _np

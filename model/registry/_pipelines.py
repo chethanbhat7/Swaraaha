@@ -4,6 +4,7 @@ import json
 from typing import Any, Dict, Optional
 
 from model.config.defaults import DYSFLUENCY_CLASSES, FRAME_DURATION, SAMPLE_RATE
+from model.transcription import Transcriber
 
 from ._classifier import ClassifierRunner
 from ._localizer import LocalizerRunner
@@ -15,6 +16,7 @@ class ModelRegistry:
     def __init__(self):
         self.classifier = ClassifierRunner()
         self.localizer = LocalizerRunner()
+        self.transcriber = Transcriber()
         self.multitask_classifier = MultiTaskRunner()
         self.cnn_multitask_classifier = CNNMultiTaskRunner()
 
@@ -30,7 +32,7 @@ class ModelRegistry:
 
         Prefer ``model.analyze()`` for new code.
         """
-        from model.transcription import Transcriber, WHISPER_LANG_CODES
+        from model.transcription import WHISPER_LANG_CODES
 
         results = {}
 
@@ -67,8 +69,7 @@ class ModelRegistry:
             results["localization"] = {"error": str(e)}
 
         try:
-            transcriber = Transcriber()
-            results["transcription"] = transcriber.transcribe(
+            results["transcription"] = self.transcriber.transcribe(
                 audio, language=language
             )
         except Exception as e:
