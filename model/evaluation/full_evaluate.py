@@ -96,7 +96,7 @@ def main() -> int:
     localization_paths = registry["localization"]
 
     print("=" * 70)
-    print("  SWARAAHA — FULL MODEL EVALUATION (Task 4.6)")
+    print("  SWARAAHA — FULL MODEL EVALUATION ")
     print("=" * 70)
     print(f"  Data directory: {args.data_dir}  "
           f"({'OK' if data_ok else 'NOT AVAILABLE'})")
