@@ -28,7 +28,8 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 
-from model.training.utils import align_frame_labels
+from model.config.defaults import SAMPLE_RATE
+from model.training.utils import SubsetDataset, align_frame_labels, set_seed, split_dataset, train_one_epoch
 
 
 def parse_args():
@@ -83,37 +84,6 @@ def parse_args():
     return parser.parse_args()
 
 
-def set_seed(seed: int):
-    import random
-    import torch
-
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(seed)
-
-
-def split_dataset(dataset, val_ratio: float = 0.2, seed: int = 42) -> Tuple[List[int], List[int]]:
-    rng = np.random.RandomState(seed)
-    indices = np.arange(len(dataset))
-    rng.shuffle(indices)
-    n_val = max(1, int(len(indices) * val_ratio))
-    return indices[n_val:].tolist(), indices[:n_val].tolist()
-
-
-class SubsetDataset:
-    def __init__(self, dataset, indices: List[int]):
-        self.dataset = dataset
-        self.indices = indices
-
-    def __len__(self):
-        return len(self.indices)
-
-    def __getitem__(self, idx):
-        return self.dataset[self.indices[idx]]
-
-
 def collate_wav2vec2(batch):
     """Collate function for Wav2Vec2 dataset — handles variable-length waveforms."""
     import torch
@@ -126,33 +96,13 @@ def collate_wav2vec2(batch):
     return waveforms, labels
 
 
-def train_one_epoch(model, dataloader, optimizer, criterion, device, scheduler=None):
-    """Train for one epoch. Returns average loss."""
-    import torch
-    from tqdm import tqdm
-
-    model.model.train()
-    total_loss = 0.0
-    num_batches = 0
-
-    for waveforms, frame_labels in tqdm(dataloader, desc="  Train", leave=False):
-        waveforms = waveforms.to(device)
-        frame_labels = frame_labels.float().to(device)
-
-        optimizer.zero_grad()
-        logits = model.forward(waveforms).squeeze(1)  # (B, T)
-        frame_labels = align_frame_labels(frame_labels, logits)
-        loss = criterion(logits, frame_labels)
-        loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.model.parameters(), max_norm=1.0)
-        optimizer.step()
-        if scheduler:
-            scheduler.step()
-
-        total_loss += loss.item()
-        num_batches += 1
-
-    return total_loss / max(num_batches, 1)
+def _w2v2_localizer_loss(model, data, labels, criterion, device):
+    from model.training.utils import align_frame_labels
+    waveforms = data
+    frame_labels = labels.float().to(device)
+    logits = model.forward(waveforms).squeeze(1)
+    frame_labels = align_frame_labels(frame_labels, logits)
+    return criterion(logits, frame_labels)
 
 
 def evaluate_model(model, dataloader, device, threshold: float = 0.5):
@@ -211,7 +161,6 @@ def evaluate_model(model, dataloader, device, threshold: float = 0.5):
 
     avg_loss = total_loss / max(num_batches, 1)
     return f1, mean_iou, auroc, avg_loss, all_true, all_pred
-    return f1, auroc, avg_loss, all_true, all_pred
 
 
 def train(args) -> Dict:
@@ -266,7 +215,7 @@ def train(args) -> Dict:
         )
     dataset = Wav2Vec2LocalizationDataset(
         data_dir=args.data_dir,
-        sr=16000,
+        sr=SAMPLE_RATE,
         max_length_seconds=args.max_length_seconds,
         sources=[s.strip() for s in args.sources.split(",")] if args.sources else None,
         cache_dir=cache_dir,
@@ -336,7 +285,7 @@ def train(args) -> Dict:
         pos_weight = compute_frame_pos_weight(
             train_samples,
             num_frames=dataset.max_frames,
-            sr=16000,
+            sr=SAMPLE_RATE,
             hop_length=dataset.hop_samples,
         )
         print(f"  Auto pos_weight: {pos_weight} "
@@ -409,7 +358,12 @@ def train(args) -> Dict:
             backbone_frozen = False
 
         # Train
-        train_loss = train_one_epoch(model, train_loader, optimizer, criterion, device, scheduler)
+        train_loss = train_one_epoch(
+            model, train_loader, optimizer, criterion, device,
+            scheduler=scheduler,
+            compute_loss_fn=_w2v2_localizer_loss,
+            grad_clip_norm=1.0,
+        )
         current_lr = optimizer.param_groups[0]["lr"]
 
         # Validate

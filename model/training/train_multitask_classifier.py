@@ -28,6 +28,7 @@ from model.fingerprint import (
     MULTITASK_RESUME_KEYS,
     multitask_fingerprint,
 )
+from model.training.utils import SubsetDataset, set_seed, stratified_split, train_one_epoch as _train_one_epoch
 
 
 def parse_args(argv: Optional[List[str]] = None):
@@ -60,20 +61,8 @@ def parse_args(argv: Optional[List[str]] = None):
     return args
 
 
-def set_seed(seed: int) -> None:
-    import random
-    import torch
-
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(seed)
-
-
 def compute_class_pos_weights(dataset, class_names=None):
     """Per-class neg/pos ratio from dataset.label_vectors (clip level)."""
-    from model.config.defaults import DYSFLUENCY_CLASSES
     if class_names is None:
         class_names = DYSFLUENCY_CLASSES
     label_vectors = getattr(dataset, 'label_vectors', None)
@@ -101,7 +90,6 @@ class MultiLabelBCEWithLogitsLoss(nn.Module):
 
     def forward(self, logits, labels):
         import torch.nn.functional as F
-        from model.config.defaults import DYSFLUENCY_CLASSES
         device = next(iter(logits.values())).device
         total = torch.zeros((), dtype=torch.float32, device=device)
         for name, logit in logits.items():
@@ -130,6 +118,25 @@ def multitask_loss(logits: Dict[str, "torch.Tensor"], labels: "torch.Tensor",
     return total
 
 
+def _multitask_loss(model, data, labels, criterion, device):
+    logits = model.forward(data)
+    return multitask_loss(logits, labels, criterion, device)
+
+
+def train_one_epoch(model, dataloader, optimizer, scheduler, criterion, device,
+                    accumulation_steps=1, class_names=None):
+    """Backward-compat wrapper — delegates to the shared training loop."""
+    def _loss(model, data, labels, criterion, device):
+        logits = model.forward(data)
+        return multitask_loss(logits, labels, criterion, device,
+                              class_names=class_names)
+    return _train_one_epoch(
+        model, dataloader, optimizer, criterion, device,
+        scheduler=scheduler, accumulation_steps=accumulation_steps,
+        compute_loss_fn=_loss, use_amp=True,
+    )
+
+
 def _partition_model_params(model) -> Tuple[List, List]:
     """Split the shared-backbone model into head vs backbone parameters.
 
@@ -146,104 +153,6 @@ def _partition_model_params(model) -> Tuple[List, List]:
         else:
             backbone_params.append(param)
     return backbone_params, head_params
-
-
-def stratified_split(
-    dataset,
-    val_ratio: float = 0.2,
-    seed: int = 42,
-) -> Tuple[List[int], List[int]]:
-    """Stratified split by the first positive class.
-
-    Uses ``dataset.label_vectors`` when available (cheap: reads label files
-    only) instead of materialising samples via ``__getitem__``.
-    """
-    rng = np.random.RandomState(seed)
-    label_vectors = getattr(dataset, 'label_vectors', None)
-    labels = []
-    if label_vectors is not None:
-        for label_vec in label_vectors:
-            label_vec = np.asarray(label_vec)
-            positives = np.where(label_vec > 0)[0]
-            labels.append(int(positives[0]) if len(positives) > 0 else -1)
-    else:
-        for i in range(len(dataset)):
-            _, label_vec = dataset[i]
-            label_vec = np.asarray(label_vec)
-            positives = np.where(label_vec > 0)[0]
-            labels.append(int(positives[0]) if len(positives) > 0 else -1)
-
-    groups = {}
-    for idx, label in enumerate(labels):
-        groups.setdefault(label, []).append(idx)
-    train_idx: list = []
-    val_idx: list = []
-    for label, indices in sorted(groups.items()):
-        indices = list(indices)
-        rng.shuffle(indices)
-        n_val = max(1, int(len(indices) * val_ratio))
-        val_idx.extend(indices[:n_val])
-        train_idx.extend(indices[n_val:])
-    rng.shuffle(train_idx)
-    rng.shuffle(val_idx)
-    return train_idx, val_idx
-
-
-class SubsetDataset:
-    """Wrapper that exposes a subset of a dataset by index list."""
-
-    def __init__(self, dataset, indices: List[int]):
-        self.dataset = dataset
-        self.indices = indices
-
-    def __len__(self):
-        return len(self.indices)
-
-    def __getitem__(self, idx):
-        return self.dataset[self.indices[idx]]
-
-
-def train_one_epoch(model, dataloader, optimizer, scheduler, criterion, device, accumulation_steps=1, class_names=None):
-    """Train for one epoch. Returns average loss."""
-    import warnings
-    import torch
-    from tqdm import tqdm
-
-    warnings.filterwarnings("ignore", "Detected call of.*lr_scheduler.step.*before.*optimizer.step")
-
-    use_amp = device.type == "cuda"
-    model.model.train()
-    total_loss = 0.0
-    num_batches = 0
-    optimizer.zero_grad()
-
-    for i, (audio, labels) in enumerate(tqdm(dataloader, desc="  Train", leave=False)):
-        audio = audio.to(device)
-
-        with torch.amp.autocast("cuda", enabled=use_amp):
-            logits = model.forward(audio)
-            loss = multitask_loss(logits, labels, criterion, device,
-                                  class_names=class_names)
-            loss = loss / accumulation_steps
-
-        loss.backward()
-
-        if (i + 1) % accumulation_steps == 0:
-            optimizer.step()
-            optimizer.zero_grad()
-            if scheduler is not None:
-                scheduler.step()
-
-        total_loss += loss.item() * accumulation_steps
-        num_batches += 1
-
-    if num_batches % accumulation_steps != 0:
-        optimizer.step()
-        optimizer.zero_grad()
-        if scheduler is not None:
-            scheduler.step()
-
-    return total_loss / max(num_batches, 1)
 
 
 def evaluate_multitask(model, dataloader, device, class_names=None) -> Tuple[float, float, float]:
@@ -364,7 +273,7 @@ def train(args) -> Dict:
         )
     dataset = ClassificationDataset(
         data_dir=args.data_dir,
-        sr=16000,
+        sr=SAMPLE_RATE,
         max_length_seconds=args.max_length_seconds,
         cache_dir=cache_dir,
     )
@@ -420,14 +329,9 @@ def train(args) -> Dict:
         hidden_dim=args.hidden_dim,
         class_names=args.class_names,
     )
+    from model.training.utils import maybe_compile
     model.model.to(device)
-    if device.type == "cuda":
-        import warnings
-        warnings.filterwarnings("ignore", category=UserWarning, module="torch")
-        import logging
-        logging.getLogger("torch._dynamo").setLevel(logging.ERROR)
-        torch._dynamo.config.suppress_errors = True
-        model._model = torch.compile(model._model)
+    maybe_compile(model, device)
     total_params = sum(p.numel() for p in model.model.parameters())
     print(f"  Total parameters: {total_params:,}")
 
@@ -527,7 +431,13 @@ def train(args) -> Dict:
             backbone_frozen = False
             print(f"  >>> Backbone UNFROZEN at epoch {epoch} (head LR={args.lr:.2e}, backbone LR={args.lr*0.1:.2e})")
 
-        train_loss = train_one_epoch(model, train_loader, optimizer, scheduler, criterion, device, args.gradient_accumulation_steps)
+        train_loss = _train_one_epoch(
+            model, train_loader, optimizer, criterion, device,
+            scheduler=scheduler,
+            accumulation_steps=args.gradient_accumulation_steps,
+            compute_loss_fn=_multitask_loss,
+            use_amp=True,
+        )
         current_lr = optimizer.param_groups[0]["lr"]
 
         val_acc, macro_f1, val_loss = evaluate_multitask(model, val_loader, device)

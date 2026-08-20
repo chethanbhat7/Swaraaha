@@ -78,7 +78,8 @@ def test_analyze_includes_combined(monkeypatch):
             return {"text": "hi", "words": [], "duration_sec": 0.5}
 
     monkeypatch.setattr("model.registry.MultiTaskClassifier", _FakeMultiTask)
-    monkeypatch.setattr("model.registry.Localizer", lambda *a, **k: _FakeLocalizer())
+    monkeypatch.setattr("model.registry.MultiTaskRunner", _FakeMultiTask)
+    monkeypatch.setattr("model.registry.LocalizerRunner", lambda *a, **k: _FakeLocalizer())
     runner = ModelRunner()
     runner.transcriber = _FakeTranscriber()
 
@@ -108,7 +109,8 @@ def test_analyze_combined_degrades_on_saliency_error(monkeypatch):
             return {"text": "hi", "words": [], "duration_sec": 0.5}
 
     monkeypatch.setattr("model.registry.MultiTaskClassifier", _FailingMultiTask)
-    monkeypatch.setattr("model.registry.Localizer", lambda *a, **k: _FakeLocalizer())
+    monkeypatch.setattr("model.registry.MultiTaskRunner", _FailingMultiTask)
+    monkeypatch.setattr("model.registry.LocalizerRunner", lambda *a, **k: _FakeLocalizer())
     runner = ModelRunner()
     runner.transcriber = _FakeTranscriber()
 

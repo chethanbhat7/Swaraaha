@@ -11,9 +11,7 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 
-from model.config.defaults import DYSFLUENCY_CLASSES
-
-FRAME_DURATION = 320 / 16000
+from model.config.defaults import DYSFLUENCY_CLASSES, FRAME_DURATION
 
 
 def _frames_for_region(region: Dict[str, Any], frame_duration: float, n_frames: int):

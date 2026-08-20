@@ -1,9 +1,20 @@
 # Swaraaha - Default Hyperparameters and Constants
 
+from __future__ import annotations
+
+from typing import Union
+
 # Audio
 SAMPLE_RATE = 16000
 AUDIO_DURATION_SECONDS = 3
 MAX_AUDIO_LENGTH = SAMPLE_RATE * AUDIO_DURATION_SECONDS  # 160000 samples
+
+# Wav2Vec2 frame constants
+FRAME_SAMPLES = 320  # wav2vec2 conv subsampling factor
+FRAME_DURATION = FRAME_SAMPLES / SAMPLE_RATE  # 0.02 s per frame
+
+# Type alias for audio input (file path, raw bytes, or numpy array)
+AudioInput = Union[str, bytes, "np.ndarray"]  # noqa: F821
 
 # Model
 WAV2VEC2_BASE = "facebook/wav2vec2-base"

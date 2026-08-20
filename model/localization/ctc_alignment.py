@@ -20,6 +20,7 @@ from typing import List, Optional, Tuple
 import numpy as np
 import torch
 
+from model.config.defaults import SAMPLE_RATE
 from model.localization.language_adapter import WordTimestamp
 
 
@@ -64,7 +65,7 @@ class CTCTimeAligner:
         self,
         audio: np.ndarray,
         text: str,
-        sr: int = 16000,
+        sr: int = SAMPLE_RATE,
         max_length_seconds: float = 3.0,
     ) -> List[WordTimestamp]:
         """
@@ -200,7 +201,7 @@ class CTCTimeAligner:
         audio: np.ndarray,
         text: str,
         language_code: str = "en",
-        sr: int = 16000,
+        sr: int = SAMPLE_RATE,
     ) -> List:
         """
         Align text and produce syllable-level timestamps.
@@ -234,7 +235,7 @@ class SimpleForcedAligner:
     def align(
         audio: np.ndarray,
         text: str,
-        sr: int = 16000,
+        sr: int = SAMPLE_RATE,
         max_length_seconds: float = 3.0,
     ) -> List[WordTimestamp]:
         """
@@ -279,12 +280,12 @@ if __name__ == "__main__":
     # Test simple aligner
     audio = np.random.randn(160000).astype(np.float32)
     aligner = SimpleForcedAligner()
-    timestamps = aligner.align(audio, "hello world this is a test", sr=16000)
+    timestamps = aligner.align(audio, "hello world this is a test", sr=SAMPLE_RATE)
     for wt in timestamps:
         print(f"  {wt.word}: {wt.start_sec:.2f}-{wt.end_sec:.2f} (conf={wt.confidence:.2f})")
 
     # Test empty text
-    empty = aligner.align(audio, "", sr=16000)
+    empty = aligner.align(audio, "", sr=SAMPLE_RATE)
     assert len(empty) == 0
 
     print("=== Self test passed ===")

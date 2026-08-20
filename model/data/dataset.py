@@ -31,7 +31,7 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 from torch.utils.data import Dataset
 
-from model.config.defaults import DYSFLUENCY_CLASSES
+from model.config.defaults import DYSFLUENCY_CLASSES, SAMPLE_RATE
 
 NUM_CLASSES = len(DYSFLUENCY_CLASSES)
 CLASS_TO_IDX = {cls: i for i, cls in enumerate(DYSFLUENCY_CLASSES)}
@@ -65,7 +65,7 @@ def load_label_csv(csv_path: str) -> List[Tuple[float, float, str]]:
 def intervals_to_frame_mask(
     intervals: List[Tuple[float, float]],
     num_frames: int,
-    sr: int = 16000,
+    sr: int = SAMPLE_RATE,
     hop_length: int = 512,
 ) -> np.ndarray:
     """
@@ -102,6 +102,50 @@ def _load_source_map(data_dir):
             if clip_id and source:
                 source_map[clip_id] = source
     return source_map
+
+
+def _scan_samples(audio_dir, labels_dir, sources=None, source_map=None):
+    """Scan data directory and build a list of available samples.
+
+    Shared by all dataset classes to avoid duplication.
+
+    Args:
+        audio_dir: Path to audio/ subdirectory.
+        labels_dir: Path to labels/ subdirectory.
+        sources: Optional set of allowed source names.
+        source_map: Optional clip_id → source mapping.
+
+    Returns:
+        List of sample dicts with clip_id, audio_path, label_path.
+    """
+    samples = []
+    if not os.path.isdir(audio_dir):
+        return samples
+
+    for fname in sorted(os.listdir(audio_dir)):
+        if not fname.endswith((".wav", ".flac", ".mp3")):
+            continue
+        clip_id = os.path.splitext(fname)[0]
+        audio_path = os.path.join(audio_dir, fname)
+        label_path = os.path.join(labels_dir, f"{clip_id}.csv")
+
+        if not os.path.isfile(label_path):
+            continue
+
+        if os.path.getsize(audio_path) <= 44:
+            continue
+
+        if sources is not None and source_map:
+            if source_map.get(clip_id) not in sources:
+                continue
+
+        samples.append({
+            "clip_id": clip_id,
+            "audio_path": audio_path,
+            "label_path": label_path,
+        })
+
+    return samples
 
 
 class _PickleCacheMixin:
@@ -229,7 +273,7 @@ class LocalizationDataset(_PickleCacheMixin):
     def __init__(
         self,
         data_dir: str,
-        sr: int = 16000,
+        sr: int = SAMPLE_RATE,
         n_mels: int = 128,
         hop_length: int = 512,
         max_length_seconds: float = 3.0,
@@ -268,37 +312,7 @@ class LocalizationDataset(_PickleCacheMixin):
         return _load_source_map(self.data_dir)
 
     def _scan_samples(self) -> List[Dict]:
-        """Scan the data directory and build a list of available samples."""
-        samples = []
-        if not os.path.isdir(self.audio_dir):
-            return samples
-
-        for fname in sorted(os.listdir(self.audio_dir)):
-            if not fname.endswith((".wav", ".flac", ".mp3")):
-                continue
-            clip_id = os.path.splitext(fname)[0]
-            audio_path = os.path.join(self.audio_dir, fname)
-            label_path = os.path.join(self.labels_dir, f"{clip_id}.csv")
-
-            if not os.path.isfile(label_path):
-                continue  # skip clips without labels
-
-            # Skip header-only WAV files (no audio data)
-            if os.path.getsize(audio_path) <= 44:
-                continue
-
-            # Apply source filter if configured
-            if self.sources is not None and self._source_map:
-                if self._source_map.get(clip_id) not in self.sources:
-                    continue
-
-            samples.append({
-                "clip_id": clip_id,
-                "audio_path": audio_path,
-                "label_path": label_path,
-            })
-
-        return samples
+        return _scan_samples(self.audio_dir, self.labels_dir, self.sources, self._source_map)
 
     def __len__(self) -> int:
         return len(self.samples)
@@ -401,7 +415,7 @@ class ClassificationDataset(_PickleCacheMixin):
         (same as localization — we aggregate to multi-label here)
     """
 
-    def __init__(self, data_dir, sr=16000, max_length_seconds=3.0, cache_dir=None,
+    def __init__(self, data_dir, sr=SAMPLE_RATE, max_length_seconds=3.0, cache_dir=None,
                  sources=None):
         self.data_dir = data_dir
         self.sr = sr
@@ -415,35 +429,7 @@ class ClassificationDataset(_PickleCacheMixin):
         self.samples = self._scan_samples()
 
     def _scan_samples(self) -> List[Dict]:
-        samples = []
-        if not os.path.isdir(self.audio_dir):
-            return samples
-
-        for fname in sorted(os.listdir(self.audio_dir)):
-            if not fname.endswith((".wav", ".flac", ".mp3")):
-                continue
-            clip_id = os.path.splitext(fname)[0]
-            audio_path = os.path.join(self.audio_dir, fname)
-            label_path = os.path.join(self.labels_dir, f"{clip_id}.csv")
-
-            if not os.path.isfile(label_path):
-                continue
-
-            # Skip header-only WAV files (no audio data)
-            if os.path.getsize(audio_path) <= 44:
-                continue
-
-            if self.sources is not None and self._source_map:
-                if self._source_map.get(clip_id) not in self.sources:
-                    continue
-
-            samples.append({
-                "clip_id": clip_id,
-                "audio_path": audio_path,
-                "label_path": label_path,
-            })
-
-        return samples
+        return _scan_samples(self.audio_dir, self.labels_dir, self.sources, self._source_map)
 
     def __len__(self) -> int:
         return len(self.samples)
@@ -516,7 +502,7 @@ class SpectrogramClassificationDataset(_PickleCacheMixin, Dataset):
     same pickle cache for preprocessed spectrograms.
     """
 
-    def __init__(self, data_dir, sr=16000, n_mels=128, hop_length=512,
+    def __init__(self, data_dir, sr=SAMPLE_RATE, n_mels=128, hop_length=512,
                  max_length_seconds=3.0, sources=None, cache_dir=None, n_fft=2048):
         self.data_dir = data_dir
         self.sr = sr
@@ -534,25 +520,7 @@ class SpectrogramClassificationDataset(_PickleCacheMixin, Dataset):
     def _scan_samples(self):
         audio_dir = os.path.join(self.data_dir, 'audio')
         labels_dir = os.path.join(self.data_dir, 'labels')
-        if not os.path.isdir(audio_dir):
-            return []
-        samples = []
-        for fname in sorted(os.listdir(audio_dir)):
-            if not fname.endswith(('.wav', '.flac', '.mp3')):
-                continue
-            clip_id = os.path.splitext(fname)[0]
-            label_path = os.path.join(labels_dir, f'{clip_id}.csv')
-            if not os.path.exists(label_path):
-                continue
-            audio_path = os.path.join(audio_dir, fname)
-            if os.path.getsize(audio_path) <= 44:
-                continue
-            if self.sources is not None and self._source_map:
-                if self._source_map.get(clip_id) not in self.sources:
-                    continue
-            samples.append({'clip_id': clip_id, 'audio_path': audio_path,
-                            'label_path': label_path})
-        return samples
+        return _scan_samples(audio_dir, labels_dir, self.sources, self._source_map)
 
     @property
     def label_vectors(self):

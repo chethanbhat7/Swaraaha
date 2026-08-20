@@ -70,8 +70,8 @@ def test_saliency_fallback_returns_well_formed(monkeypatch):
             arr[0, 50:90, 2] = 0.99
             return arr
 
-    monkeypatch.setattr(reg, "Localizer", lambda *a, **kw: FakeLocalizer())
-    monkeypatch.setattr(reg, "MultiTaskClassifier", lambda: FakeMultiTask())
+    monkeypatch.setattr(reg, "LocalizerRunner", lambda *a, **kw: FakeLocalizer())
+    monkeypatch.setattr(reg, "MultiTaskRunner", lambda: FakeMultiTask())
 
     audio_bytes = _make_silence_wav()
     result = reg.localize_audio_bytes(audio_bytes)
@@ -93,8 +93,8 @@ def test_saliency_fallback_handles_failure(monkeypatch):
         def saliency(self, audio):
             raise RuntimeError("boom")
 
-    monkeypatch.setattr(reg, "Localizer", lambda *a, **kw: BrokenLocalizer())
-    monkeypatch.setattr(reg, "MultiTaskClassifier", lambda: BrokenMultiTask())
+    monkeypatch.setattr(reg, "LocalizerRunner", lambda *a, **kw: BrokenLocalizer())
+    monkeypatch.setattr(reg, "MultiTaskRunner", lambda: BrokenMultiTask())
 
     audio_bytes = _make_silence_wav()
     result = reg.localize_audio_bytes(audio_bytes)
