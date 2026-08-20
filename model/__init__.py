@@ -160,6 +160,90 @@ def analyze(
     return results
 
 
+def classify(
+    audio: Any,
+    *,
+    classify_threshold: Optional[float] = None,
+) -> Dict[str, Any]:
+    """Run classification only.
+
+    Args:
+        audio: File path, raw bytes, or 1-D numpy array.
+        classify_threshold: Override per-class classification thresholds.
+
+    Returns::
+
+        {class_name: {label, confidence, ...}, summary: {...}}
+    """
+    _ensure_init()
+    if _classifier is None:
+        return {"error": "no classifier loaded"}
+    try:
+        kwargs: Dict[str, Any] = {}
+        if classify_threshold is not None:
+            kwargs["threshold"] = classify_threshold
+        return _classifier.analyze(audio, **kwargs)
+    except Exception as exc:
+        return {"error": str(exc)}
+
+
+def localize(
+    audio: Any,
+    *,
+    language: str = "english",
+    text: Optional[str] = None,
+    localize_threshold: float = 0.3,
+) -> Dict[str, Any]:
+    """Run localization only (dysfluency region detection).
+
+    Args:
+        audio: File path, raw bytes, or 1-D numpy array.
+        language: Whisper language name (english / kannada / hindi).
+        text: Optional transcript for word/syllable-level alignment.
+        localize_threshold: Detection threshold for the localizer.
+
+    Returns::
+
+        {regions: [...], [words], [syllables]}
+    """
+    _ensure_init()
+    if _localizer is None:
+        return {"error": "no localizer loaded"}
+    try:
+        loc_kwargs: Dict[str, Any] = {"threshold": localize_threshold}
+        if text is not None:
+            loc_kwargs["text"] = text
+            loc_kwargs["language"] = _whisper_iso(language)
+        return _localizer.analyze(audio, **loc_kwargs)
+    except Exception as exc:
+        return {"error": str(exc)}
+
+
+def fuse(
+    audio: Any,
+    regions: list,
+    *,
+    syllables: Optional[list] = None,
+) -> Dict[str, Any]:
+    """Fuse localizer regions with classifier saliency into combined output.
+
+    Args:
+        audio: File path, raw bytes, or 1-D numpy array.
+        regions: Localizer regions (list of dicts with start/end/confidence).
+        syllables: Optional syllable-level data from localizer.
+
+    Returns::
+
+        {regions: [...], audio_duration, total_stutters}
+    """
+    _ensure_init()
+    if _classifier is None:
+        return {"error": "no classifier loaded"}
+    results: Dict[str, Any] = {}
+    _fuse_combined(results, audio, regions, syllables)
+    return results.get("combined", {"error": "fusion failed"})
+
+
 def status() -> Dict[str, bool]:
     """Check which models are loaded."""
     _ensure_init()
@@ -286,5 +370,8 @@ def _whisper_iso(language: str) -> str:
 __all__ = [
     "init",
     "analyze",
+    "classify",
+    "localize",
+    "fuse",
     "status",
 ]

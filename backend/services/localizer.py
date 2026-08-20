@@ -1,11 +1,11 @@
 """Service layer for the localization pipeline.
 
-Uses the easy-mode model API (model.analyze).
+Uses the targeted model.localize() API.
 """
 
-from model import analyze as _analyze
+from model import localize as _localize
 
 
-def localize_audio_bytes(audio_bytes: bytes) -> dict:
+def localize_audio_bytes(audio_bytes: bytes, language: str = "english") -> dict:
     """Localize dysfluency regions from raw audio bytes."""
-    return _analyze(audio_bytes).get("localization", {})
+    return _localize(audio_bytes, language=language)

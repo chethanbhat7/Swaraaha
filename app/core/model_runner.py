@@ -9,7 +9,6 @@ import logging
 
 import numpy as np
 
-from app.core.transcription import AudioTranscriber
 from model import analyze as model_analyze
 
 logger = logging.getLogger(__name__)
@@ -28,17 +27,11 @@ def _audio_to_bytes(audio: np.ndarray) -> bytes:
 class ModelRunner:
     def __init__(self, models_dir: str = ""):
         self.models_dir = models_dir
-        self.transcriber = AudioTranscriber()
-
-    def transcribe(self, audio: np.ndarray, localizations=None, language: str = "english") -> dict:
-        """Run transcription pipeline on audio."""
-        return self.transcriber.transcribe(audio, localizations=localizations, language=language)
 
     def analyze(self, audio: np.ndarray, language: str = "english") -> dict:
         """Run classification + localization + transcription on audio. Returns structured results."""
         results = model_analyze(_audio_to_bytes(audio), language=language)
 
-        # Convert to app-friendly format
         classifications = {}
         cls = results.get("classification", {})
         if isinstance(cls, dict) and "error" not in cls:
@@ -54,15 +47,9 @@ class ModelRunner:
                 for r in loc.get("regions", [])
             ]
 
-        transcription = results.get("transcription", {})
-        if isinstance(transcription, dict) and "error" in transcription:
-            transcription = self.transcribe(audio, localizations=localizations, language=language)
-
-        combined = results.get("combined", {})
-
         return {
             "classifications": classifications,
             "localizations": localizations,
-            "transcription": transcription,
-            "combined": combined,
+            "transcription": results.get("transcription", {}),
+            "combined": results.get("combined", {}),
         }
