@@ -3,28 +3,26 @@ import numpy as np
 from app.ui.transcription_worker import TranscriptionWorker
 
 
-class _FakeTranscriber:
-    def transcribe(self, audio, language="english"):
-        return {"text": "hello", "words": [], "language": language}
-
-
-def test_transcription_worker_emits_data(qapp):
+def test_transcription_worker_emits_data(qapp, monkeypatch):
+    monkeypatch.setattr(
+        "app.ui.transcription_worker.model_transcribe",
+        lambda audio, language="english", **kw: {"text": "hello", "words": [], "language": language},
+    )
     results = []
-    worker = TranscriptionWorker(_FakeTranscriber(), np.zeros(1600, dtype=np.float32), "kannada")
+    worker = TranscriptionWorker(np.zeros(1600, dtype=np.float32), "kannada")
     worker.finished.connect(results.append)
     worker.run()
     assert results[0]["text"] == "hello"
     assert results[0]["language"] == "kannada"
 
 
-class _RaisingTranscriber:
-    def transcribe(self, audio, language="english"):
+def test_transcription_worker_emits_error(qapp, monkeypatch):
+    def _raise(audio, language="english", **kw):
         raise RuntimeError("boom")
 
-
-def test_transcription_worker_emits_error(qapp):
+    monkeypatch.setattr("app.ui.transcription_worker.model_transcribe", _raise)
     results = []
-    worker = TranscriptionWorker(_RaisingTranscriber(), np.zeros(1600, dtype=np.float32))
+    worker = TranscriptionWorker(np.zeros(1600, dtype=np.float32))
     worker.finished.connect(results.append)
     worker.run()
     assert results[0]["error"] == "boom"

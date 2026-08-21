@@ -134,10 +134,10 @@ def test_stale_analysis_signal_does_not_clear_current_worker(qapp, app_name):
     assert win._stack.currentIndex() == 0
 
 
-def test_start_home_transcription_populates_transcript(qapp, app_name):
+def test_start_home_transcription_populates_transcript(qapp, app_name, monkeypatch):
     win = MainWindow()
 
-    def fake_transcribe(audio, sample_rate=16000, localizations=None, passage_text=None, language="english"):
+    def fake_transcribe(audio, language="english", **kw):
         return {
             "text": "hello world",
             "words": [
@@ -148,7 +148,7 @@ def test_start_home_transcription_populates_transcript(qapp, app_name):
             ],
         }
 
-    win._model_runner.transcriber.transcribe = fake_transcribe
+    monkeypatch.setattr("app.ui.transcription_worker.model_transcribe", fake_transcribe)
     win._start_home_transcription(np.zeros(1600, dtype=np.float32), "english")
 
     assert win._wait_dialog is not None
@@ -161,13 +161,13 @@ def test_start_home_transcription_populates_transcript(qapp, app_name):
     assert panel._text_edit.toPlainText() == "hello world"
 
 
-def test_home_transcription_error_is_handled(qapp, app_name):
+def test_home_transcription_error_is_handled(qapp, app_name, monkeypatch):
     win = MainWindow()
 
     def _raise(*args, **kwargs):
         raise RuntimeError("boom")
 
-    win._model_runner.transcriber.transcribe = _raise
+    monkeypatch.setattr("app.ui.transcription_worker.model_transcribe", _raise)
     win._start_home_transcription(np.zeros(1600, dtype=np.float32), "english")
     win._transcription_worker.wait(5000)
     qapp.processEvents()
@@ -176,11 +176,11 @@ def test_home_transcription_error_is_handled(qapp, app_name):
     assert "Transcription failed" in win.statusBar().currentMessage()
 
 
-def test_reload_dismisses_previous_wait_dialog_and_discards_stale_result(qapp, app_name):
+def test_reload_dismisses_previous_wait_dialog_and_discards_stale_result(qapp, app_name, monkeypatch):
     win = MainWindow()
     release_first = threading.Event()
 
-    def fake_transcribe(audio, sample_rate=16000, localizations=None, passage_text=None, language="english"):
+    def fake_transcribe(audio, language="english", **kw):
         if len(audio) == 1600:
             release_first.wait(5)
             return {
@@ -198,7 +198,7 @@ def test_reload_dismisses_previous_wait_dialog_and_discards_stale_result(qapp, a
             ],
         }
 
-    win._model_runner.transcriber.transcribe = fake_transcribe
+    monkeypatch.setattr("app.ui.transcription_worker.model_transcribe", fake_transcribe)
 
     win._start_home_transcription(np.zeros(1600, dtype=np.float32), "english")
     first_dialog = win._wait_dialog

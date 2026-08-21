@@ -14,7 +14,6 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from app.core.transcription import AudioTranscriber
 from app.ui.theme import COLORS
 
 
@@ -27,7 +26,6 @@ class TranscriptionPanel(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._transcriber = AudioTranscriber()
         self._audio = None
         self._transcription_data = {"text": "", "words": []}
         self._language = "english"
@@ -102,8 +100,12 @@ class TranscriptionPanel(QWidget):
             self._status_label.setText("No audio available")
             return
 
+        from model import transcribe as model_transcribe
+
         self._status_label.setText("Transcribing...")
-        data = self._transcriber.transcribe(self._audio, localizations=localizations, language=self._language)
+        data = model_transcribe(
+            self._audio, language=self._language, localizations=localizations,
+        )
         self.set_transcription(data)
         self._status_label.setText("Transcription Complete")
 

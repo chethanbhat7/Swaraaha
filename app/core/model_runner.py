@@ -14,25 +14,13 @@ from model import analyze as model_analyze
 logger = logging.getLogger(__name__)
 
 
-def _audio_to_bytes(audio: np.ndarray) -> bytes:
-    """Convert a numpy audio array to WAV bytes for the model API."""
-    import io
-    import soundfile as sf
-
-    buf = io.BytesIO()
-    sf.write(buf, audio, 16000, format="WAV")
-    return buf.getvalue()
-
-
 class ModelRunner:
     def __init__(self, models_dir: str = ""):
         self.models_dir = models_dir
-        from app.core.transcription import AudioTranscriber
-        self.transcriber = AudioTranscriber()
 
     def analyze(self, audio: np.ndarray, language: str = "english") -> dict:
         """Run classification + localization + transcription on audio. Returns structured results."""
-        results = model_analyze(_audio_to_bytes(audio), language=language)
+        results = model_analyze(audio, language=language)
 
         classifications = {}
         cls = results.get("classification", {})
