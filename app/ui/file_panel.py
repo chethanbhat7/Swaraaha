@@ -23,8 +23,10 @@ from app.core.recent_files import (
 )
 from app.ui.theme import COLORS
 
-AUDIO_FILTERS = ["*.wav", "*.mp3", "*.flac"]
-AUDIO_EXTENSIONS = {".wav", ".mp3", ".flac"}
+from model import SUPPORTED_AUDIO_EXTENSIONS, SUPPORTED_AUDIO_GLOBS, SUPPORTED_AUDIO_DESCRIPTION
+
+AUDIO_EXTENSIONS = SUPPORTED_AUDIO_EXTENSIONS
+AUDIO_FILTERS = SUPPORTED_AUDIO_GLOBS
 
 
 class FilePanel(QWidget):
@@ -114,7 +116,7 @@ class FilePanel(QWidget):
 
     def _on_browse(self):
         path, _ = QFileDialog.getOpenFileName(
-            self, "Load Audio", "", "Audio Files (*.wav *.mp3 *.flac);;All Files (*)"
+            self, "Load Audio", "", f"{SUPPORTED_AUDIO_DESCRIPTION};;All Files (*)"
         )
         if path:
             self.add_recent(path)

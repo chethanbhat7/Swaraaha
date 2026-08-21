@@ -232,10 +232,10 @@ export default function UploadPage({
 
   const processSelectedFile = (selectedFile: File) => {
     // Validate format
-    const validExtensions = ['.wav', '.mp3', '.flac', '.m4a']
+    const validExtensions = ['.wav', '.mp3', '.flac', '.m4a', '.ogg', '.wma']
     const hasValidExt = validExtensions.some(ext => selectedFile.name.toLowerCase().endsWith(ext))
     if (!hasValidExt) {
-      setErrorMsg("Unsupported file format. Please upload WAV, MP3, FLAC, or M4A.")
+      setErrorMsg("Unsupported file format. Please upload WAV, MP3, FLAC, M4A, OGG, or WMA.")
       return
     }
     setErrorMsg(null)
@@ -533,7 +533,7 @@ export default function UploadPage({
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept=".wav,.mp3,.flac,.m4a"
+                    accept=".wav,.mp3,.flac,.m4a,.ogg,.wma"
                     className="hidden"
                     onChange={handleFileChange}
                   />
@@ -551,7 +551,7 @@ export default function UploadPage({
                     Choose Audio File
                   </button>
                   <div className="flex gap-4 text-[9px] text-text-secondary pt-2 border-t border-border-color/50 w-full max-w-[280px] justify-center">
-                    <span>Supports: WAV, MP3, FLAC, M4A</span>
+                    <span>Supports: WAV, MP3, FLAC, M4A, OGG, WMA</span>
                     <span>Max Size: 200 MB</span>
                   </div>
                 </div>

@@ -68,8 +68,8 @@ def test_filter_hides_non_audio(qapp, tmp_path):
     _touch(txt)
     panel = FilePanel(settings=FakeSettings())
     panel.set_current_dir(str(tmp_path))
-    assert panel._fs_model.nameFilters() == ["*.wav", "*.mp3", "*.flac"]
-    assert AUDIO_EXTENSIONS == {".wav", ".mp3", ".flac"}
+    assert panel._fs_model.nameFilters() == ["*.wav", "*.mp3", "*.flac", "*.m4a", "*.ogg", "*.wma"]
+    assert AUDIO_EXTENSIONS == (".wav", ".mp3", ".flac", ".m4a", ".ogg", ".wma")
 
 
 def test_initial_state_shows_no_directory(qapp, tmp_path):

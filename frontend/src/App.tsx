@@ -468,7 +468,7 @@ function MainAppShell() {
               </div>
               <div>
                 <h4 className="font-bold text-text-primary mb-1">How long does analysis take?</h4>
-                <p>Typically between 2 to 10 seconds, depending on the recording duration and analysis options selected.</p>
+                <p>Typically a few seconds depending on the recording duration and analysis options selected.</p>
               </div>
             </div>
           </div>
