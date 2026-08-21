@@ -1,4 +1,6 @@
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api'
+import { resolveApiBase } from './apiBase'
+
+const API_BASE = resolveApiBase(import.meta.env.VITE_API_BASE_URL)
 
 async function parseOrThrow(res: Response) {
   if (!res.ok) {
