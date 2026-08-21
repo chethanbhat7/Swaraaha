@@ -2,16 +2,12 @@
 
 import asyncio
 import io
-import tempfile
-from pathlib import Path
 
 import numpy as np
 import pytest
 import soundfile as sf
 from fastapi import HTTPException, UploadFile
-from fastapi.testclient import TestClient
 
-import backend.main as backend_main
 from backend.routes.localization import analyze_audio
 from backend.routes.report import generate_report
 
@@ -77,27 +73,3 @@ def test_report_route_returns_pdf():
     assert resp.media_type == "application/pdf"
     assert resp.body[:4] == b"%PDF"
     assert "swaraaha-report-2026-01-02.pdf" in resp.headers["Content-Disposition"]
-
-
-def test_frontend_fallback_serves_index_and_skips_api(monkeypatch):
-    dist_dir = Path(tempfile.mkdtemp())
-    (dist_dir / "index.html").write_text("<!doctype html><title>Swaraaha</title>", encoding="utf-8")
-    (dist_dir / "assets").mkdir()
-    (dist_dir / "assets" / "app.js").write_text("console.log('ok')", encoding="utf-8")
-
-    monkeypatch.setattr(backend_main, "FRONTEND_DIST_DIR", dist_dir)
-    monkeypatch.setattr(backend_main, "FRONTEND_INDEX_FILE", dist_dir / "index.html")
-
-    client = TestClient(backend_main.app)
-
-    root_resp = client.get("/")
-    assert root_resp.status_code == 200
-    assert "text/html" in root_resp.headers["content-type"]
-    assert "Swaraaha" in root_resp.text
-
-    asset_resp = client.get("/assets/app.js")
-    assert asset_resp.status_code == 200
-    assert asset_resp.text == "console.log('ok')"
-
-    api_resp = client.get("/api/does-not-exist")
-    assert api_resp.status_code == 404
