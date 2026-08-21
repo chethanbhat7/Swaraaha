@@ -15,7 +15,8 @@ RUN pip install --no-cache-dir --upgrade pip && \
 COPY model/ ./model/
 COPY backend/ ./backend/
 COPY shared/ ./shared/
+COPY start.sh ./start.sh
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["./start.sh"]
