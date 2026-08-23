@@ -1,0 +1,16 @@
+# Whitelist build context for deploy/Dockerfile.
+# This file REPLACES root .dockerignore when building with -f deploy/Dockerfile.
+*
+!model
+!backend
+!shared
+!deploy
+
+# Junk inside whitelisted trees
+**/__pycache__
+**/*.pyc
+**/.DS_Store
+.env
+.env.*
+model/evaluation/reports/
+model/data/debug/
