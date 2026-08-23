@@ -23,7 +23,7 @@ from app.ui.theme import is_dark_mode, set_theme
 from app.ui.transcription_worker import TranscriptionWorker
 from app.ui.wait_dialog import WaitDialog
 
-_AUDIO_EXTENSIONS = {".wav", ".mp3", ".flac"}
+from model import SUPPORTED_AUDIO_EXTENSIONS, SUPPORTED_AUDIO_DESCRIPTION
 
 
 class AnalysisWorker(QThread):
@@ -133,7 +133,7 @@ class MainWindow(QMainWindow):
 
     def _on_load(self):
         path, _ = QFileDialog.getOpenFileName(
-            self, "Load Audio", "", "Audio Files (*.wav *.mp3 *.flac);;All Files (*)"
+            self, "Load Audio", "", f"{SUPPORTED_AUDIO_DESCRIPTION};;All Files (*)"
         )
         if path:
             self._current_language = self._prompt_language()
@@ -150,7 +150,7 @@ class MainWindow(QMainWindow):
         if self._wait_dialog is not None:
             self._wait_dialog.finish()
             self._wait_dialog = None
-        worker = TranscriptionWorker(self._model_runner.transcriber, audio, language)
+        worker = TranscriptionWorker(audio, language)
         self._transcription_worker = worker
         self._wait_dialog = WaitDialog(self)
         self._wait_dialog.show()
@@ -257,6 +257,6 @@ class MainWindow(QMainWindow):
         for url in mime.urls():
             if url.isLocalFile():
                 local = url.toLocalFile()
-                if os.path.splitext(local)[1].lower() in _AUDIO_EXTENSIONS:
+                if os.path.splitext(local)[1].lower() in SUPPORTED_AUDIO_EXTENSIONS:
                     return local
         return None

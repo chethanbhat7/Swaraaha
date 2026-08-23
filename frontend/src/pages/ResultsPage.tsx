@@ -3,7 +3,6 @@ import { useEffect, useState, useRef } from 'react'
 import { 
   ArrowLeft, 
   Volume2, 
-  CheckCircle2, 
   Activity,
   Play,
   Pause,
@@ -508,33 +507,31 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
     setIsLoading(true)
     setErrorMsg(null)
     setLoadingProgress(10)
-    setLoadingStep("Extracting speech features...")
+    setLoadingStep("Preparing audio...")
 
-    // Simulate progress updates periodically to look premium
-    const progressInterval = setInterval(() => {
-      setLoadingProgress((prev) => {
-        if (prev < 90) {
-          return prev + Math.floor(Math.random() * 5) + 2
-        }
-        return prev
-      })
-    }, 800)
+    // Advance steps while the request is in flight — no fake progress bar,
+    // just realistic labels that follow the actual lifecycle.
+    const steps = [
+      { text: "Classifying stuttering categories...", delay: 1500 },
+      { text: "Localizing speech regions...", delay: 3500 },
+      { text: "Transcribing speech...", delay: 6000 },
+    ]
+    const timers = steps.map(({ text, delay }) =>
+      setTimeout(() => setLoadingStep(text), delay)
+    )
 
     try {
       const genReport = sessionStorage.getItem('generate_report') === 'true'
       const lang = sessionStorage.getItem('transcription_language') || 'english'
 
-      // Step transitions based on timer
-      setTimeout(() => setLoadingStep("Classifying stuttering categories..."), 1500)
-      setTimeout(() => setLoadingStep("Localizing speech stutters..."), 3000)
-      setTimeout(() => setLoadingStep("Transcribing speech..."), 5000)
-      setTimeout(() => setLoadingStep("Generating clinical diagnostic report..."), 7000)
+      setLoadingStep("Analyzing speech...")
+      setLoadingProgress(30)
 
       const res = await analyzeAudio(file, lang)
 
-      clearInterval(progressInterval)
-      setLoadingProgress(100)
-      setLoadingStep("Analysis complete!")
+      timers.forEach(clearTimeout)
+      setLoadingProgress(90)
+      setLoadingStep("Generating report...")
 
       // Save to sessionStorage
       sessionStorage.setItem('results', JSON.stringify(res))
@@ -567,14 +564,16 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
         console.error("Failed to store audio in IndexedDB:", e)
       }
 
-      // Briefly wait at 100% to let progress bar feel complete
+      setLoadingProgress(100)
+      setLoadingStep("Analysis complete!")
+
       setTimeout(() => {
         setResults(res)
         setIsLoading(false)
-      }, 500)
+      }, 400)
 
     } catch (err) {
-      clearInterval(progressInterval)
+      timers.forEach(clearTimeout)
       console.error('Background analysis failed:', err)
       setErrorMsg("Failed to complete speech analysis. Please verify the backend is running.")
       setIsLoading(false)
@@ -632,7 +631,7 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
           <div className="space-y-2">
             <h2 className="text-lg font-bold tracking-tight">Speech Diagnostics In Progress</h2>
             <p className="text-xs text-text-secondary max-w-sm">
-              We are processing your recording. This typically takes between 2 to 10 seconds.
+              We are processing your recording. This typically takes a few seconds depending on the recording duration.
             </p>
           </div>
 
@@ -843,7 +842,7 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
               </span>
             </div>
             <p className="text-xs text-text-secondary">
-              Based on speech localization regions. The stuttering index represents the percentage of dysfluent speech duration.
+              Based on detected speech dysfluencies. The stuttering index represents the percentage of dysfluent speech duration.
             </p>
           </div>
         </div>
@@ -929,8 +928,8 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
             
             {regions.length === 0 ? (
               <div className="py-8 text-center text-xs text-text-secondary space-y-2">
-                <CheckCircle2 className="mx-auto text-emerald-500" size={24} />
-                <p>No stuttering events localized in timestamps.</p>
+                <Activity className="mx-auto text-text-secondary/50" size={24} />
+                <p>Localization data not available for this recording.</p>
               </div>
             ) : (
               <div className="space-y-2.5 max-h-[220px] overflow-y-auto pr-1">
@@ -967,65 +966,7 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
         </div>
       </div>
 
-      {/* DYSFLUENCY VISUAL TIMELINE MAPPING */}
-      {regions.length > 0 && (
-        <div className="p-6 bg-bg-card border border-border-color rounded-xl space-y-4 shadow-xs print:hidden" style={{ borderRadius: '16px' }}>
-          <div className="border-b border-border-color pb-2">
-            <h3 className="text-sm font-bold">Stuttering Occurrence Timeline</h3>
-            <p className="text-[10px] text-text-secondary">Visual representation of localized stutters throughout the recording.</p>
-          </div>
 
-          <div className="space-y-2 pt-2">
-            {/* Timeline scale track */}
-            <div className="relative h-6 bg-bg-sidebar border border-border-color rounded-lg overflow-hidden shadow-inner flex items-center">
-              
-              {/* Plot regions (coarse whole-clip regions first, precise on top) */}
-              {[...regions]
-                .sort((a, b) => a.confidence - b.confidence)
-                .map((r, i) => {
-                  const leftPercent = (r.start / durationSec) * 100
-                  const widthPercent = ((r.end - r.start) / durationSec) * 100
-                  const s = regionStyle(r.type ?? r.primary_type)
-                  
-                  return (
-                    <div 
-                      key={i}
-                      className="absolute h-full flex items-center justify-center text-[8px] font-bold select-none"
-                      style={{
-                        left: `${leftPercent}%`,
-                        width: `${widthPercent}%`,
-                        backgroundColor: r.coarse ? undefined : `${s.color}66`,
-                        backgroundImage: r.coarse
-                          ? `repeating-linear-gradient(45deg, ${s.color}55, ${s.color}55 4px, transparent 4px, transparent 8px)`
-                          : undefined,
-                        borderLeft: r.coarse ? `1px dashed ${s.color}` : `1px solid ${s.color}`,
-                        borderRight: r.coarse ? `1px dashed ${s.color}` : `1px solid ${s.color}`,
-                        color: s.color,
-                      }}
-                      title={`${s.label}${r.coarse ? ' (estimated)' : ''} at ${r.start.toFixed(2)}s - ${r.end.toFixed(2)}s`}
-                    >
-                      <span className="font-mono px-0.5 truncate max-w-full" style={{ backgroundColor: 'rgba(255,255,255,0.85)', borderRadius: '2px' }}>
-                        {r.end - r.start >= 0.8
-                          ? `${s.label} (${r.start.toFixed(1)}s)`
-                          : (r.end - r.start >= 0.4 ? `${r.start.toFixed(1)}s` : '!')}
-                      </span>
-                    </div>
-                  )
-                })}
-
-              {/* Central base line */}
-              <div className="w-full h-0.5 bg-border-color" />
-            </div>
-
-            {/* Time labels */}
-            <div className="flex justify-between text-[9px] font-mono text-text-secondary px-1">
-              <span>0.00s</span>
-              <span>{formatSecondsLabel(durationSec / 2)}</span>
-              <span>{formatSecondsLabel(durationSec)} (End)</span>
-            </div>
-          </div>
-        </div>
-      )}
 
 
       {/* PRINT DETAILS MODAL (Hidden in Print) */}
@@ -1092,9 +1033,4 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
   )
 }
 
-// Seconds formatter label
-function formatSecondsLabel(sec: number) {
-  const mins = Math.floor(sec / 60)
-  const secs = Math.floor(sec % 60)
-  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}s`
-}
+

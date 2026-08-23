@@ -1,49 +1,53 @@
-"""Tests for Whisper hallucination-loop collapsing in the transcriber service."""
+"""Tests for model.transcribe() — the unified transcription API."""
 
-import pytest
-
-from backend.services.transcriber import _clean, _collapse_phrase_runs
+import numpy as np
 
 
-def test_single_word_run_collapses_to_max_run():
-    tokens = ["nervous"] * 10
-    result = _collapse_phrase_runs(tokens, _clean, max_run=3)
-    assert result == ["nervous"] * 3
+def test_transcribe_empty_audio_returns_empty(monkeypatch):
+    from model import transcribe as model_transcribe
+    import model as _model
+
+    class FakeTranscriber:
+        def transcribe(self, audio, language="english", **kw):
+            return {"text": "", "words": [], "duration_sec": 0.0}
+
+    monkeypatch.setattr(_model, "_transcriber", FakeTranscriber())
+    monkeypatch.setattr(_model, "_init_done", True)
+
+    result = model_transcribe(np.zeros(1600, dtype=np.float32))
+    assert result["text"] == ""
+    assert result["words"] == []
+    assert result["duration_sec"] == 0.0
 
 
-def test_phrase_loop_collapses_to_max_run():
-    phrase = ["I", "was", "nervous"]
-    tokens = phrase * 10
-    result = _collapse_phrase_runs(tokens, _clean, max_run=3)
-    assert result == phrase * 3
+def test_transcribe_returns_error_when_no_transcriber(monkeypatch):
+    from model import transcribe as model_transcribe
+    import model as _model
+
+    monkeypatch.setattr(_model, "_transcriber", None)
+    monkeypatch.setattr(_model, "_init_done", True)
+
+    result = model_transcribe(np.zeros(1600, dtype=np.float32))
+    assert "error" in result
 
 
-def test_short_stutter_is_preserved():
-    tokens = ["I", "was", "nervous"] * 2
-    result = _collapse_phrase_runs(tokens, _clean, max_run=3)
-    assert result == ["I", "was", "nervous"] * 2
+def test_transcribe_delegates_to_transcriber(monkeypatch):
+    from model import transcribe as model_transcribe
+    import model as _model
 
+    captured = {}
 
-def test_no_repetition_unchanged():
-    tokens = ["I", "like", "tea"]
-    result = _collapse_phrase_runs(tokens, _clean, max_run=3)
-    assert result == tokens
+    class FakeTranscriber:
+        def transcribe(self, audio, language="english", **kw):
+            captured["audio"] = audio
+            captured["language"] = language
+            return {"text": "hello", "words": [], "duration_sec": 0.5}
 
+    monkeypatch.setattr(_model, "_transcriber", FakeTranscriber())
+    monkeypatch.setattr(_model, "_init_done", True)
 
-def test_phrase_loop_with_punctuation_collapses():
-    phrase = ["I", "was", "nervous,"]
-    tokens = phrase * 8
-    result = _collapse_phrase_runs(tokens, _clean, max_run=3)
-    assert result == phrase * 3
-
-
-def test_words_after_loop_are_kept():
-    tokens = ["I", "was", "nervous"] * 6 + ["then", "I", "calmed"]
-    result = _collapse_phrase_runs(tokens, _clean, max_run=3)
-    assert result == ["I", "was", "nervous"] * 3 + ["then", "I", "calmed"]
-
-
-def test_repeating_word_inside_phrase_is_not_overcollapsed():
-    tokens = ["I", "I", "I", "like", "I", "I", "like"]
-    result = _collapse_phrase_runs(tokens, _clean, max_run=3)
-    assert result == ["I", "I", "I", "like", "I", "I", "like"]
+    audio = np.ones(1600, dtype=np.float32) * 0.5
+    result = model_transcribe(audio, language="kannada")
+    assert result["text"] == "hello"
+    assert captured["language"] == "kannada"
+    assert np.array_equal(captured["audio"], audio)
