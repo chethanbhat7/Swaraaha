@@ -1,63 +1,45 @@
 #import "../lib.typ": *
 #import "../meta.typ": *
 
+// --- Declaration ---
 #[
-  #set page(paper: "a4", margin: (top: 77.62pt, bottom: 2.5cm, left: 50.8pt, right: 52.08pt))
+  #set page(paper: "a4", margin: (top: 59pt, bottom: 54pt, left: 90pt, right: 72pt))
   #set text(font: "Times New Roman")
+  #set par(leading: 0pt, spacing: 0pt)
 
-  #front_center_line(18pt, weight: "bold")[DECLARATION]
-  #v(19.56pt)
+  #align(center, text(size: 18pt, weight: "bold")[DECLARATION])
+  #v(38.0pt)
 
-  #set par(justify: true, leading: 13.39pt, spacing: 0pt)
-  #set text(size: 13pt)
+  // -- declaration body --
+  #block(width: 100%)[
+    #set par(justify: true, leading: 16.42pt, spacing: 16.42pt)
+    #set text(size: 12pt, hyphenate: false)
+    #text(weight: "bold")[We], #text(fill: rgb("#7030a0"), weight: "bold")[#author_decl_list] students of #degree_short #semester#super[th] Semester in #department, #text(fill: rgb("#00b0f0"), weight: "bold")[#college_name], #college_place, hereby declare that the project work entitled #text(weight: "bold")[“#text(fill: rgb("#ff0000"))[#project_title]”] has been carried out by us at #college_short, #college_place, under the guidance of #text(fill: rgb("#c0504d"), weight: "bold")[#guide,] #guide_designation, Department of #department, #college_name, #college_place, and submitted in partial fulfilment of the requirements for the award of degree in #text(fill: rgb("#0070c0"), weight: "bold")[#degree in #department] by #text(fill: rgb("#c00000"), weight: "bold")[#university_name], #university_city during the academic year #academic_year_full.
+  ]
 
-  We, #text(fill: rgb("#6c2c9f"))[*#author_decl_list*] students of #degree_short #semester#super[th] Semester in #department, #text(fill: rgb("#00aceb"))[*#college_name*], #college_place, hereby declare that the project work entitled #text(fill: rgb("#ff0000"))[*“#project_title”*] has been carried out by us at #college_short, #college_place, under the guidance of #text(fill: rgb("#c0504d"))[*#guide*] #guide_designation, Department of #department, #college_name, #college_place, and submitted in partial fulfillment of the requirements for the award of degree in #text(fill: rgb("#006cc0"))[*#degree in #department*] by #text(fill: rgb("#c00000"))[*#university_name*], #university_city during the academic year #academic_year_full.
-
-  #set par(spacing: 0pt, leading: 0.65em)
-  #v(50.1pt)
-
-  #grid(columns: (20.55pt, 454.45pt), column-gutter: 0pt)[
-  ][
+  // -- signature table --
+  #v(59.8pt)
+  #move(dx: 16.6pt)[
     #table(
-      columns: (176.3pt, 113.9pt, 164.25pt),
-      rows: (26.3pt, 33.6pt, 33.6pt, 33.6pt, 33.6pt),
-      stroke: 0.75pt + black,
-      inset: (x: 24.1pt, y: 3.4pt),
-      align: (center, center, center),
-      [
-        #set text(12pt)
-        Name of the students
-      ],
-      [
-        #set text(12pt)
-        USN
-      ],
-      [
-        #set text(12pt)
-        Signature with date
-      ],
-      ..authors.map(a => (
-        table.cell(
-          inset: (left: 24.1pt, right: 19.5pt, top: 3.4pt, bottom: 3.4pt),
-        )[
-          #set text(12pt)
-          #v(7.19pt)
-          #align(left)[#a.name]
-        ],
-        [
-          #set text(12pt)
-          #v(7.19pt)
-          #align(left)[#a.usn]
-        ],
-        [],
-      )).flatten(),
+      columns: (162pt, 94.5pt, 154.1pt),
+      rows: (25.9pt, 41pt, 41pt, 41pt, 41pt),
+      stroke: 0.6pt,
+      inset: (y: 4pt),
+      align: center + horizon,
+      text(size: 12pt)[Name of the students],
+      text(size: 12pt)[USN],
+      text(size: 12pt)[Signature with date],
+      table.cell()[], table.cell()[], table.cell()[],
+      table.cell()[], table.cell()[], table.cell()[],
+      table.cell()[], table.cell()[], table.cell()[],
+      table.cell()[], table.cell()[], table.cell()[],
     )
   ]
 
-  #v(61.6pt)
-
+  // -- date / place --
+  #v(45.0pt)
   #set text(size: 12pt)
-  #h(21.3pt)Date:
-  #v(10.68pt)
-  #h(21.3pt)Place: #college_place
+  Date:
+  #v(16.2pt)
+  Place: #college_place
 ]

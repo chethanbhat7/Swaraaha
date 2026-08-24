@@ -21,6 +21,7 @@
 #let college_short = "VCET"
 #let college_unit = "[A Unit of Vivekananda Vidyavardhaka Sangha Puttur (R)]"
 #let college_address = "Nehru Nagar, Puttur - 574203, DK, Karnataka, India"
+#let college_address_cover = "Nehru Nagar, Puttur - 574 203, DK, Karnataka, India."
 #let affiliation = "Affiliated to Visvesvaraya Technological University and Approved by AICTE New Delhi & Govt. of Karnataka"
 #let department = "Artificial Intelligence & Machine Learning"
 
@@ -60,7 +61,7 @@
 // Dates
 #let academic_year = "2026-27"
 #let academic_year_full = "2026-2027"
-#let submission_month = "NOVEMBER 2026"
+#let submission_month = "November, 2026"
 #let college_place = "Puttur"
 
 // Header / footer

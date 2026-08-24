@@ -2,97 +2,83 @@
 #import "../meta.typ": *
 
 // --- Title page ---
-// All spacing is relative: every element is its own block and the gaps between
-// them are taken from DADS_final_edit.pdf. If the project title wraps to more
-// lines, the rest of the page simply flows down and nothing overlaps.
-#let title_guide = "Prof. AJAY SHASTRY C.G."
-
-// One row of the submitted-by table: a spacer column pushes the name and USN
-// columns to their DADS x positions.
-#let _name_row(name, usn) = grid(
-  columns: (63.1pt, 287.4pt, 65.28pt),
-  column-gutter: 0pt,
-  [],
-  text(weight: "bold", fill: rgb("#006cc0"))[#upper(name)],
-  align(right, text(weight: "bold", fill: rgb("#006cc0"))[#usn]),
-)
-
 #[
-  #set page(paper: "a4", margin: (top: 0pt, bottom: 0pt, left: 58.9pt, right: 41.3pt))
-  #set text(font: "Times New Roman", size: 12pt)
-  #set par(spacing: 5.92pt, leading: 5.92pt)
+  #set page(paper: "a4", margin: (top: 57.5pt, bottom: 54pt, left: 90pt, right: 72pt))
+  #set text(font: "Times New Roman")
+  #set par(leading: 0pt, spacing: 0pt)
+
+  #let cl(size, body, weight: "regular", fill: black) = align(center, text(size: size, weight: weight, fill: fill)[#body])
 
   // -- university header --
-  #v(53.23pt)
-  #align(center, text(weight: "bold", fill: rgb("#c00000"))[#university_title])
-  #align(center, text(weight: "bold")[#university_address])
+  #cl(16pt, weight: "bold", fill: rgb("#c00000"))[#university_title]
+  #v(7.4pt)
+  #cl(12pt, weight: "bold")[#university_address]
 
   // -- vtu logo --
-  #v(1.48pt)
-  #align(center, image("../assets/vtu_logo.png", width: 104.30pt, height: 108.55pt, fit: "stretch"))
-  #v(-4.95pt)
-
-  // -- report type / On / project title --
-  #v(0.76pt)
-  #align(center, text(weight: "bold")[#report_type])
   #v(4.05pt)
-  #align(center, text(weight: "bold")[On])
-  #v(3.60pt)
-  #align(center, text(weight: "bold", fill: rgb("#ff0000"))[“#project_title”])
-  #v(9.95pt)
-  #align(center, text(weight: "bold")[Submitted in partial fulfilment of the requirements for the award of])
-  #v(4.70pt)
-  #align(center, text(weight: "bold")[#degree_upper])
-  #v(4.90pt)
-  #align(center, text(weight: "bold", fill: rgb("#6c2c9f"))[#department_upper])
+  #align(center, move(dx: -5.8pt, image("../assets/vtu_logo.png", width: 101.2pt, height: 130.4pt)))
 
-  // -- submitted by + name table --
-  #v(14.50pt)
-  #align(center, text(weight: "bold")[Submitted By])
-  #v(3.05pt)
-  #grid(columns: (63.1pt, 287.4pt, 65.28pt), column-gutter: 0pt,
+  // -- report type / on / project title --
+  #v(8.55pt)
+  #cl(12pt, weight: "bold")[#report_type]
+  #v(9.0pt)
+  #cl(12pt, weight: "bold")[on]
+  #v(12.2pt)
+  #cl(16pt, weight: "bold", fill: rgb("#ff0000"))[“#project_title”]
+  #v(17.8pt)
+  #cl(14pt, weight: "bold")[Submitted in partial fulfilment of the requirements for the award of]
+  #v(11.5pt)
+  #cl(16pt, weight: "bold")[#degree_upper]
+  #v(12.2pt)
+  #cl(12pt, weight: "bold")[in]
+  #v(10.6pt)
+  #cl(14pt, weight: "bold", fill: rgb("#7030a0"))[#department_upper]
+
+  // -- submitted by --
+  #v(21.7pt)
+  #cl(13pt, weight: "bold")[Submitted By]
+  #v(6.15pt)
+  #grid(columns: (68.3pt, 1fr, 90pt, 119.18pt), column-gutter: 0pt,
     [],
-    [#h(27.85pt)#text(weight: "bold", fill: rgb("#001f5f"))[Name]],
-    [#h(15.5pt)#text(weight: "bold", fill: rgb("#001f5f"))[USN]],
+    align(left, text(size: 13pt, weight: "bold", fill: rgb("#002060"))[Name]),
+    align(right, text(size: 13pt, weight: "bold", fill: rgb("#002060"))[USN]),
+    [],
   )
-  #v(2.90pt)
-  #_name_row(authors.at(0).name, authors.at(0).usn)
-  #v(2.90pt)
-  #_name_row(authors.at(1).name, authors.at(1).usn)
-  #v(3.70pt)
-  #_name_row(authors.at(2).name, authors.at(2).usn)
-  #v(3.05pt)
-  #_name_row(authors.at(3).name, authors.at(3).usn)
+  #v(6.05pt)
+  #for a in authors [
+    #grid(columns: (55.3pt, 1fr, 90pt, 88.98pt), column-gutter: 0pt,
+      [],
+      align(left, text(size: 13pt, weight: "bold", fill: rgb("#0070c0"))[#upper(a.name)]),
+      align(right, text(size: 13pt, weight: "bold", fill: rgb("#0070c0"))[#a.usn]),
+      [],
+    )
+    #v(6.0pt)
+  ]
 
   // -- guidance --
-  #v(13.30pt)
-  #align(center, text(weight: "bold")[Under the Guidance of])
-  #v(-0.20pt)
-  #align(center, text(weight: "bold", fill: rgb("#c00000"))[#title_guide])
-  #v(-0.05pt)
-  #align(center, text(weight: "bold")[#guide_designation])
+  #v(11.0pt)
+  #cl(13pt, weight: "bold")[Under the Guidance of]
+  #v(6.2pt)
+  #cl(13pt, weight: "bold", fill: rgb("#c00000"))[#guide]
+  #v(5.4pt)
+  #cl(12pt, weight: "bold")[#guide_designation]
 
   // -- vcet logo --
-  #v(9.62pt)
-  #align(center, image("../assets/vcet_logo.png", width: 114.20pt, height: 83.90pt))
-  #v(7.73pt)
-  #h(29.25pt)#box(width: 437.1pt, height: 2.3pt, fill: black)
-  #v(10.67pt)
-  #align(center, text(weight: "bold", fill: rgb("#006cc0"))[#dept_block1])
-  #v(1.80pt)
-  #align(center, text(weight: "bold", fill: rgb("#006cc0"))[#dept_block2])
-  #v(2.10pt)
-  #align(center, text(weight: "bold", fill: rgb("#c00000"))[#college_block1])
-  #v(1.95pt)
-  #align(center, text(weight: "bold", fill: rgb("#c00000"))[#college_block2])
-  #v(0.41pt)
-  #align(center)[#college_unit]
-  #v(12.86pt)
-  #align(center, text(fill: rgb("#0000ff"))[#affiliation_line1])
-  #v(-0.44pt)
-  #align(center, text(fill: rgb("#0000ff"))[#affiliation_line2])
-  #v(0.81pt)
-  #align(center)[#college_address]
-  #v(2.10pt)
-  #align(center, text(weight: "bold", fill: rgb("#ff0000"))[#submission_month])
+  #v(30.6pt)
+  #align(center, image("../assets/vcet_logo.png", width: 165pt, height: 102.1pt))
+  #v(9.8pt)
+  #place(top + left, dy: 604.8pt, line(length: 100%, stroke: 1.3pt))
+
+  // -- college block --
+  #cl(12pt, weight: "bold", fill: rgb("#0070c0"))[DEPARTMENT OF #department_upper]
+  #v(7.7pt)
+  #cl(14pt, weight: "bold", fill: rgb("#c00000"))[#college_upper]
+  #v(8.9pt)
+  #cl(10pt)[#college_unit]
+  #v(6.2pt)
+  #cl(9pt, fill: rgb("#0000ff"))[#affiliation_line1 #affiliation_line2]
+  #v(5.9pt)
+  #cl(12pt)[#college_address_cover]
+  #v(7.5pt)
+  #cl(12pt, weight: "bold", fill: rgb("#ff0000"))[#submission_month]
 ]
