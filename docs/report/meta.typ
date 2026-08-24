@@ -39,10 +39,10 @@
 
 // People
 #let authors = (
-  (prefix: "Mr.", name: "K Shreekrishna Upadhyaya", usn: "4VP23AI020"),
-  (prefix: "Mr.", name: "M Chethan Keshav Bhat", usn: "4VP23AI023"),
-  (prefix: "Mr.", name: "Skanda Prasad K", usn: "4VP23AI051"),
-  (prefix: "Mr.", name: "Srinivas Hegde M", usn: "4VP23AI054"),
+  (prefix: "Mr.", name: "K Shreekrishna Upadhyaya", usn: "4VP23AI020", pronoun: "his"),
+  (prefix: "Mr.", name: "M Chethan Keshav Bhat", usn: "4VP23AI023", pronoun: "his"),
+  (prefix: "Mr.", name: "Skanda Prasad K", usn: "4VP23AI051", pronoun: "his"),
+  (prefix: "Mr.", name: "Srinivas Hegde M", usn: "4VP23AI054", pronoun: "his"),
 )
 
 // Render helpers for the author list
@@ -53,10 +53,13 @@
 #let usn_last = usns.last()
 
 #let guide = "Prof. Ajay Shastry C G"
+#let guide_pronoun = "his"
 #let guide_designation = "Assistant Professor"
 #let project_coordinator = "Prof. Ajay Shastry C G"
 #let hod = "Dr. Radhika Shetty D S"
+#let hod_pronoun = "her"
 #let principal = "Dr. Mahesh Prasanna K"
+#let principal_pronoun = "his"
 
 // Dates
 #let academic_year = "2026-27"
