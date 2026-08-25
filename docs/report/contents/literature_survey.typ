@@ -8,7 +8,7 @@
   a speech segment selection strategy for improving stutter block detection accuracy.
   Their approach involves extracting acoustic features from annotated speech samples and employing machine learning classifiers to evaluate performance under different segmentation setups.
   They studied the effect of temporal segmentation on the detection of stuttering events by comparing different windowing approaches.
-  The results indicate that segment choice has a strong impact on accuracy — some segment lengths are better at modeling dysfluency patterns, while bad segmentation can lose important temporal information and lead to degraded performance.
+  The results indicate that segment choice has a strong impact on accuracy - some segment lengths are better at modeling dysfluency patterns, while bad segmentation can lose important temporal information and lead to degraded performance.
   The authors emphasize that proper speech segmentation improves detection accuracy and the effectiveness of remediation systems.
   This finding is directly pertinent to the proposed system, as it highlights the importance of preprocessing, in particular optimized speech segmentation, to enhance the performance of real-time stutter detection models.
 ]
@@ -20,7 +20,7 @@
 )[
   a tuning-based approach to enhance voice assistant performance for dysfluent speech by optimizing an existing hybrid ASR system.
   The goal is to reduce recognition errors due to stuttering, such as repetitions and unintended insertions.
-  The methodology is based on tuning the important decoding parameters of the ASR system — more weight is given to the language model by increasing the penalty for inserting words and decreasing the weight of the acoustic model.
+  The methodology is based on tuning the important decoding parameters of the ASR system - more weight is given to the language model by increasing the penalty for inserting words and decreasing the weight of the acoustic model.
   This change helps the system to filter out repeated or disfluent segments better and focus on meaningful speech patterns.
   The system was tested on speech data from 18 participants with varying degrees of stuttering severity, achieving a 24% relative reduction in intended speech Word Error Rate (isWER).
   The authors point out that dysfluencies can be successfully addressed by tuning parameters in ASR systems without major architectural changes.
@@ -257,7 +257,7 @@
 #literature_survey(
   [S. Bayerl et al.],
   [have introduced],
-  [Dysfluencies Seldom Come Alone — Detection as a Multi-Label Problem]
+  [Dysfluencies Seldom Come Alone - Detection as a Multi-Label Problem]
 )[
   a modified wav2vec 2.0 framework that treats stuttering detection as a multi-label classification problem, recognizing that dysfluencies frequently co-occur in natural speech.
   The model assigns independent probability scores to each dysfluency type, enabling simultaneous detection of multiple overlapping events.
@@ -391,7 +391,7 @@
     [18], [C. Lea and V. Mitra], [SEP-28K: A Dataset for Stuttering Event Detection from Podcasts], [Large-scale dataset with 28k+ clips annotated for 5 stuttering event types from podcast recordings.], [Enables large-scale training with 28%/24% F1 gains from data scaling.], [Podcast speech may not generalize to clinical or spontaneous settings.],
     [19], [O. Shonibare et al.], [Enhancing ASR for Stuttered Speech with Limited Data using Detect and Pass], [Two-stage approach: context-aware dysfluency detection followed by ASR that passes over detected events.], [Achieves 12-71% WER reduction with minimal labeled data.], [Relies on accurate first-stage detection; cascaded errors possible.],
     [20], [S. Bayerl et al.], [Detecting Dysfluencies in Stuttering Therapy Using wav2vec 2.0], [Fine-tuned wav2vec 2.0 with multi-task learning and SVM for therapy speech analysis.], [27% F1 improvement on clinical therapy recordings.], [Limited to therapy contexts; may not generalize to casual speech.],
-    [21], [S. Bayerl et al.], [Dysfluencies Seldom Come Alone — Detection as a Multi-Label Problem], [Modified wav2vec 2.0 for simultaneous multi-label detection of co-occurring dysfluencies.], [SOTA on SEP-28k-Extended with cross-language generalization.], [Multi-label training increases model complexity and annotation requirements.],
+    [21], [S. Bayerl et al.], [Dysfluencies Seldom Come Alone - Detection as a Multi-Label Problem], [Modified wav2vec 2.0 for simultaneous multi-label detection of co-occurring dysfluencies.], [SOTA on SEP-28k-Extended with cross-language generalization.], [Multi-label training increases model complexity and annotation requirements.],
     [22], [R. Gong et al.], [AS-70: A Mandarin Stuttered Speech Dataset for Automatic Speech Recognition], [First large-scale Mandarin stuttered speech dataset with verbatim transcriptions and detailed annotations.], [Enables Mandarin stuttering research with 70h of diverse speaker data.], [Limited to Mandarin; annotation process labor-intensive.],
     [23], [X. Liu et al.], [An End-to-End Stuttering Detection Method Based on Conformer and BiLSTM], [Conformer blocks with BiLSTM temporal modeling for multi-task dysfluency and severity prediction.], [1st place SLT 2024 Challenge; 39.8% F1 improvement on AS-70.], [Conformer architecture requires significant GPU memory and training time.],
     [24], [A. Batra et al.], [Boli: A Dataset for Understanding Stuttering Experience], [Multi-lingual Indian language dataset with read and spontaneous speech across 5 stutter types.], [Captures real-world Indian stuttering patterns across multiple languages.], [Limited annotations; may need expert review for clinical applications.],

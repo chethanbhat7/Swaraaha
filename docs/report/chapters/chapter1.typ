@@ -3,7 +3,7 @@
 // --- Chapter 1: Introduction ---
 #chapter_heading[INTRODUCTION]
 
-== INTRODUCTION //TO THE PROJECT
+== INTRODUCTION TO THE PROJECT
 Speech fluency is an essential aspect of human communication, allowing individuals to express thoughts and emotions clearly.
 However, many people face interruptions in their speech flow due to a disorder known as stuttering.
 It is a common speech disorder characterized by involuntary repetitions, prolongations, or blocks during speech production.

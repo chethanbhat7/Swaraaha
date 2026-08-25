@@ -26,7 +26,7 @@
       CHAPTER #chap
       #set text(size: 18pt)
       #set align(center)
-      #v(-0.5em)
+      #v(0.5em)
       #body
       #v(0.5em)
     ]
@@ -76,17 +76,17 @@
   v(1em)
 }
 
-#let header_footer_line() = {
-  line(length: 100%, stroke: 3pt + rgb("#5F1E1E"))
-  v(-0.85em)
-  line(length: 100%, stroke: 0.75pt + rgb("#5F1E1E"))
+#let frame_rule_color = rgb("#622423")
+
+#let frame_double_rule() = {
+  line(length: 100%, stroke: 3pt + frame_rule_color)
+  v(-1.45em)
+  line(length: 100%, stroke: 0.75pt + frame_rule_color)
 }
 
-#let footer_line() = {
-  line(length: 100%, stroke: 0.75pt + rgb("#5F1E1E"))
-  v(-0.85em)
-  line(length: 100%, stroke: 3pt + rgb("#5F1E1E"))
-}
+#let header_footer_line() = frame_double_rule()
+
+#let footer_line() = frame_double_rule()
 
 // --- Front-matter helpers ---
 
