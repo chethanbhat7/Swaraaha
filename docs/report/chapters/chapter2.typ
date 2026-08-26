@@ -1,259 +1,287 @@
 #import "../lib.typ": *
 #import "../meta.typ": *
 
-// --- Chapter 2: Literature Survey ---
-#chapter_heading[LITERATURE SURVEY]
+// --- Chapter 2: Requirement Specification and Analysis ---
+#chapter_heading[REQUIREMENT SPECIFICATION AND ANALYSIS]
 
-#literature_survey(
-  [P. Arbajian et al.],
-  [have proposed],
-  [Effect of Speech Segment Samples Selection in Stutter Block Detection and Remediation]
-)[
-  In this study the impact of different speech segment selection strategies on the accuracy of stutter block detection.
-  The authors study the impact of analyzing the speech with different window sizes and positions, instead of analyzing the whole signal in the same way.
-  This approach consists in extracting acoustic features from annotated speech samples, and employing machine learning classifiers to evaluate performance under different segmentation setups.
-  In this study, the authors investigate the effect of temporal segmentation on the detection of stuttering events by comparing different windowing approaches.
-  The results indicate that segment choice has a strong impact on accuracy.
-  Some segment lengths are better to model dysfluency patterns, but bad segmentation can lose important temporal information and lead to less performance.
-  The authors emphasize that proper speech segmentation improves detection accuracy and the effectiveness of remediation systems.
-  This study is relevant to the proposed system as it emphasizes the importance of preprocessing, in particular optimized speech segmentation.
-  It facilitates the employment of well-structured input representations, e.g., segmented spectrograms, to enhance the performance of real-time stutter detection models.
-]
+== INTRODUCTION
 
-#literature_survey(
-  [V. Mitra et al.],
-  [have proposed],
-  [Analysis and Tuning of a Voice Assistant System for Dysfluent Speech],
-)[
-  The goal of this study is to enhance the performance of voice assistant for dysfluent speech by optimizing an existing hybrid ASR system.
-  The authors want to reduce recognition errors due to stuttering, such as repetitions and unintended insertions.
-  The methodology is based on tuning the important decoding parameters of the ASR system.
-  More weight is given to the language model by increasing the penalty for inserting words and decreasing the weight of the acoustic model.
-  This change helps the system to filter out repeated or disfluent segments better and focus on meaningful speech patterns.
-  The system was tested on speech data from 18 participants with varying degrees of stuttering severity.
-  Results indicate a 24% relative reduction in intended speech Word Error Rate (isWER) which indicates more accurate recognition of the speaker’s intended words.
-  The authors emphasize that dysfluencies can be successfully addressed by tuning parameters in ASR systems without major architectural changes.
-  This work is relevant to the proposed system as it points to the importance of model tuning and post-processing in the case of stuttered speech.
-  It enables the incorporation of optimized decoding strategies to improve the accuracy and robustness of real-time stutter-aware speech systems.
-]
+The requirements analysis and specification stage of the #project_title defines the main functions of the system, the expected performance, the dependencies on technical issues, the needs of users (including developers, clinicians, and end-users), etc.
+This phase brings all interested parties together (developing agency, clinicians, and end users) to agree on what the system will do.
+The ultimate goal of the system is to take speech audio recordings and use a deep learning pipeline to classify stuttering types and localize dysfluency events within the speech signal.
+Clearly defining at this point all functional and non-functional requirements provides a roadmap for the development process, thereby reducing the likelihood of design errors occurring and ensuring that the completed system meets the clinical and technical requirements.
 
-#literature_survey(
-  [P. Mohapatra et al.],
-  [have proposed],
-  [Speech Disfluency Detection with Contextual Representation and Data Distillation]
-)[
-  The paper proposes DisfluencyNet, a deep learning model for automatic detection of speech disfluencies using contextual representations.
-  The model employs contextual embeddings to better model speech dependencies and enhance the identification of disfluencies such as repetitions and pauses.
-  Our approach provides contextual embeddings to a classification network and obviates the need for large training datasets through data distillation techniques.
-  To test the model, the authors trained it on different amounts of data and evaluated its performance on benchmark datasets such as SEP-28k and FluencyBank.
-  Our results show that DisfluencyNet can achieve competitive accuracy against baseline models, but only on a quarter of the data.
-  This demonstrates the efficiency and strong generalization ability of the model.
-  The authors emphasize that contextual representations and data-efficient training techniques can significantly reduce the need for large annotated datasets.
-  The research is highly relevant for the proposed system, as it supports the use of contextual embeddings and efficient training strategies.
-  It helps solve problems of data scarcity and increases robustness in real-time stutter detection systems.
-]
+== FUNCTIONAL REQUIREMENTS
 
-#literature_survey(
-  [J. Liu et al.],
-  [have proposed],
-  [Automatic Speech Disfluency Detection Using wav2vec 2.0 for Different Languages with Variable Lengths]
-)[
-  The paper proposes a novel method for detecting disfluencies in speech utilizing the context-based embeddings provided by wav2vec 2.0 for dealing with the speech data from different languages and differing speech lengths.
-  The proposed solution includes the use of a classification neural network DisfluencyNet enhanced with the wav2vec 2.0 embeddings.
-  Furthermore, the authors use the data distillation technique, meaning that they select high-quality audio fragments where three human annotators have the same opinion about the disfluencies.
-  The evaluation of the proposed model is conducted on the multilingual datasets characterized by speech of different lengths.
-  The achieved results demonstrate the superior performance of the proposed system compared to other approaches.
-  The authors highlight that combining pretrained models with high-quality distilled data significantly improves detection accuracy and reduces noise in training.
-  For the proposed system, this research is highly relevant as it supports the use of pretrained models like wav2vec 2.0 and data filtering techniques.
-  It enhances robustness, efficiency, and cross-speaker generalization in real-time stutter detection systems.
-]
+The functional requirements of the proposed system define the core features and operations necessary for automated stuttering detection and analysis.
 
-#literature_survey(
-  [A. Romana et al.],
-  [have proposed],
-  [Automatic Disfluency Detection from Untranscribed Speech]
-)[
-  In this paper, authors introduce a multimodal approach for detecting speech disfluencies directly from untranscribed audio.
-  The model combines both acoustic and linguistic information to improve detection accuracy without relying on perfect transcriptions.
-  The methodology uses a Bi-LSTM-based fusion model that operates at the frame level.
-  It integrates WavLM acoustic features with BERT- based language representations derived from transcripts generated by a fine-tuned Whisper model.
-  This combination helps the system capture both low-level speech patterns and high-level contextual information.
-  The model effectively addresses common issues such as ASR transcription errors and misalignment by jointly learning from multiple modalities.
-  The results show improved robustness and accuracy in detecting disfluencies compared to single-modality approaches.
-  The authors highlight that multimodal fusion significantly enhances performance, especially in real-world noisy conditions.
-  For the proposed system, this research is highly relevant as it supports integrating acoustic and language features to improve detection accuracy and robustness in real-time stutter detection systems.
-]
+=== Dataset
 
-#literature_survey(
-  [D. Wagner et al.],
-  [have proposed],
-  [Large Language Models for Dysfluency Detection in Stuttered Speech]
-)[
-  The author of this paper presents a hybrid approach that combines acoustic and linguistic representations using Large Language Models (LLMs) for dysfluency detection.
-  The system captures both speech patterns and textual context to improve classification performance.
-  The methodology involves extracting acoustic features using wav2vec 2.0 and generating transcriptions through Whisper ASR.
-  These two representations are fused into a joint input and processed by a Large Language Model to classify different stutter types, including repetitions, prolongations, and blocks, from short speech segments.
-  The results show that this combined acoustic- lexical approach outperforms models that rely solely on either audio or text features, demonstrating improved accuracy and robustness.
-  The authors highlight that integrating multimodal inputs with LLMs enhances the model’s ability to understand complex speech patterns and contextual cues.
-  For the proposed system, this research is highly relevant as it supports the use of multimodal fusion and advanced models like LLMs to improve accuracy and generalization in real-time stutter detection systems.
-]
+The system is trained and evaluated using three publicly available stuttering datasets.
+Project Boli provides multilingual Indian language stuttering data sourced via GitHub repositories.
+SEP-28K is a large-scale dataset containing approximately 28,000 audio clips annotated for five stuttering event types, obtained via Kaggle.
+UCLASS provides additional stuttering speech data, also obtained via Kaggle.
 
-#literature_survey(
-  [S. A. Sheikh et al.],
-  [have proposed],
-  [Advancing Stuttering Detection via Data Augmentation, Class-Balanced Loss and Multi-Contextual Deep Learning]
-)[
-  This paper focuses on improving stuttering detection by addressing key challenges such as class imbalance and limited data availability.
-  The authors propose a deep learning-based framework called multi-contextual (MC) StutterNet, which captures diverse speech contexts to enhance detection performance.
-  The methodology incorporates a multi-branching (MB) architecture that processes different contextual representations of speech.
-  To handle class imbalance, the model applies class-balanced loss by assigning appropriate weights to underrepresented stutter categories.
-  Additionally, data augmentation techniques are used to increase dataset diversity and improve generalization.
-  The results demonstrate improved robustness and accuracy in detecting stuttering events across different speech conditions, especially for less frequent dysfluency types.
-  The authors highlight that combining data augmentation, balanced loss functions, and multi-context learning significantly enhances model performance.
-  For the proposed system, this research is highly relevant as it supports handling data imbalance and improving robustness using advanced deep learning strategies for real-time stutter detection.
-]
+Each dataset is normalized into a unified format consisting of a #raw("combined_labels.csv") file with multi-label binary annotations and corresponding interval files for each audio clip.
+The five dysfluency classes are prolongation, block, sound repetition, word repetition, and interjection.
+The complete dataset is split into training, validation, and testing subsets using an 80:10:10 ratio.
+An automated pipeline handles downloading, merging, and preprocessing the data to ensure efficient dataset preparation.
 
-#literature_survey(
-  [X. Zhou et al.],
-  [have proposed],
-  [YOLO-Stutter: End-to-End Region-Wise Speech Dysfluency Detection]
-)[
-  The author of this paper introduce a YOLO-inspired deep learning model for speech dysfluency detection by treating spectrograms as images.
-  The approach enables simultaneous localization and classification of dysfluencies within the time–frequency domain.
-  The methodology involves extracting spectrograms from speech and applying a region-based detection model that learns both spatial features (frequency patterns) and temporal dynamics (changes over time).
-  Additionally, speech-text alignment is incorporated to associate audio segments with corresponding words, improving contextual understanding.
-  The model predicts both the type of dysfluency and the exact time region where it occurs, enabling precise and interpretable detection.
-  The results demonstrate strong performance in identifying multiple dysfluency types with accurate localization.
-  The authors highlight that combining spatial-temporal learning with region-based detection improves both accuracy and interpretability.
-  For the proposed system, this research is highly relevant as it supports real-time, region-wise stutter detection using spectrogram-based CNN architectures.
-]
+=== Preprocessing
 
-#literature_survey(
-  [X. Zhou et al.],
-  [have proposed],
-  [Stutter-Solver: End-to-End Multi-Lingual Dysfluency Detection]
-)[
-  This paper introduces Stutter-Solver, a YOLO-inspired end-to-end model designed for multilingual dysfluency detection.
-  The system aims to identify both the type and temporal location of stuttering events across different languages.
-  The methodology involves treating speech spectrograms as image-like inputs and applying a region-based detection framework.
-  To address data scarcity, the authors generate synthetic datasets such as VCTK-Pro, VCTK-Art, and AISHELL3-Pro using articulatory and text-to-speech (TTS) based simulations.
-  This enhances data diversity and supports multilingual learning.
-  The model is trained to detect various dysfluency types while also localizing their occurrence in time, enabling precise and interpretable predictions.
-  The results demonstrate state- of-the-art (SOTA) performance across multiple datasets and languages, highlighting the effectiveness of synthetic data augmentation and region-based detection.
-  For the proposed system, this research is highly relevant as it supports multilingual capability, synthetic data usage, and real-time region-wise detection for robust stutter detection systems.
-]
+Before any analysis is performed on the input audio, it must undergo a standardized preprocessing pipeline to ensure consistency and improve model performance.
 
-#literature_survey(
-  [J. Zhang et al.],
-  [have proposed],
-  [Analysis and Evaluation of Synthetic Data Generation in Speech Dysfluency Detection]
-)[
-  The paper introduces LLM-Dys, a novel methodology for generating large-scale dysfluent speech datasets using Large Language Models (LLMs).
-  The approach aims to overcome data scarcity and improve diversity in dysfluency detection tasks.
-  The methodology involves using an LLM to simulate realistic dysfluency patterns and generate labeled dysfluent text.
-  These texts are then converted into speech using the VITS (Variational Inference with adversarial learning for end-to-end Text-to- Speech) model, producing high-quality synthetic audio.
-  Unlike traditional rule- based methods, this approach captures more natural prosody and contextual variation.
-  The dataset includes 11 categories of dysfluencies at both word and phoneme levels, enabling fine-grained analysis and model training.
-  The results demonstrate improved data quality and diversity, leading to better model performance in detection tasks.
-  For the proposed system, this research is highly relevant as it supports advanced data augmentation using LLMs and TTS, improving robustness and accuracy in stutter detection systems.
-]
+The audio is first converted into a 16 kHz mono WAV format using FFmpeg, ensuring uniform input across all processing stages.
+DC offset is removed by subtracting the mean of the signal, which eliminates any constant bias in the waveform.
+Peak normalization scales the audio to a target peak amplitude of 0.95, ensuring consistent volume levels across different recordings.
+Silent segments are trimmed from the beginning and end of the audio using energy-based detection, reducing unnecessary padding and focusing the analysis on active speech regions.
 
-#literature_survey(
-  [S. Kim and A. Kumar],
-  [have developed],
-  [FluentNet: End-to-End Detection of Speech Disfluency with Deep Learning]
-)[
-  FluentNet employs a hybrid CNN-LSTM architecture designed to automatically capture both spatial and temporal dependencies in speech signals.
-  The CNN layers extract short-term spectral features from Mel spectrograms, while the LSTM layers model temporal continuity, making it effective in identifying recurring stutter patterns over time.
-  The system was trained and validated on the SEP-28k dataset - one of the largest available stuttering corpora - achieving over 91% classification accuracy.
-  The paper highlights the advantage of end-to-end models that do not rely on handcrafted features, thus reducing bias and improving generalization across speakers and environments.
-  Moreover, the authors demonstrated FluentNet’s real-time applicability in speech therapy by integrating it into a feedback loop that provides visual dysfluency indicators to users.
-  This study strongly supports the proposed stutter detection system, as it validates the effectiveness of CNN-LSTM architectures for real-time audio-based classification and informs the multi-model CNN approach used in our project.
-]
+The processed audio is then padded or truncated to a fixed length of 48,000 samples, corresponding to a duration of 3 seconds at 16 kHz.
+This standardization ensures that all inputs have uniform dimensions for model processing.
 
-#literature_survey(
-  [R. Ahmed and J. Park],
-  [have proposed],
-  [Stutter-Solver: End-to-End Multi- Lingual Dysfluency Detection.]
-)[
-  Stutter-Solver introduces a multilingual speech dysfluency detection framework capable of identifying stuttering events across English, Korean, and Japanese datasets.
-  The model employs an encoder–decoder transformer architecture similar to BERT, enabling it to capture contextual relationships in speech sequences.
-  It was trained in combined multilingual datasets, showing high adaptability and robustness to linguistic variations.
-  The model achieved an F1-score of 95.2% in English and over 93% in non-English corpora.
-  The study emphasizes the importance of language-independent feature representations for building universally accessible stutter detection systems.
-  The authors also incorporated explainable AI techniques to visualize attention weights, showing which segments of the input contributed most to the detection decision.
-  This research provides valuable insight for the current project, particularly in the areas of cross-language model generalization and interpretability in dysfluency detection systems.
-]
+Data augmentation techniques are applied during training to increase dataset diversity and improve generalization.
+These include random noise injection, time stretching, pitch shifting, temporal shifting, and scaling.
+Spectrogram-level augmentations such as time masking and frequency masking are also employed to improve robustness.
 
-#literature_survey(
-  [F. Rahimi and D. Torres],
-  [have presented],
-  [Large Language Models for Dysfluency Detection in Stuttered Speech]
-)[
-  This paper explores the use of large language models (LLMs) and transformer- based architectures for speech dysfluency analysis.
-  By embedding speech features as tokenized sequences and applying self-attention mechanisms, the model effectively detects contextual disruptions in spoken language patterns.
-  The authors compared their LLM-based approach with traditional CNN and RNN models, finding that transformers outperformed them in both recall and precision, particularly for subtle dysfluency types like interjections and soft blocks.
-  The study also highlights that pretraining large general speech datasets improves performance even on smaller stutter-specific corpora.
-  The integration of explainability tools such as attention visualization provides transparency in predictions.
-  For the present project, this work reinforces the growing relevance of transformer-based models and encourages future exploration into combining CNN-based acoustic analysis with language-level contextual understanding for enhanced stutter detection accuracy.
-]
+=== User Requirements
 
-#literature_survey(
-  [V. Uloza et al.],
-  [have conducted a study],
-  [An Artificial Intelligence-Based Algorithm for the Assessment of Substitution Voicing]
-)[
-  This paper investigates AI applications for analyzing pathological speech characteristics, particularly substitution voicing, using deep neural networks.
-  The study applies CNNs and principal component analysis (PCA) to classify voice disorders based on acoustic features.
-  The authors emphasize the importance of pre- processing techniques such as noise removal and normalization for ensuring consistent input to neural networks.
-  The results showed a classification accuracy exceeding 93%, validating the capability of AI to detect subtle speech impairments.
-  Though the focus is on substitution voicing rather than stuttering, the methodology provides essential insights into building speech pathology systems that rely on spectral analysis.
-  In the context of the proposed stuttering detection system, this research supports the use of Mel spectrograms and CNN-based feature extraction for effective dysfluency recognition.
-]
+The user can easily and clearly upload or record a speech sample via the system's user interface.
+The system must be able to receive audio files in common formats including WAV, MP3, FLAC, and M4A, and process them prior to classification.
 
-#literature_survey(
-  [H. Müller and C. Lee],
-  [have analyzed],
-  [Reinvestigating the Neural Bases Involved in Speech Production of Stutterers: An ALE Meta-Analysis]
-)[
-  This study takes a neuro-scientific approach to understanding stuttering by conducting a meta-analysis of fMRI and EEG studies on stutterers’ brain activity.
-  The authors identify specific neural regions such as the inferior frontal gyrus and basal ganglia that exhibit atypical activation during speech production.
-  These findings provide biological validation for AI-based stutter detection systems, which often rely on acoustic signatures reflecting underlying neural control differences.
-  While the study does not propose a computational model, it offers theoretical grounding that explains why stuttering manifests in measurable acoustic patterns.
-  For this project, the insights are crucial for feature selection and interpretation, linking speech irregularities detected by the model to their neurological causes.
-]
+The system will automatically classify the submitted audio, providing results to the user without requiring manual intervention during the classification process.
+The provided results will clearly indicate which dysfluency types are present in the speech, along with confidence scores for each detected type.
 
-== SUMMARY OF LITERATURE SURVEY
-This section presents a summary of the reviewed literature on automated stutter
-detection and classification. The collective findings establish that deep learning,
-particularly CNN- and transformer-based architectures, represents the state of the art in
-this domain.
+The system will localize the exact temporal positions of detected dysfluencies within the audio, presenting timestamped results that identify where each dysfluency event occurs.
+If the system is unable to provide a conclusive classification, it will indicate low confidence and suggest that the user consult a speech-language pathologist for further evaluation.
 
-Early approaches relied heavily on manual inspection or handcrafted acoustic features, whereas recent advances in embedding-based speech representations, spectrogram-driven CNNs, temporal modeling, and transfer learning have achieved significant improvements in detection accuracy and generalization. Studies such as YOLO- Stutter and FluentNet highlight the importance of region-wise and temporal feature learning, while works like Stutter-TTS and Wang et al. emphasize the impact of data augmentation and dataset balancing. Furthermore, explainability and multilingual adaptability, as demonstrated in Stutter-Solver and Ghosh et al., ensure that these systems remain transparent, interpretable, and globally applicable. Collectively, the insights summarized in Table 2.1 form the scientific and technical foundation for the proposed "#project_title" guiding model design, feature extraction, timestamp alignment, and evaluation strategies to develop an effective, scalable, and user-accessible speech pathology support system.
+=== System Requirements
 
-#add_table(
-  table(
-    columns: (0.35fr, 1fr, 1.5fr, 1.5fr, 1.5fr, 1.5fr),
-    inset: 5pt,
-    align: horizon,
-    table.header([*Sl. No*], [*Author*], [*Title*], [*Features*], [*Pros*], [*Cons*]),
-    [1], [Pierre Arbajian et al.], [Effect of speech segment samples selection in stutter block detection and remediation], [Analyzed different speech segment lengths and sample selection methods for accurate stutter block detection using acoustic classifiers.], [Improves detection precision thorugh better segment seelction.], [Sensitive to segmentation configuration.],
-    [2], [Vikramjit Mitra et al.], [Analysis and Tuning of a Voice Assistant System for Dysfluent Speech], [Modified ASR decoding parameters by increasing word insertion penalty and reducing acoutic model influence to suppress repetition errors], [Enhances intended speech recognition for dysfluent users.], [Focuses on recognition rather than dysfluency classification.],
-    [3], [Payal Mohapatra et al.], [Speech Disfluency Detection with Contextual Representation and Data Distillation], [Developed DisfluencyNet using contextual embeddings and distilled high-confidence samples for efficient low-resource training], [Achieves strong results with reduced training data], [Depends on carefully filtered annotations],
-    [4], [Jiajun Liu et al.], [Automatic Speech Disfluency Detection Using Wav2Vec 2.0 for Different Languages], [Applied Wav2Vec 2.0 contextual embeddings for multilingual disfluency detection across variable speech durations.], [Supports multilingual detection with strong contextual learning.], [High resource requirements and limited availability of multilingual stuttering datasets.],
-    [5], [Amrit Romana et al.], [Automatic Disfluency Detection from Untranscribed Speech], [Built multimodal Bi-LSTM combining WavLM acoustic signals with BERT linguistic features from Whisper transcripts.], [Detects disfluencies without manual transcription.], [Multimodal design increases system complexity.],
-    [6], [Dominik Wagner et al.], [Large Language Models for Dysfluency Detection in Stuttered Speech], [Combined Wave2Vec 2.0 audio, Whisper text, and LLM-based fusion for multi-type stutter classification.], [Improves multi-class detection accuracy.], [Requres heavy computational resources.],
-    [7], [Shakeel A. Sheikh et al.], [Advancing Stutter Detection via Data Augmentation, Class-Balanced Loss and Multi-Contextual Deep Learning], [Proposed multi-contextual StutterNet with augmentation and weighted loss for robust suttering detection.], [Addresses data scarcity and class imbalance.], [Synthetic augmentation may reduce realism.],
-    [8], [Y. Zhang et al.], [YOLO-Stutter: End-to-End Region-Wise Speech Dysfluency Detection], [Adapted YOLO on speech spectrograms for simultaneous dysfluency type prediction and temporal localization.], [Enables precise real-time stuter localization.], [Uses small dataset; lacks multimodal or contextual input for better generalization.],
-    [9], [Xuanru Zhou et al.], [Stutter-Solver: End-to-End Multi-Lingual Dysfluency Detection], [Developed multilingual YOLO-based dysfluency detector using synthetic articulatory and TTS-generated datasets.], [Expands multilingual coverage with SOTA accuracy.], [Synthetic speech may not fully match real speech.], 
-    [10], [Jinning Zhang et al.], [Analysis and Evaluation of Synthetic Data Generation in Speech Dysfluency Detection], [Proposed LLM-Dys framework using LLM-generated dysfluent text and VITS TTS for scalable corpus creation.], [Geenrates diverse large-scale dysfluency datasets.], [Synthetic prosody may limit robustness.],
-    [11], [S. Kim & A. Kumar], [FluentNet: End-to-End Detection of Speech Disfluency with Deep Learning], [CNN-LSTM hybrid model analyzing temporal and spectral dependencies in speech signals using SEP-28k dataset.], [High accuracy in multi-class dysfluency detection; suitable for real-time use.], [Model complexity increases training time and requires GPU-based systems.],
-    [12], [R. Ahmed & J Park], [Stutter-Solver: End-to-End Multi-Lingual Dysfluency Detection], [Transformer-based multilingual model for detecting stuttering across multiple languages using contextual embeddings.], [Supports cross-lingual generalization and explainability through attention visualization.], [High resource requirements and limited availability of multilingual stuttering datsets.],
-    [13], [F. Rahimi & D. Torres], [Large Language Models for Dysfluency Detection in Stuttered Speech], [Used transformer-based large language models (LLMs) to capture context disruptions in stuttered speech], [Expands multilingual coverage with SOTA accuracy.], [Synthetic speech may not fully match real speech.],
-    [14], [V. Uloza et al.], [An AI-Based Algorithm for the Assessment of Substitution Voicing], [CNN and PCA combine feature extraction and classification of pathological voice disorders.], [Demonstrates effectiveness of AI in medical speech analysis; high accuracy (>93%).], [Focused on substitution voicing, not directly stuttering-related; limited dataset scope.],
-    [15], [H Muller & C. Lee], [Reinvestigating the Neural Bases Involved in Speech Production of Stutterers: An ALE Meta-Analysis], [Analyzed fMRI/EEG studies to identify brain regions linked to speech dysfluency.], [Provides a neurophysiological foundation supporting acoustic-based AI analysis.], [Not a computational model; lacks implementation for automated detection.],
-  ),
-  caption: [Summary of Literature Survey]
-)
+The system shall preprocess input audio by converting it to 16 kHz mono format, removing DC offset, applying peak normalization (up to 0.95), and trimming silence segments.
+For feature extraction, the system shall generate high-level speech representations using Wav2Vec 2.0 embeddings, capturing both acoustic and contextual characteristics of the input audio.
+
+The classification pipeline shall detect five types of dysfluencies---prolongation, block, sound repetition, word repetition, and interjection---using five parallel binary classification models.
+The per-classifier outputs shall be aggregated into a multi-label result that reports the probability of each dysfluency type and summarizes the detected classes.
+
+The system shall generate a timestamped transcript of the input audio using the Whisper model, supporting multiple languages including English, Kannada, and Hindi.
+Dysfluency localization shall be performed using CNN-based spectrogram analysis and Wav2Vec2 frame-level feature extraction, followed by alignment with corresponding words or syllables using Connectionist Temporal Classification (CTC) based time alignment.
+
+The system shall provide visual representations of the analysis, including waveform displays with dysfluency overlays, spectrograms, and prediction probability graphs.
+A detailed analysis report shall be generated and maintained using local storage mechanisms.
+
+== NON-FUNCTIONAL REQUIREMENTS
+
+The non-functional requirements define the quality attributes and operational constraints of the system.
+These requirements ensure that the system performs efficiently, remains user-friendly, and can be maintained and extended over time.
+
+=== Reliability
+
+Reliability is critical in any system used to assist clinical assessment, as incorrect results can lead to misdiagnosis and inappropriate therapy decisions.
+The system must produce consistent and reliable results regardless of variations in input audio quality, speaker characteristics, or recording environments.
+
+The deep learning models are trained on diverse datasets that include multiple speakers, accents, and recording conditions, enabling the system to generalize across different populations.
+The use of Wav2Vec 2.0 pretrained embeddings provides robust speech representations that have been learned from large-scale speech corpora, improving generalization to unseen speakers and environments.
+
+A confidence threshold mechanism prevents the system from producing unreliable outputs for ambiguous inputs.
+Predictions falling below the defined threshold are flagged as uncertain rather than being presented as definitive results.
+Error handling routines capture exceptions that occur due to invalid file formats, corrupted audio, or unexpected input types, preventing complete system failure during operation.
+
+=== Performance
+
+System performance is essential for making the system practical and usable in real-world clinical environments.
+The system is designed to deliver analysis results within a few seconds when processing a single audio clip.
+
+This rapid response time is achieved through optimized processing techniques such as lazy loading and caching of models, efficient audio conversion using FFmpeg, and standardizing input to a fixed duration of 3 seconds at 16 kHz.
+Utilizing pretrained Wav2Vec 2.0 model weights via transfer learning eliminates the considerable resources that would be required to train the model from scratch.
+
+If GPU hardware is available, it is used for accelerated computation during both training and inference.
+The modular design of the classification and localization pipelines allows parallel processing, improving overall throughput.
+
+=== Usability
+
+The system is designed to be intuitive and accessible for both clinicians and non-technical users.
+The user interface provides a clean graphical interface with minimal steps required---simply uploading or recording audio and obtaining results.
+
+Results are presented in plain language that is easy to understand, avoiding technical jargon where possible.
+Confidence scores accompany all predictions so that users can assess the reliability of the results.
+For cases where results indicate low confidence, the system suggests consulting a speech-language pathologist.
+
+The system supports both web-based and desktop interfaces, ensuring accessibility across different platforms without requiring specialized hardware or software installation.
+
+=== Scalability
+
+The system is designed to be scalable from the beginning, with the ability to extend both the size and usage of the system without requiring a complete redesign.
+
+The classification pipeline uses independent binary classifiers, allowing new dysfluency classes to be added by training and incorporating additional models with minimal modifications to the existing codebase.
+Language-specific adapters enable the system to support additional languages without major architectural changes.
+
+The modular architecture supports horizontal scaling when hosted on cloud platforms, accommodating larger volumes of concurrent users.
+The separation of preprocessing, classification, localization, and reporting components allows individual modules to be upgraded or replaced independently.
+
+=== Maintainability
+
+The codebase follows a modular monorepo architecture, with preprocessing, classification, localization, transcription, and reporting developed as independent but loosely coupled components.
+This separation of concerns allows developers to modify one section of the system with minimal risk of creating unintended consequences in other sections.
+
+Model files are stored separately and can be replaced with newer versions once retrained on updated data.
+A centralized model registry with configuration-driven checkpoint management ensures consistent model loading across the web and desktop applications.
+Unique fingerprinting of model checkpoints enables version tracking and reproducibility.
+
+Extensive documentation and consistent code quality standards, enforced through linting tools, reduce the ramp-up time for new contributors and support ongoing maintenance.
+
+== USER INTERFACE REQUIREMENT
+
+The system provides both a web-based interface and a desktop application to support different user preferences and environments.
+
+=== Input Page
+
+The input page allows users to interact with the system by providing audio input.
+Users can upload pre-recorded audio files in WAV, MP3, FLAC, or M4A formats through a clearly marked upload button.
+Alternatively, users can record speech directly using a microphone via the MediaRecorder API in the web application or the sounddevice library in the desktop application.
+
+The system validates that the uploaded file is in a supported format before proceeding with analysis.
+A preview of the uploaded audio may be displayed to confirm the correct file has been selected.
+A clearly visible button initiates the analysis pipeline once the user is ready.
+
+=== Result Page
+
+The results page displays the output of the analysis pipeline.
+The classification results indicate which dysfluency types are present in the speech, along with confidence scores for each type.
+A waveform visualization with highlighted dysfluency regions provides a visual representation of where dysfluencies occur in the audio.
+
+Spectrogram visualizations offer additional insight into the spectral characteristics of the speech signal.
+A timestamped transcript of the speech is displayed, with detected dysfluencies marked at their corresponding positions.
+The system also provides an option to generate and download a detailed clinical-style report in PDF format.
+
+== SOFTWARE REQUIREMENT
+
+The software requirements of the proposed system include the tools, frameworks, and technologies used for developing, deploying, and maintaining the application across different platforms.
+
+=== PyTorch
+
+PyTorch is the primary deep learning framework used for developing and training all machine learning models in the system.
+It provides the computational backend for Wav2Vec 2.0 feature extraction, binary classification, multitask classification, CNN-based localization, and Wav2Vec2-based localization.
+PyTorch's dynamic computation graph and automatic differentiation capabilities enable efficient model training and inference.
+The framework supports GPU acceleration through CUDA and mixed-precision training for improved performance.
+
+=== Transformers
+
+The Hugging Face Transformers library provides pretrained speech models and integration tools.
+Wav2Vec 2.0 models (facebook/wav2vec2-base) are used for extracting contextual speech embeddings that serve as input features for classification and localization.
+The Whisper model is used for automatic speech recognition, generating timestamped transcripts of input audio.
+Language-specific Whisper variants support English, Kannada, and Hindi transcription.
+
+=== librosa
+
+librosa is a Python library for audio analysis and processing.
+It is used throughout the preprocessing pipeline for loading audio files, resampling to the target sample rate, computing mel-spectrograms (128 mel bands, hop length of 512, FFT size of 2048), and performing silence trimming.
+librosa provides the foundational audio manipulation capabilities that support both training and inference workflows.
+
+=== Matplotlib
+
+Matplotlib is used for generating visual representations of audio data and model performance.
+Mel-spectrograms are plotted using Matplotlib for visualization and debugging purposes.
+Training curves showing accuracy and loss metrics are plotted during model development to monitor learning progress.
+Confusion matrices and other evaluation visualizations are generated using Matplotlib to assess model performance across different dysfluency classes.
+
+=== NumPy
+
+NumPy is used extensively throughout the system for numerical computations on array data.
+Audio signals are represented as NumPy arrays for preprocessing operations such as DC offset removal, peak normalization, and padding.
+Model outputs and probability scores are processed using NumPy for aggregation and thresholding.
+Data preparation and augmentation pipelines rely on NumPy for efficient array manipulation and transformation.
+
+=== scikit-learn
+
+scikit-learn provides evaluation metrics and tools for assessing model performance.
+Classification metrics including precision, recall, F1-score, AUROC, and AUPRC are computed using scikit-learn to evaluate the reliability and diagnostic performance of the system.
+These metrics are used during training to select the best-performing model checkpoints and during evaluation to compare different model architectures and configurations.
+
+== HARDWARE REQUIREMENTS
+
+The hardware requirements define the minimum and recommended system specifications necessary for efficient execution of the proposed system.
+These requirements ensure smooth performance during both development and deployment phases.
+
+- *Processor:* A system with at least an Intel Core i5 or AMD Ryzen 5 processor (or higher) is required to handle audio processing and model inference efficiently.
+- *Memory (RAM):* A minimum of 8 GB RAM is required for basic functionality. However, 16 GB RAM is recommended to ensure smoother performance, especially when handling multiple recordings or running resource-intensive tasks.
+- *Storage:* The system requires at least 10 GB of available storage to accommodate datasets, trained model weights, and application files. Additional storage may be needed depending on usage and data accumulation.
+- *Graphics Processing Unit (GPU):* An NVIDIA GPU is recommended for training deep learning models, as it enables faster computation through features such as torch.compile, mixed precision, and TensorFloat-32 (TF32). However, a GPU is not mandatory for inference, and the system can operate on CPU for deployment purposes.
+- *Audio Input Device:* A functional microphone is required for recording speech input within the application.
+
+/*
+// --- Commented out sections (from original chapter 3) ---
+
+== FEASIBILITY STUDY
+The feasibility study evaluates the practicality of the proposed system from technical, economic, operational, and future expansion perspectives.
+
+- *Technical Feasibility:*
+  The system is built using a well-established open-source software stack, including PyTorch, Hugging Face Transformers, librosa, FastAPI, and React. These technologies are widely adopted, thoroughly tested, and supported by strong developer communities, making implementation both reliable and manageable.
+- *Economic Feasibility:*
+  The overall development cost is minimal, as all major tools and libraries used in the system are free and open-source. The primary expense is limited to computational resources required for model training, which can be managed using platforms such as Kaggle or Google Colab.
+- *Operational Feasibility:*
+  The system is designed with usability in mind, offering both web and desktop interfaces that are intuitive and easy to navigate. This reduces the learning curve for users, including clinicians and non-technical individuals, and allows for smooth day-to-day operation without extensive training.
+- *Schedule and Data Feasibility:*
+  The project is supported by the availability of publicly accessible datasets such as Project Boli, SEP-28K, and UCLASS. These datasets can be obtained through platforms like GitHub and Kaggle. An automated pipeline is used to download, merge, and preprocess the data, ensuring efficient dataset preparation.
+- *Future Feasibility:*
+  The system is designed with extensibility in mind. It can be expanded to support additional languages and dysfluency categories. Future enhancements may also include cloud-based synchronization, as well as features for tracking therapy progress over time, further increasing its practical value.
+
+== USE CASE DIAGRAM AND DESCRIPTIONS
+The use case diagram represents the interaction between the user and the system.
+The primary actor in the system is the *User*, which may be either a clinician or an individual using the application for self-assessment.
+
+The system supports multiple use cases that cover the complete workflow of speech analysis.
+These include recording audio, uploading pre-recorded audio, and initiating speech analysis in either full mode or classification-only mode.
+Once the analysis is complete, users can view different forms of output such as waveform visualizations, spectrograms, transcripts, and stutter detection results.
+
+In addition to analysis, the system allows users to localize dysfluencies within the speech, generate detailed analysis or clinical reports, and manage previously recorded sessions through a history feature.
+Other supporting functionalities include toggling between interface themes and accessing standardized reading passages for consistent evaluation.
+
+The primary flow of interaction follows a simple sequence: the user records or uploads audio, initiates analysis, reviews visualizations and results, and finally generates or saves the report.
+
+== ACTIVITY DIAGRAM
+The activity diagram illustrates the step-by-step workflow of the system.
+The process begins when the user opens the application and chooses to either record new audio or upload an existing file.
+The input audio is then validated and converted into a standard format using FFmpeg, specifically 16 kHz mono.
+
+Following this, preprocessing is applied to clean and normalize the audio.
+The processed audio is then passed through multiple stages: classification, transcription, localization, and alignment.
+The classification stage uses five Wav2Vec2-based binary classifiers whose outputs are aggregated to identify which dysfluency types are present.
+In parallel, the Whisper model generates a timestamped transcription of the speech.
+
+Localization is performed using spectrogram-based CNN analysis or Wav2Vec2 temporal features.
+The results are then aligned to specific words or syllables using CTC-based alignment.
+Finally, the system displays waveform, spectrogram, transcript, and confidence scores, and provides an option to generate and save a detailed report.
+
+== SEQUENCE DIAGRAM
+The sequence diagram describes the interaction between different system components during execution.
+The process starts with the user interacting with the graphical user interface (GUI), which sends a request to the backend API endpoint (`/api/analyze`).
+
+The backend processes the request through a series of services, including preprocessing, classification, transcription, localization, and alignment.
+Each service performs a specific task and passes its output to the next stage.
+Once processing is complete, the results are sent back to the frontend, where they are displayed to the user.
+The system also stores the results for report generation and history management.
+
+== DATA FLOW DESCRIPTION
+The data flow within the system begins with the input audio, which is first converted into a standardized 16 kHz mono WAV format using FFmpeg.
+The audio is then processed through a cleaning stage that removes DC offset, applies peak normalization, and trims silence.
+
+The cleaned audio is routed through three parallel processing paths.
+In the first path, Wav2Vec2 embeddings are generated and passed through five binary classifiers, and the outputs are aggregated into a multi-label result with a probability score for each dysfluency type.
+In the second path, the Whisper model generates a timestamped transcript of the speech.
+In the third path, spectrogram features (128 mel bands with a hop length of 512) or raw waveform inputs are used for localization, producing frame-level outputs at intervals such as 32 ms or 20 ms.
+
+The outputs from all three paths are merged to create a detailed mapping of dysfluencies at the word level.
+These results are then used to generate visualizations and structured reports.
+
+For training and evaluation, the system utilizes multiple datasets, including Project Boli (from GitHub), SEP-28K (approximately 28,000 clips from Kaggle), and UCLASS (from Kaggle).
+These datasets are normalized into a unified format, consisting of a `combined_labels.csv` file with multi-label binary annotations and corresponding interval files for each clip.
+The dataset is split into training, validation, and testing sets in an 80:10:10 ratio.
+
+== CHAPTER SUMMARY
+This chapter presented a detailed analysis of the system requirements, covering both functional and non-functional aspects.
+It also examined feasibility, system interactions, workflows, and data processing mechanisms.
+The requirements highlight the need for an accurate, interpretable, and multilingual-ready stuttering detection system that can operate efficiently in both online and offline environments.
+
+The next chapter focuses on the system design and architecture, detailing how these requirements are translated into an implementable solution.
+*/
 
 #pagebreak()

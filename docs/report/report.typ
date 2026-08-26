@@ -73,9 +73,12 @@
 #counter(page).update(1)
 #counter(heading).update(0)
 
-#set heading(numbering: "1.1")
+#set heading(numbering: "1.1.1")
 #show heading: it => it
+#show heading.where(level: 2): set text(size: 16pt, weight: "bold")
 #show heading.where(level: 2): set block(above: 12.6pt, below: 16pt)
+#show heading.where(level: 3): set text(size: 14pt, weight: "bold")
+#show heading.where(level: 3): set block(above: 12.6pt, below: 10pt)
 
 #set par(
   justify: true,
@@ -92,6 +95,6 @@
 
 // --- Chapters ---
 #include "chapters/chapter1.typ"
-// #include "chapters/chapter2.typ"
+#include "chapters/chapter2.typ"
 // #include "chapters/chapter3.typ"
 // #include "chapters/chapter4.typ"
