@@ -176,6 +176,12 @@ class Transcriber:
         return {
             "text": transcript_text,
             "words": word_list,
+            "chunks": [
+                {"text": w["word"], "start": w["start_sec"], "end": w["end_sec"],
+                 "language": language}
+                for w in word_list
+            ],
+            "language": language,
             "duration_sec": round(duration_sec, 2),
         }
 
