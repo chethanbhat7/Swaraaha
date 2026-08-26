@@ -7,7 +7,7 @@ from typing import Union
 # Audio
 SAMPLE_RATE = 16000
 AUDIO_DURATION_SECONDS = 3
-MAX_AUDIO_LENGTH = SAMPLE_RATE * AUDIO_DURATION_SECONDS  # 160000 samples
+MAX_AUDIO_LENGTH = SAMPLE_RATE * AUDIO_DURATION_SECONDS  # 48000 samples
 
 # Wav2Vec2 frame constants
 FRAME_SAMPLES = 320  # wav2vec2 conv subsampling factor

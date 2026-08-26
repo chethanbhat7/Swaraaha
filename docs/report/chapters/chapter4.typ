@@ -42,7 +42,7 @@ The Whisper Automatic Speech Recognition (ASR) model is used to generate a times
 This component supports multiple languages, including English, Kannada, and Hindi.
 
 The third pipeline is responsible for localization.
-Dysfluency regions are identified at the frame level using either a CNN-based spectrogram approach or Wav2Vec2 temporal attention mechanisms.
+Dysfluency regions are identified at the frame level using either a CNN-based spectrogram approach or Wav2Vec2 frame-level feature extraction.
 This enables the system to detect the precise segments of speech where dysfluencies occur.
 
 To connect these outputs meaningfully, a Connectionist Temporal Classification (CTC) based time alignment process is used.
@@ -54,7 +54,7 @@ The final results are presented through multiple visual and textual outputs, inc
 Both the web and desktop applications rely on a centralized model registry for loading trained models.
 This registry, implemented using a registry module and a configuration file, ensures that model checkpoints can be updated or replaced without requiring changes to the application code, thereby improving flexibility and maintainability.
 
-== SYSTEM ARCHITECTURE BLCOK DIAGRAM
+== SYSTEM ARCHITECTURE BLOCK DIAGRAM
 
 #add_image(image("/assets/architecture-verticle.png", height: 50%), caption: [System Architecture])
 
@@ -91,7 +91,7 @@ The data flow design describes how audio data is processed through different sta
 
 The process begins with the input audio, which is either recorded or uploaded by the user.
 This audio is first converted into a standardized 16 kHz mono WAV format using FFmpeg.
-To ensure uniform input length, the audio is then padded or truncated to 160,000 samples, corresponding to a duration of 10 seconds.
+To ensure uniform input length, the audio is then padded or truncated to 48,000 samples, corresponding to a duration of 3 seconds.
 
 After normalization, the audio is processed through three parallel pipelines: classification, transcription, and localization.
 The classification pipeline generates dysfluency probabilities, the transcription pipeline produces a timestamped transcript, and the localization pipeline identifies frame-level dysfluency regions.
@@ -116,7 +116,7 @@ The inference process of the system follows a structured sequence of steps, ensu
 - *Step 3: Preprocessing:*
   The audio is cleaned by removing DC offset, applying peak normalization, and trimming silent segments.
 - *Step 4: Length Normalization:*
-  The processed audio is adjusted to a fixed length of 160,000 samples by padding or truncating as required.
+  The processed audio is adjusted to a fixed length of 48,000 samples by padding or truncating as required.
 - *Step 5: Parallel Processing:*
   The system processes the audio simultaneously through three parallel branches:
   + *Classification:* Wav2Vec 2.0 embeddings are generated and passed through five binary classifiers.

@@ -63,7 +63,7 @@ These requirements are structured as a set of functional units, each correspondi
 - *Speech Transcription:*
   The system shall generate a timestamped transcript of the input audio using the Whisper model, supporting multiple languages such as English, Kannada, and Hindi.
 - *Dysfluency Localization:*
-  The system shall identify the exact temporal locations of dysfluencies within the audio using CNN-based spectrogram analysis and Wav2Vec2 temporal attention, followed by alignment with corresponding words or syllables.
+  The system shall identify the exact temporal locations of dysfluencies within the audio using CNN-based spectrogram analysis and Wav2Vec2 frame-level feature extraction, followed by alignment with corresponding words or syllables.
 - *Visualization:*
   The system shall provide visual representations of the analysis, including waveform displays with dysfluency overlays, spectrograms, and prediction probability graphs to enhance interpretability.
 - *Report Generation:*
@@ -75,7 +75,7 @@ These requirements are structured as a set of functional units, each correspondi
 The non-functional requirements define the quality attributes and operational constraints of the system.
 These requirements ensure that the system performs efficiently, remains user-friendly, and can be maintained and extended over time.
 - *Performance:*
-  The system is designed to deliver analysis results within a few seconds. This is achieved through optimized processing techniques such as lazy loading and caching of models, efficient audio conversion using FFmpeg, and standardizing input to a fixed duration of 10 seconds at 16 kHz.
+  The system is designed to deliver analysis results within a few seconds. This is achieved through optimized processing techniques such as lazy loading and caching of models, efficient audio conversion using FFmpeg, and standardizing input to a fixed duration of 3 seconds at 16 kHz.
 - *Accuracy:*
   The system aims to provide reliable and consistent classification of dysfluencies. To address class imbalance, techniques such as Focal Loss are employed during training. Performance is evaluated using metrics like AUROC, AUPRC, and F1-score to ensure robustness.
 - *Usability:*
@@ -100,7 +100,7 @@ The software requirements of the proposed system include the tools, frameworks, 
 - *Web Application Technologies:*
   The web-based interface is built using React 19, along with Vite for fast development and TypeScript for type safety. Tailwind CSS is used to design a responsive and modern user interface. The backend is implemented using FastAPI and served via Uvicorn, enabling efficient handling of API requests. Audio preprocessing and format conversion are supported using FFmpeg, while speech recognition is handled using the Whisper ASR model.
 - *Desktop Application Technologies:*
-  The desktop application is developed using PySide6, providing a native graphical interface. Audio recording and processing are managed using libraries such as sounddevice and soundfile. Additionally, pypdfium2 is used for generating and handling report documents within the application.
+  The desktop application is developed using PySide6, providing a native graphical interface. Audio recording and processing are managed using libraries such as sounddevice and soundfile. Additionally, typst is used for generating report documents, while pypdfium2 handles PDF viewing within the application.
 - *Development and Deployment Tools:*
   For deployment and environment consistency, Docker and Docker Compose are used. The application can be hosted on platforms such as Render. Code quality and consistency are maintained using ruff for linting, while pytest is used for testing, particularly for the desktop components.
 - *Model Registry:*

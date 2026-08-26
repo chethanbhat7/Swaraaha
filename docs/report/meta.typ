@@ -21,6 +21,7 @@
 #let college_short = "VCET"
 #let college_unit = "[A Unit of Vivekananda Vidyavardhaka Sangha Puttur (R)]"
 #let college_address = "Nehru Nagar, Puttur - 574203, DK, Karnataka, India"
+#let college_address_cover = "Nehru Nagar, Puttur - 574 203, DK, Karnataka, India."
 #let affiliation = "Affiliated to Visvesvaraya Technological University and Approved by AICTE New Delhi & Govt. of Karnataka"
 #let department = "Artificial Intelligence & Machine Learning"
 
@@ -38,10 +39,10 @@
 
 // People
 #let authors = (
-  (prefix: "Mr.", name: "K Shreekrishna Upadhyaya", usn: "4VP23AI020"),
-  (prefix: "Mr.", name: "M Chethan Keshav Bhat", usn: "4VP23AI023"),
-  (prefix: "Mr.", name: "Skanda Prasad K", usn: "4VP23AI051"),
-  (prefix: "Mr.", name: "Srinivas Hegde M", usn: "4VP23AI054"),
+  (prefix: "Mr.", name: "K Shreekrishna Upadhyaya", usn: "4VP23AI020", pronoun: "his"),
+  (prefix: "Mr.", name: "M Chethan Keshav Bhat", usn: "4VP23AI023", pronoun: "his"),
+  (prefix: "Mr.", name: "Skanda Prasad K", usn: "4VP23AI051", pronoun: "his"),
+  (prefix: "Mr.", name: "Srinivas Hegde M", usn: "4VP23AI054", pronoun: "his"),
 )
 
 // Render helpers for the author list
@@ -52,15 +53,18 @@
 #let usn_last = usns.last()
 
 #let guide = "Prof. Ajay Shastry C G"
+#let guide_pronoun = "his"
 #let guide_designation = "Assistant Professor"
 #let project_coordinator = "Prof. Ajay Shastry C G"
 #let hod = "Dr. Radhika Shetty D S"
+#let hod_pronoun = "her"
 #let principal = "Dr. Mahesh Prasanna K"
+#let principal_pronoun = "his"
 
 // Dates
 #let academic_year = "2026-27"
 #let academic_year_full = "2026-2027"
-#let submission_month = "NOVEMBER 2026"
+#let submission_month = "November, 2026"
 #let college_place = "Puttur"
 
 // Header / footer
