@@ -12,7 +12,7 @@
   Traditional diagnosis methods rely on manual assessment by speech-language pathologists, which are subjective, time-consuming, and not easily accessible to all individuals.
   To overcome these limitations, this project presents an automated system that uses deep learning to detect, classify, and analyze types of stuttering events in speech recordings.
   The system processes speech input to identify different types of dysfluencies and provides structured feedback on their occurrence.
-  Through a simple and user-friendly interface, users can record or upload audio and receive analysis results in an accessible format.
+  Through a simple interface, users can record or upload audio and receive analysis results in an accessible format.
   By combining speech processing and machine learning techniques, the system offers a tool for early stutter detection, objective speech evaluation, and ongoing therapy support, benefiting both speech-language pathologists and individuals undergoing treatment.
 ]
 
