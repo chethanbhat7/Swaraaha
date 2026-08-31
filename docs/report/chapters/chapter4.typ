@@ -61,30 +61,19 @@ This registry, implemented using a registry module and a configuration file, ens
 == MODULE DESCRIPTION
 The system is organized into multiple functional modules, each responsible for a specific stage in the speech processing pipeline.
 This modular design improves clarity, maintainability, and ease of extension.
-- *Audio Acquisition Module:*
-  This module handles input collection. It allows users to either record speech using a microphone or upload pre-recorded audio files in formats such as WAV, MP3, FLAC, or M4A.
-- *Audio Conversion Module:*
-  The acquired audio is converted into a standardized format using FFmpeg. Specifically, the audio is transformed into 16 kHz mono WAV format. A fallback mechanism is provided in case FFmpeg is not available.
-- *Preprocessing Module:*
-  This module prepares the audio for further analysis. It includes resampling, removal of DC offset, peak normalization (set to 0.95), and trimming of silent segments. These steps ensure consistent input quality across the system.
-- *Feature Extraction Module:*
-  In this stage, meaningful representations of the audio are generated. Wav2Vec 2.0 is used to produce contextual embeddings, while mel-spectrograms (with 128 mel bands, hop length of 512, and FFT size of 2048) are computed for spectral analysis.
-- *Classification Module:*
-  The classification module consists of five parallel Wav2Vec2-based binary classifiers, each responsible for detecting a specific type of dysfluency.
+- Audio Acquisition Module: this module handles input collection, letting users either record speech using a microphone or upload pre-recorded audio files in formats such as WAV, MP3, FLAC, or M4A.
+- Audio Conversion Module: the acquired audio is converted into a standardized format using FFmpeg, specifically into 16 kHz mono WAV. A fallback mechanism is provided in case FFmpeg is not available.
+- Preprocessing Module: this module prepares the audio for further analysis. It includes resampling, removal of DC offset, peak normalization (set to 0.95), and trimming of silent segments. These steps ensure consistent input quality across the system.
+- Feature Extraction Module: in this stage, meaningful representations of the audio are generated. Wav2Vec 2.0 is used to produce contextual embeddings, while mel-spectrograms (with 128 mel bands, hop length of 512, and FFT size of 2048) are computed for spectral analysis.
+- Classification Module: this module consists of five parallel Wav2Vec2-based binary classifiers, each responsible for detecting a specific type of dysfluency.
   Each classifier uses a two-logit output with softmax activation and yields the presence probability of its dysfluency type.
   The per-classifier outputs are aggregated into a multi-label result that reports each class probability and summarizes the detected classes and the primary dysfluency.
-- *Localization Module:*
-  This module identifies the temporal regions of dysfluencies within the audio. It uses two approaches: a CNN-based spectrogram localizer with multiple convolutional layers operating at approximately 32 ms frame resolution, and a Wav2Vec2-based localizer that works at around 20 ms resolution.
-- *Speech-to-Text Module:*
-  The system uses Whisper-based pipelines to convert speech into text. It supports multiple languages, including English, Kannada, and Hindi, and generates word-level timestamps for accurate alignment.
-- *Timestamp Alignment Module:*
-  This module aligns detected dysfluency regions with corresponding words or syllables. It uses a CTC-based alignment approach, with a fallback mechanism for forced alignment. Language-specific adapters are used to improve accuracy across supported languages.
-- *Model Registry Module:*
-  A centralized model registry manages all trained models, including classifiers and localization models. It is designed to be configuration-driven and supports lazy loading, ensuring efficient resource utilization and easy model updates.
-- *Visualization Module:*
-  The system provides multiple visualization outputs, including waveform displays with highlighted dysfluency regions, spectrograms, transcripts, confidence scores, and a timeline view. These visualizations improve interpretability of results.
-- *Report Generation Module:*
-  This module generates a structured report containing patient details, classification results, and localized dysfluency events. It also maintains a history of analyses using local storage mechanisms such as LocalStorage or IndexedDB.
+- Localization Module: this module identifies the temporal regions of dysfluencies within the audio. It uses two approaches: a CNN-based spectrogram localizer with multiple convolutional layers operating at approximately 32 ms frame resolution, and a Wav2Vec2-based localizer that works at around 20 ms resolution.
+- Speech-to-Text Module: the system uses Whisper-based pipelines to convert speech into text. It supports multiple languages, including English, Kannada, and Hindi, and generates word-level timestamps for accurate alignment.
+- Timestamp Alignment Module: this module aligns detected dysfluency regions with corresponding words or syllables. It uses a CTC-based alignment approach, with a fallback mechanism for forced alignment. Language-specific adapters are used to improve accuracy across supported languages.
+- Model Registry Module: a centralized model registry manages all trained models, including classifiers and localization models. It is designed to be configuration-driven and supports lazy loading, ensuring efficient resource utilization and easy model updates.
+- Visualization Module: the system provides multiple visualization outputs, including waveform displays with highlighted dysfluency regions, spectrograms, transcripts, confidence scores, and a timeline view. These visualizations improve interpretability of results.
+- Report Generation Module: this module generates a structured report containing patient details, classification results, and localized dysfluency events. It also maintains a history of analyses using local storage mechanisms such as LocalStorage or IndexedDB.
 
 == DATA FLOW DESIGN
 The data flow design describes how audio data is processed through different stages of the system, from input acquisition to final output generation.
@@ -109,62 +98,43 @@ These subsets are organized using symbolic links for efficient access, and prepr
 
 == ALGORITHM
 The inference process of the system follows a structured sequence of steps, ensuring accurate and efficient detection and localization of dysfluencies.
-- *Step 1: Input Acquisition:*
-  The system acquires speech input either through real-time recording or by uploading an audio file.
-- *Step 2: Audio Conversion:*
-  The input audio is converted into a 16 kHz mono WAV format using FFmpeg to maintain consistency.
-- *Step 3: Preprocessing:*
-  The audio is cleaned by removing DC offset, applying peak normalization, and trimming silent segments.
-- *Step 4: Length Normalization:*
-  The processed audio is adjusted to a fixed length of 48,000 samples by padding or truncating as required.
-- *Step 5: Parallel Processing:*
-  The system processes the audio simultaneously through three parallel branches:
-  + *Classification:* Wav2Vec 2.0 embeddings are generated and passed through five binary classifiers.
+- Step 1, Input Acquisition: the system acquires speech input either through real-time recording or by uploading an audio file.
+- Step 2, Audio Conversion: the input audio is converted into a 16 kHz mono WAV format using FFmpeg to maintain consistency.
+- Step 3, Preprocessing: the audio is cleaned by removing DC offset, applying peak normalization, and trimming silent segments.
+- Step 4, Length Normalization: the processed audio is adjusted to a fixed length of 48,000 samples by padding or truncating as required.
+- Step 5, Parallel Processing: the system processes the audio simultaneously through three parallel branches:
+  + Classification: Wav2Vec 2.0 embeddings are generated and passed through five binary classifiers.
     The outputs are aggregated into a multi-label result with a probability score for each dysfluency type.
-  + *Transcription:* The Whisper model generates a timestamped transcript of the speech.
-  + *Localization:* A spectrogram-based CNN or a Wav2Vec2-based model identifies frame-level dysfluency regions within the audio.
-- *Step 6: Alignment:*
-  The detected dysfluency regions are aligned with corresponding words or syllables using a CTC-based alignment method.
-- *Step 7: Visualization:*
-  The system displays the results through waveform overlays, spectrograms, transcripts, and confidence scores, along with clearly marked dysfluency regions.
-- *Step 8: Report Generation:*
-  A detailed clinical-style report is generated and stored for future reference.
+  + Transcription: the Whisper model generates a timestamped transcript of the speech.
+  + Localization: a spectrogram-based CNN or a Wav2Vec2-based model identifies frame-level dysfluency regions within the audio.
+- Step 6, Alignment: the detected dysfluency regions are aligned with corresponding words or syllables using a CTC-based alignment method.
+- Step 7, Visualization: the system displays the results through waveform overlays, spectrograms, transcripts, and confidence scores, along with clearly marked dysfluency regions.
+- Step 8, Report Generation: a detailed clinical-style report is generated and stored for future reference.
 
 In addition to inference, the training procedure for each classifier follows a structured approach. Initially, the backbone model is frozen for the first three epochs to stabilize learning. It is then unfrozen with a reduced learning rate (scaled by a factor of 0.1). Training is performed using Focal Loss with a gamma value of 2 to handle class imbalance, and optimization is carried out using the AdamW optimizer with a learning rate of $3 times 10^(-5)$. A warm-up phase of 500 steps is applied, followed by early stopping to prevent overfitting. The best-performing model is selected based on the highest F1-score and saved as the final checkpoint.
 
 == DESIGN CONSIDERATIONS
 The system is designed with a focus on accuracy, scalability, interpretability, usability, maintainability, and performance.
 Key design goals and their corresponding implementation strategies are outlined below: \
-- *Accuracy:*
-  Achieved using Wav2Vec 2.0 embeddings combined with per-class fine-tuned binary classifiers.
+- Accuracy: achieved using Wav2Vec 2.0 embeddings combined with per-class fine-tuned binary classifiers.
   A focal loss function is used to handle hard examples and improve classification robustness.
-- *Scalability:*
-  The use of independent binary classifiers allows new dysfluency classes to be added without requiring architectural redesign, ensuring easy extensibility.
-- *Interpretability:*
-  Timestamp alignment enables word- and syllable-level outputs.
+- Scalability: the use of independent binary classifiers allows new dysfluency classes to be added without requiring architectural redesign, making the system easy to extend.
+- Interpretability: timestamp alignment enables word- and syllable-level outputs.
   Visual overlays on waveform and spectrogram provide intuitive understanding of detected dysfluencies.
-- *Usability:*
-  The system provides both a React-based web interface and a PySide6 desktop application, featuring dark mode and guided workflows for ease of use.
-- *Maintainability:*
-  A modular monorepo structure is adopted, along with a centralized model registry and fingerprint-based checkpoint naming for version control and reproducibility.
-- *Performance:*
-  Models are lazy-loaded and cached to reduce latency.
+- Usability: the system provides both a React-based web interface and a PySide6 desktop application, featuring dark mode and guided workflows for ease of use.
+- Maintainability: a modular monorepo structure is adopted, along with a centralized model registry and fingerprint-based checkpoint naming for version control and reproducibility.
+- Performance: models are lazy-loaded and cached to reduce latency.
   Training leverages GPU acceleration with mixed precision and torch.compile for efficiency.
-- *Class Imbalance Handling:*
-  Focal loss is used alongside positive class weighting (pos_weight) in the localizer.
+- Class Imbalance Handling: focal loss is used alongside positive class weighting (pos_weight) in the localizer.
   Performance is monitored using per-class evaluation metrics.
 
 == COMPONENT INTERACTION
 The system components interact through clearly defined interfaces across different layers: \
-- *Frontend #sym.arrow.l.r Backend:*
-  Communication occurs via REST APIs exposed by FastAPI, including endpoints such as `/api/classify`, `/api/localize`, `/api/analyze`, and `/health`.
-- *Backend Services:*
-  Core services include audio processing utilities, classification, localization, and transcription modules.
+- Frontend #sym.arrow.l.r Backend: communication occurs via REST APIs exposed by FastAPI, including endpoints such as `/api/classify`, `/api/localize`, `/api/analyze`, and `/health`.
+- Backend Services: core services include audio processing utilities, classification, localization, and transcription modules.
   These services interact with a shared model registry (`model/registry.py`) to dynamically load models.
-- *Desktop Components:*
-  The desktop application includes modules such as ModelRunner, AudioHandler, and AudioTranscriber, currently structured for inference and real-time transcription.
-- *Data Pipeline:*
-  The data layer follows a structured workflow: `download → merge → prepare → train → evaluate`, ensuring reproducibility and consistency across experiments.
+- Desktop Components: the desktop application includes modules such as ModelRunner, AudioHandler, and AudioTranscriber, currently structured for inference and real-time transcription.
+- Data Pipeline: the data layer follows a structured workflow: `download → merge → prepare → train → evaluate`, ensuring reproducibility and consistency across experiments.
 
 == CHAPTER SUMMARY
 This chapter presented the complete system design of the proposed framework, covering its architecture, data flow, modules, and processing algorithms.

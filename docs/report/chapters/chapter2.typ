@@ -6,10 +6,10 @@
 
 == INTRODUCTION
 
-The requirements analysis and specification stage of the #project_title defines the main functions of the system, the expected performance, the dependencies on technical issues, the needs of users (including developers, clinicians, and end-users), etc.
-This phase brings all interested parties together (developing agency, clinicians, and end users) to agree on what the system will do.
+The requirements analysis and specification stage of the #project_title defines the main functions of the system, the expected performance, the dependencies on technical issues, and the needs of the users (developers, clinicians, and end-users).
+This phase brings all interested parties together (the developing agency, clinicians, and end users) to agree on what the system will do.
 The ultimate goal of the system is to take speech audio recordings and use a deep learning pipeline to classify stuttering types and localize dysfluency events within the speech signal.
-Clearly defining at this point all functional and non-functional requirements provides a roadmap for the development process, thereby reducing the likelihood of design errors occurring and ensuring that the completed system meets the clinical and technical requirements.
+Writing functional and non-functional requirements up front reduces the chance of design errors and helps ensure the finished system meets the clinical and technical needs.
 
 == FUNCTIONAL REQUIREMENTS
 
@@ -59,7 +59,7 @@ If the system is unable to provide a conclusive classification, it will indicate
 The system shall preprocess input audio by converting it to 16 kHz mono format, removing DC offset, applying peak normalization (up to 0.95), and trimming silence segments.
 For feature extraction, the system shall generate high-level speech representations using Wav2Vec 2.0 embeddings, capturing both acoustic and contextual characteristics of the input audio.
 
-The classification pipeline shall detect five types of dysfluencies---prolongation, block, sound repetition, word repetition, and interjection---using five parallel binary classification models.
+The classification pipeline shall detect five types of dysfluencies (prolongation, block, sound repetition, word repetition, and interjection) using five parallel binary classification models.
 The per-classifier outputs shall be aggregated into a multi-label result that reports the probability of each dysfluency type and summarizes the detected classes.
 
 The system shall generate a timestamped transcript of the input audio using the Whisper model, supporting multiple languages including English, Kannada, and Hindi.
@@ -71,7 +71,7 @@ A detailed analysis report shall be generated and maintained using local storage
 == NON-FUNCTIONAL REQUIREMENTS
 
 The non-functional requirements define the quality attributes and operational constraints of the system.
-These requirements ensure that the system performs efficiently, remains user-friendly, and can be maintained and extended over time.
+These requirements cover how well the system performs, how easy it is to use, and how it can be maintained and extended over time.
 
 === Reliability
 
@@ -99,7 +99,7 @@ The modular design of the classification and localization pipelines allows paral
 === Usability
 
 The system is designed to be intuitive and accessible for both clinicians and non-technical users.
-The user interface provides a clean graphical interface with minimal steps required---simply uploading or recording audio and obtaining results.
+The user interface provides a clean graphical interface with a minimal number of steps, simply uploading or recording audio and getting results.
 
 Results are presented in plain language that is easy to understand, avoiding technical jargon where possible.
 Confidence scores accompany all predictions so that users can assess the reliability of the results.
@@ -201,11 +201,11 @@ These metrics are used during training to select the best-performing model check
 The hardware requirements define the minimum and recommended system specifications necessary for efficient execution of the proposed system.
 These requirements ensure smooth performance during both development and deployment phases.
 
-- *Processor:* A system with at least an Intel Core i5 or AMD Ryzen 5 processor (or higher) is required to handle audio processing and model inference efficiently.
-- *Memory (RAM):* A minimum of 8 GB RAM is required for basic functionality. However, 16 GB RAM is recommended to ensure smoother performance, especially when handling multiple recordings or running resource-intensive tasks.
-- *Storage:* The system requires at least 10 GB of available storage to accommodate datasets, trained model weights, and application files. Additional storage may be needed depending on usage and data accumulation.
-- *Graphics Processing Unit (GPU):* An NVIDIA GPU is recommended for training deep learning models, as it enables faster computation through features such as torch.compile, mixed precision, and TensorFloat-32 (TF32). However, a GPU is not mandatory for inference, and the system can operate on CPU for deployment purposes.
-- *Audio Input Device:* A functional microphone is required for recording speech input within the application.
+- Processor: a system with at least an Intel Core i5 or AMD Ryzen 5 (or higher) to handle audio processing and model inference efficiently.
+- Memory (RAM): 8 GB RAM for basic functionality, with 16 GB recommended for smoother performance when handling multiple recordings or resource-intensive tasks.
+- Storage: at least 10 GB of available storage to accommodate datasets, trained model weights, and application files. Additional storage may be needed depending on usage and data accumulation.
+- Graphics Processing Unit (GPU): an NVIDIA GPU is recommended for training deep learning models, as it enables faster computation through features such as torch.compile, mixed precision, and TensorFloat-32 (TF32). A GPU is not mandatory for inference; the system can run on CPU for deployment.
+- Audio Input Device: a functional microphone is required for recording speech input within the application.
 
 /*
 // --- Commented out sections (from original chapter 3) ---

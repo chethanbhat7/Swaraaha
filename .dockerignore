@@ -15,7 +15,10 @@ venv/
 backend/.venv/
 
 # Model weights (large, deployed separately)
-model/weights/
+model/weights/*
+!model/weights/
+!model/weights/multi_e20_b16_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml3_s42_train_w2v2base_best.pt
+!model/weights/w2v2loc_e20_b4_lr3e-5_frz5_wu500_hd256_d0.3_wd0.01_ml3_pa5_vr0.2_s42_train_w2v2base_best.pt
 swaraaha-models.zip
 *.zip
 
