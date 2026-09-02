@@ -3,7 +3,7 @@
 // ──────────────────────────────────────────────────────────────────────
 
 #set document(
-  title: "Swaraaha: A Comparative Study of Deep Learning Architectures for Speech Dysfluency Classification and Localization",
+  title: "Swaraaha: A Comparative Study of Deep Learning Architectures for Speech Dysfluency Classification",
   author: (
     "K Shreekrishna Upadhyaya",
     "M Chethan Keshav Bhat",
@@ -50,7 +50,7 @@
 
 #align(center)[
   #v(1.2cm)
-  #text(size: 16pt, weight: "bold")[Swaraaha: A Comparative Study of Deep Learning Architectures for Speech Dysfluency Classification and Localization]
+  #text(size: 16pt, weight: "bold")[Swaraaha: A Comparative Study of Deep Learning Architectures for Speech Dysfluency Classification]
   #v(0.6cm)
 
   #text(size: 11pt)[
@@ -65,7 +65,7 @@
   #v(0.3cm)
 
   #text(size: 10pt)[
-    `{shreekrishna, chethan, skanda, srinivas}@vcet.ac.in`
+    `{4vp23ai020, 4vp23ai023, 4vp23ai051, 4vp23ai054}@vcetputtur.ac.in`
   ]
   #v(0.8cm)
 ]
@@ -75,14 +75,14 @@
 #block(inset: (left: 1.5cm, right: 1.5cm))[
   #set text(size: 9.5pt)
   #set par(first-line-indent: 0em)
-  *Abstract* #h(0.5em) — Stuttering is a prevalent speech disorder that manifests as involuntary repetitions, prolongations, and blocks, significantly impacting communication and quality of life. Automated detection and temporal localization of dysfluency events remain challenging due to the subtle acoustic signatures, severe class imbalance, and the need for fine-grained temporal precision. This paper presents *Swaraaha*, an end-to-end speech dysfluency analysis system, and provides a comprehensive comparative study of seven architectural variants spanning three model families: Wav2Vec 2.0-based classifiers (five independent binary classifiers and a shared-backbone multitask variant), and convolutional neural network (CNN) spectrogram models (single-head, pooled, LSTM-augmented, and transformer-augmented). All models are evaluated on a merged corpus of 37,087 clips drawn from SEP-28K, UCLASS, and Project Boli, using both in-distribution held-out and cross-corpus evaluation protocols. Our results demonstrate that the shared-backbone Wav2Vec 2.0 multitask classifier achieves the highest in-distribution macro F1 (0.5215), closely followed by the five independent binary classifiers (0.5183), while requiring ≈4.9× fewer parameters than five separate models. CNN-based models show strong cross-corpus generalization on Boli, with the CNN-LSTM architecture achieving 0.5206 F1 — substantially outperforming Wav2Vec2 models on unseen data. We analyze per-class performance across all five dysfluency types, discuss the trade-offs between representation capacity and generalization, and provide actionable insights for building robust clinical-grade stutter detection systems.
+  *Abstract* #h(0.5em) — Stuttering is a prevalent speech disorder that manifests as involuntary repetitions, prolongations, and blocks, significantly impacting communication and quality of life. Automated detection of dysfluency events remains challenging due to the subtle acoustic signatures and severe class imbalance across dysfluency types. This paper presents *Swaraaha*, an end-to-end speech dysfluency classification system, and provides a comprehensive comparative study of seven architectural variants spanning three model families: Wav2Vec 2.0-based classifiers (five independent binary classifiers and a shared-backbone multitask variant), and convolutional neural network (CNN) spectrogram models (single-head, pooled, LSTM-augmented, and transformer-augmented). All models are evaluated on a merged corpus of 37,087 clips drawn from SEP-28K, UCLASS, and Project Boli, using both in-distribution held-out and cross-corpus evaluation protocols. Our results demonstrate that the shared-backbone Wav2Vec 2.0 multitask classifier achieves the highest in-distribution macro F1 (0.5215), closely followed by the five independent binary classifiers (0.5183), while requiring ≈4.9× fewer parameters than five separate models. CNN-based models show strong cross-corpus generalization on Boli, with the CNN-LSTM architecture achieving 0.5206 F1 — substantially outperforming Wav2Vec2 models on unseen data. We analyze per-class performance across all five dysfluency types, discuss the trade-offs between representation capacity and generalization, and provide actionable insights for building robust clinical-grade stutter detection systems.
 ]
 
 #v(0.3cm)
 
 #align(center)[
   #text(size: 9pt, style: "italic")[
-    *Keywords* #h(0.5em) — Speech dysfluency detection, stuttering classification, Wav2Vec 2.0, multitask learning, temporal localization, deep learning, speech signal processing
+    *Keywords* #h(0.5em) — Speech dysfluency detection, stuttering classification, Wav2Vec 2.0, multitask learning, deep learning, speech signal processing
   ]
 ]
 
@@ -96,11 +96,11 @@
 
   Stuttering affects approximately 1% of the global adult population and up to 5% of children, making it one of the most common communication disorders #cite(<bayerl2022multi>). Characterized by involuntary repetitions of sounds, syllables, or words (sound repetitions and word repetitions), abnormal prolongations of speech sounds (prolongations), and involuntary pauses or stops in speech flow (blocks), stuttering significantly impacts the psychosocial well-being of affected individuals #cite(<yairi2009childhood>). Traditional assessment by speech-language pathologists (SLPs) relies on subjective auditory perception and visual inspection of waveforms — a process that is time-consuming, prone to inter-rater variability, and unscalable for large populations #cite(<dietrich2021stuttering>).
 
-  Recent advances in self-supervised speech representation learning, particularly Wav2Vec 2.0 #cite(<baevski2020wav2vec>), have demonstrated remarkable performance on downstream speech classification tasks by learning powerful contextualized representations from raw audio. However, the application of such models to stuttering detection presents unique challenges: the five dysfluency types have vastly different acoustic signatures, severe class imbalance exists (most speech segments are fluent), and the precise temporal localization of dysfluency events requires fine-grained frame-level prediction #cite(<miyahara2025wav2vec2>).
+  Recent advances in self-supervised speech representation learning, particularly Wav2Vec 2.0 #cite(<baevski2020wav2vec>), have demonstrated remarkable performance on downstream speech classification tasks by learning powerful contextualized representations from raw audio. However, the application of such models to stuttering detection presents unique challenges: the five dysfluency types have vastly different acoustic signatures, and severe class imbalance exists (most speech segments are fluent) #cite(<miyahara2025wav2vec2>).
 
   This paper makes the following contributions:
 
-  + We present *Swaraaha*, a modular, open-source system for speech dysfluency classification and temporal localization, supporting five dysfluency types: prolongation, block, sound repetition, word repetition, and interjection.
+  + We present *Swaraaha*, a modular, open-source system for speech dysfluency classification, supporting five dysfluency types: prolongation, block, sound repetition, word repetition, and interjection.
 
   + We conduct a systematic comparative study of seven architectural variants across three model families — five independent Wav2Vec 2.0 binary classifiers, a shared-backbone multitask classifier, and four CNN spectrogram-based models — on a merged multi-corpus dataset.
 
@@ -129,11 +129,7 @@
 
   Bayerl et al. #cite(<bayerl2022multi>) applied Wav2Vec2 to multi-task stuttering detection on FluencyBank, achieving macro F1 scores in the range of 0.56 -- 0.63 across five dysfluency types. Miyahara et al. #cite(<miyahara2025wav2vec2>) fine-tuned Wav2Vec2 on the SEP-28K dataset, reporting per-class F1 scores that varied significantly by dysfluency type (interjection: 0.78, prolongation: 0.53, block: 0.30). The Vocametrix model on HuggingFace achieved a weighted-average F1 of 0.67 on SEP-28K-E using Wav2Vec2-Large-XLSR-53. These works established Wav2Vec2 as a strong backbone for stutter detection but focused primarily on classification without systematic architectural comparison.
 
-  === D. Temporal Localization
-
-  While classification answers *what type* of dysfluency is present, clinical applications additionally require knowing *where* in the audio the dysfluency occurs. Temporal localization has received less attention in the stutter detection literature. CNN-based approaches operating on spectrograms have been proposed for event detection #cite(<sahu2022stuttering>), but systematic evaluation of localization models on multi-corpus data remains limited. Swaraaha addresses this gap by incorporating both classification and localization pipelines.
-
-  === E. Multi-Corpus Evaluation
+  === D. Multi-Corpus Evaluation
 
   Prior work has largely evaluated on single datasets (either SEP-28K or FluencyBank), making it difficult to assess cross-corpus generalization. The Boli dataset #cite(<boli2025>) offers a multilingual, multi-accent corpus with word-level annotations, enabling meaningful cross-corpus evaluation. Our work systematically evaluates all seven models on both in-distribution and cross-corpus held-out data.
 ]
@@ -144,7 +140,7 @@
   #set par(first-line-indent: 0em)
   = III. SYSTEM ARCHITECTURE
 
-  Swaraaha comprises two independent model pipelines whose outputs are presented jointly: a *classification pipeline* that identifies which dysfluency types are present, and a *localization pipeline* that pinpoints where they occur in the audio. Both pipelines share a common preprocessing module and are accessed through a unified model registry API.
+  Swaraaha comprises a classification pipeline that identifies which dysfluency types are present in speech audio. The pipeline builds on a common preprocessing module and exposes models through a unified model registry API.
 
   === A. Data Pipeline
 
@@ -166,17 +162,7 @@
 
   A single Wav2Vec2 encoder feeds five parallel per-class heads, each a small MLP — Linear(768→768) → Tanh → Linear(768→2) — operating on a temporal mean pool of the encoder's hidden states. The total parameter count is 97.3M — only 2.7M more than a single independent classifier, since the backbone is shared. Training uses summed focal loss across all five heads, allowing the shared backbone to learn representations beneficial to all dysfluency types simultaneously.
 
-  === C. Localization Pipeline
-
-  *1) CNN Spectrogram Localizer:*
-
-  A convolutional network operating on 128-bin mel-spectrograms. The architecture uses four convolutional blocks (Conv2d(3×3) → BatchNorm → ReLU → Dropout2d(0.4)) with progressive channel expansion (1→32→64→128). Each block max-pools only along the frequency axis (kernel 2×1), preserving the time resolution throughout; the fourth block collapses the remaining frequency dimension with adaptive average pooling. A per-frame head of two 1×1 convolutions (128→64→1) with a sigmoid outputs dysfluency probability per frame — since time is never downsampled, no transposed convolutions are required. Trained with BCE loss and pos_weight = 5.0 to compensate for the rarity of dysfluent frames (~5% of all frames).
-
-  *2) Wav2Vec2 Temporal Localizer:*
-
-  Uses the Wav2Vec2 backbone with a temporal attention pooling head: raw audio → Wav2Vec2 encoder → temporal attention → Linear(768→256) → Dropout(0.3) → Linear(256→1) → sigmoid. Frame resolution is ~20 ms (Wav2Vec2 internal subsampling factor = 320 samples at 16 kHz). Backbone freezing for the first 5 epochs, then unfreezing with 10× lower learning rate.
-
-  === D. Model Registry
+  === C. Model Registry
 
   All models are loaded through a unified registry API (`Classifier`, `Localizer`, `Transcriber`, `ModelRegistry`) that decouples model loading from training. The registry reads checkpoint paths and per-class thresholds from a JSON configuration file, enabling seamless model swapping without code changes. Audio preprocessing (resampling, cleaning, normalization, padding) is applied automatically within the API.
 ]
@@ -223,7 +209,7 @@
 
   === C. Evaluation Metrics
 
-  For classification, we report precision, recall, F1 score, and AUROC per dysfluency type, plus macro-averaged F1 across all five types. For localization, we report frame-level precision, recall, F1, specificity, event-level detection accuracy, mean Intersection over Union (mIoU), and false alarm rate (events per minute).
+  For classification, we report precision, recall, F1 score, and AUROC per dysfluency type, plus macro-averaged F1 across all five types.
 
   === D. Evaluation Protocol
 
@@ -345,37 +331,7 @@
 
   + The large gap between AUROC and F1 across all classes (e.g., prolongation AUROC = 0.844 vs. F1 = 0.483) indicates threshold miscalibration rather than poor ranking ability — the model's probability outputs are informative but not well-calibrated.
 
-  === D. Localization Performance
-
-  Table #ref(<tab:localization>) compares localization metrics for the two localizers — the CNN spectrogram localizer and the Wav2Vec2 temporal localizer — on the test and Boli held-out sets.
-
-  #figure(
-    block(breakable: true)[
-      #set text(size: 8.5pt)
-      #set par(first-line-indent: 0em)
-      #table(
-        columns: (auto, 1fr, 1fr, 1fr, 1fr),
-        align: (left, right, right, right, right),
-        stroke: 0.5pt,
-        table.header(
-          [*Metric*], [*CNN Test*], [*CNN Boli*], [*W2V2 Test*], [*W2V2 Boli*],
-        ),
-        [Frame Precision], [0.485], [0.154], [0.676], [0.177],
-        [Frame Recall], [0.690], [0.918], [0.065], [0.023],
-        [Frame F1], [0.570], [0.264], [0.119], [0.040],
-        [Frame Specificity], [0.373], [0.284], [0.973], [0.985],
-        [Detection Accuracy], [0.222], [0.375], [0.210], [0.000],
-        [Mean IoU], [0.707], [0.614], [0.751], [0.000],
-        [False Alarms/min], [55.89], [33.86], [8.95], [11.16],
-      )
-    ],
-    caption: [Localization metrics for the CNN spectrogram localizer and the Wav2Vec2 temporal localizer on test and Boli held-out sets.],
-    kind: table,
-  ) <tab:localization>
-
-  The two localizers exhibit complementary operating points. The *Wav2Vec2 temporal localizer* is highly conservative: on the test set it achieves high frame precision (0.676) but very low recall (0.065), missing most dysfluency events while producing relatively few false alarms (8.95/min); when it does detect an event, temporal accuracy is reasonable (mean IoU = 0.751). On Boli it detects no events at all. The *CNN spectrogram localizer* takes the opposite stance: substantially higher recall (0.690 test, 0.918 Boli) and higher frame F1 (0.570 test, 0.264 Boli), but at the cost of a high false alarm rate (55.9/min test, 33.9/min Boli) and low specificity. Neither localizer is yet suitable for standalone clinical deployment: the Wav2Vec2 variant misses too many events, while the CNN variant flags far too many. The registry's combiner mitigates this by fusing localizer regions with the classifier's per-frame saliency maps, so that conservative temporal anchors are complemented by class-aware evidence; improving the precision–recall balance of both localizers is a priority for future work.
-
-  === E. Computational Considerations
+  === D. Computational Considerations
 
   The comparison between Wav2Vec2 and CNN models highlights a fundamental trade-off:
 
@@ -401,18 +357,17 @@
 
   Wav2Vec2 models achieve ~2× higher in-distribution F1 but use ~180× more parameters and exhibit 3.4× worse cross-corpus performance. For resource-constrained or multilingual deployment, CNN models offer a compelling alternative with competitive cross-corpus performance and negligible computational overhead.
 
-  === F. Comparison with Published Results
+  === E. Comparison with Published Results
 
   Our multitask Wav2Vec2 results (macro F1 = 0.522 at tuned thresholds) are consistent with published benchmarks: Bayerl et al. #cite(<bayerl2022multi>) reported macro F1 in the range of 0.56 -- 0.63 on FluencyBank, and Miyahara et al. #cite(<miyahara2025wav2vec2>) reported per-class F1 ranging from 0.30 (block) to 0.78 (interjection) on SEP-28K. Our interjection F1 (0.751) closely matches their 0.78, and our block F1 (0.383) exceeds their 0.30, suggesting our shared-backbone architecture provides modest improvement for the most challenging class. The macro-averaged F1 of 0.522 falls within the literature-expected range of 0.45 -- 0.65 for Wav2Vec2-based classifiers on this task.
 
-  === G. Limitations
+  === F. Limitations
 
   + *Same-speaker overlap:* The test set contains speakers from the same source datasets as training (SEP-28K, UCLASS), inflating in-distribution metrics. Boli provides a more honest cross-corpus evaluation but is limited in size (53 clips).
   + *Single seed:* All results use seed = 42. A multi-seed evaluation would provide confidence intervals and more robust comparisons.
-  + *Localization recall:* The Wav2Vec2 localizer's low recall (0.065) and the CNN localizer's high false-alarm rate (55.9/min on test) limit clinical utility. Improving the precision–recall balance of both localizers is a priority for future work.
   + *Binary thresholds:* Per-class thresholds are tuned on the validation set only, which may not be optimal for all deployment scenarios.
 
-  === H. Practical Implications
+  === G. Practical Implications
 
   For clinical stutter detection systems, our results suggest:
 
@@ -428,16 +383,16 @@
   #set par(first-line-indent: 0em)
   = VI. CONCLUSION
 
-  This paper presented Swaraaha, an end-to-end speech dysfluency classification and localization system, and provided a systematic comparative study of seven architectural variants across three model families. Our key findings are:
+  This paper presented Swaraaha, an end-to-end speech dysfluency classification system, and provided a systematic comparative study of seven architectural variants across three model families. Our key findings are:
 
   + The *shared-backbone multitask classifier* achieves the highest in-distribution performance (F1 = 0.5215), while the *five-binary variant* follows closely (F1 = 0.5183) using ≈4.9× more parameters in total.
   + *CNN-based models* dramatically outperform Wav2Vec2 on cross-corpus evaluation (Boli F1 = 0.521 vs. 0.160), revealing a fundamental trade-off between in-distribution accuracy and generalization.
   + *Interjection* is the most reliably detected dysfluency type (F1 = 0.751), while *block* remains the most challenging (F1 = 0.383), consistent with prior literature.
   + *Backbone freezing duration* is a critical hyperparameter — excessive freezing (20 epochs) degrades tuned macro F1 by ≈35% compared to moderate freezing (3 epochs).
 
-  Future work will focus on: (1) improving localization recall through semi-supervised training with pseudo-labeled SEP-28K data, (2) backbone ablation across XLS-R-300M and HuBERT for multilingual support, (3) multi-seed evaluation with confidence intervals, and (4) integration of stutter-aware ASR for freeform speech analysis.
+  Future work will focus on: (1) backbone ablation across XLS-R-300M and HuBERT for multilingual support, (2) multi-seed evaluation with confidence intervals, and (3) integration of stutter-aware ASR for freeform speech analysis.
 
-  Swaraaha is open-source and available at `https://github.com/chethanbhat7/Swaraaha`.
+  Swaraaha is available to view at: `https://github.com/chethanbhat7/Swaraaha`.
 ]
 
 // ── REFERENCES ───────────────────────────────────────────────────────
