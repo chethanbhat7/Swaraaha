@@ -7,7 +7,9 @@ returns text with word-level timestamps plus stutter flagging.
 Supports English, Kannada, and Hindi via per-language Whisper-tiny pipelines.
 """
 
+import logging
 import re
+import time
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
@@ -15,6 +17,8 @@ import numpy as np
 from model.config.defaults import SAMPLE_RATE
 from model.data.preprocessing import load_audio_input
 from model.localization.ctc_alignment import SimpleForcedAligner
+
+logger = logging.getLogger(__name__)
 
 WHISPER_MODELS = {
     "english": "openai/whisper-tiny",
@@ -91,7 +95,9 @@ def get_pipeline(language: str = "english"):
         from transformers import pipeline
 
         model_id = WHISPER_MODELS.get(lang, WHISPER_MODELS["english"])
+        logger.info("Loading Whisper pipeline language=%s model=%s", lang, model_id)
         pipe = pipeline("automatic-speech-recognition", model=model_id, device="cpu")
+        logger.info("Whisper pipeline loaded language=%s", lang)
 
         lang_code = WHISPER_LANG_CODES.get(lang, "en")
         _configure_generation_config(pipe, lang_code)
@@ -147,10 +153,12 @@ class Transcriber:
 
         transcript_text = None
         word_list: List[Dict[str, Any]] = []
+        _t_start = time.perf_counter()
 
         try:
             transcript_text, word_list = self._transcribe_with_whisper(audio_array, language)
-        except Exception:
+        except Exception as exc:
+            logger.warning("Whisper transcription failed (%s); falling back", exc)
             transcript_text = None
             word_list = []
 
@@ -158,6 +166,7 @@ class Transcriber:
             transcript_text, word_list = self._fallback_transcribe(
                 audio_array, duration_sec, passage_text
             )
+            logger.info("Used fallback transcription (whisper returned no output)")
 
         _flag_repetitions(word_list)
 
@@ -172,6 +181,13 @@ class Transcriber:
                         w["stutter"] = True
                         w["stutter_type"] = "dysfluency"
                         break
+
+        if not word_list:
+            logger.warning("Transcription produced no words (duration=%.2fs)",
+                           duration_sec)
+
+        logger.info("transcribe() done in %.3fs language=%s words=%d duration=%.2fs",
+                    time.perf_counter() - _t_start, language, len(word_list), duration_sec)
 
         return {
             "text": transcript_text,

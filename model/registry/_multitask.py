@@ -1,5 +1,6 @@
 """MultiTaskRunner and CNNMultiTaskRunner — shared-backbone classification."""
 
+import logging
 from typing import Any, Dict, List, Optional
 
 from model.config.defaults import AUDIO_DURATION_SECONDS, DYSFLUENCY_CLASSES, SAMPLE_RATE
@@ -10,6 +11,8 @@ from ._utils import (
     _empty_classifier_output,
     _preprocess_audio,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _get_reg():
@@ -36,6 +39,7 @@ class MultiTaskRunner:
         self._model, self._thresholds = _reg._load_multitask_registry_entry(
             registry, self.REGISTRY_KEY,
         )
+        logger.info("MultiTaskRunner loaded thresholds=%s", self._thresholds)
 
     @staticmethod
     def _empty_result(names: List[str]) -> Dict[str, Any]:
@@ -95,6 +99,8 @@ class MultiTaskRunner:
         if audio_sec <= max_len + 0.1:
             return self._analyze_chunk(audio, threshold)
 
+        logger.info("classify chunking audio=%.2fs into <=%.1fs windows",
+                    audio_sec, max_len)
         merged: Dict[str, Dict[str, float]] = {}
         for chunk, start_sample in _chunk_audio(audio_array, max_len, sr=SAMPLE_RATE):
             chunk_result = self._analyze_chunk(chunk, threshold)

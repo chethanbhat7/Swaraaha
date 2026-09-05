@@ -16,7 +16,11 @@ Raw mode (full control):
 
 from __future__ import annotations
 
+import logging
+import time
 from typing import Any, Dict, Optional
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Module-level state
@@ -65,6 +69,7 @@ def init(
 
     _load_transcriber()
     _init_done = True
+    logger.info("Model init complete (classifier=%s, localizer=%s)", classifier, localizer)
 
 
 def analyze(
@@ -99,6 +104,9 @@ def analyze(
     Individual keys become ``{"error": "..."}`` if that pipeline fails.
     """
     _ensure_init()
+    logger.debug("analyze() start audio=%s language=%s",
+                 _audio_log_desc(audio), language)
+    _t_start = time.perf_counter()
 
     results: Dict[str, Any] = {}
 
@@ -178,6 +186,15 @@ def analyze(
     else:
         results["transcription"] = {"error": "no transcriber loaded"}
 
+    for stage in ("classification", "localization", "transcription", "combined"):
+        _record_error(results, stage)
+
+    logger.info("analyze() done in %.3fs: classification=%s localization=%s transcription=%s",
+                time.perf_counter() - _t_start,
+                "ok" if "error" not in results.get("classification", {}) else "error",
+                "ok" if "error" not in results.get("localization", {}) else "error",
+                "ok" if "error" not in results.get("transcription", {}) else "error")
+
     return results
 
 
@@ -203,8 +220,12 @@ def classify(
         kwargs: Dict[str, Any] = {}
         if classify_threshold is not None:
             kwargs["threshold"] = classify_threshold
-        return _classifier.analyze(audio, **kwargs)
+        result = _classifier.analyze(audio, **kwargs)
+        if "error" in result:
+            logger.error("classify() failed: %s", result["error"])
+        return result
     except Exception as exc:
+        logger.error("classify() raised: %s", exc)
         return {"error": str(exc)}
 
 
@@ -240,6 +261,7 @@ def transcribe(
             localizations=localizations, passage_text=passage_text,
         )
     except Exception as exc:
+        logger.error("transcribe() raised: %s", exc)
         return {"error": str(exc)}
 
 
@@ -276,9 +298,10 @@ def localize(
             # If the localizer found regions, return them directly.
             if result.get("regions"):
                 return result
+            logger.info("localize() yielded no regions; falling back to saliency")
             # Otherwise fall through to saliency fallback.
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("localize() localizer failed (%s); falling back to saliency", exc)
 
     # Fallback: saliency-based localization via classifier
     return _saliency_localize(audio)
@@ -309,6 +332,7 @@ def fuse(
         _fuse_combined(results, audio, regions, syllables)
         return results.get("combined", {"error": "fusion failed"})
     except Exception as exc:
+        logger.error("fuse() raised: %s", exc)
         return {"error": str(exc)}
 
 
@@ -326,10 +350,32 @@ def status() -> Dict[str, bool]:
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+def _audio_log_desc(audio: Any) -> str:
+    """Short, safe description of an audio input (never the payload)."""
+    import numpy as _np
+    if audio is None:
+        return "None"
+    if isinstance(audio, str):
+        return f"path:{audio}"
+    if isinstance(audio, (bytes, bytearray)):
+        return f"bytes:{len(audio)}B"
+    if isinstance(audio, _np.ndarray):
+        return f"array:{audio.shape},dtype={audio.dtype}"
+    return type(audio).__name__
+
+
+def _record_error(results: Dict[str, Any], stage: str) -> None:
+    """Log and annotate a per-stage pipeline error."""
+    err = results.get(stage, {}).get("error") if isinstance(results.get(stage), dict) else None
+    if err is not None:
+        logger.error("%s failed: %s", stage, err)
+
+
 def _ensure_init() -> None:
     """Lazy-load defaults if init() was never called."""
     if _init_done:
         return
+    logger.info("init() never called; lazy-loading defaults")
     init()  # uses defaults: multitask + wav2vec2
 
 
@@ -338,6 +384,7 @@ def _load_classifier(kind: str) -> None:
     from model.registry._multitask import CNNMultiTaskRunner, MultiTaskRunner
     from model.registry._classifier import ClassifierRunner
 
+    logger.info("Initializing classifier runner kind=%s", kind)
     if kind == "multitask":
         _classifier = MultiTaskRunner()
     elif kind == "cnn_multitask":
@@ -355,6 +402,7 @@ def _load_localizer(kind: str) -> None:
     global _localizer
     from model.registry._localizer import LocalizerRunner
 
+    logger.info("Initializing localizer runner kind=%s", kind)
     if kind in ("wav2vec2", "cnn"):
         _localizer = LocalizerRunner(kind)
     else:
@@ -365,8 +413,10 @@ def _load_localizer(kind: str) -> None:
 
 def _load_transcriber() -> None:
     global _transcriber
+    logger.info("Initializing transcriber")
     from model.transcription import Transcriber
     _transcriber = Transcriber()
+    logger.info("Transcriber initialized")
 
 
 def _saliency_localize(audio: Any) -> Dict[str, Any]:
@@ -429,6 +479,8 @@ def _fuse_combined(
     sal_2d = sal.squeeze(0) if sal.ndim == 3 else sal
 
     if not regions:
+        logger.info("No localizer regions; generating from classifier saliency "
+                    "(audio=%.2fs)", audio_duration)
         regions = saliency_regions(sal_2d, list(DYSFLUENCY_CLASSES), audio_duration)
 
     from model.combiner import combine_regions
