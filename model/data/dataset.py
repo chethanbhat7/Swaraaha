@@ -489,6 +489,24 @@ class ClassificationDataset(_PickleCacheMixin):
     def _config_signature(self) -> str:
         return f"sr={self.sr};max_samples={self.max_samples}"
 
+    @property
+    def label_vectors(self):
+        """Per-sample multi-hot label vectors (reads label files only).
+
+        Mirrors ``SpectrogramClassificationDataset.label_vectors``; used by
+        ``_train_pos_weights`` so per-class positives can be computed without
+        materialising 29k spectrograms.
+        """
+        return [self._label_vector(sample) for sample in self.samples]
+
+    def _label_vector(self, sample) -> "np.ndarray":
+        intervals = load_label_csv(sample["label_path"])
+        label_vector = np.zeros(NUM_CLASSES, dtype=np.uint8)
+        for _, _, dtype in intervals:
+            if dtype in CLASS_TO_IDX:
+                label_vector[CLASS_TO_IDX[dtype]] = 1
+        return label_vector
+
     def get_sample_info(self, idx: int) -> Dict:
         return self.samples[idx].copy()
 
