@@ -27,13 +27,17 @@ class _FakeW2V2(torch.nn.Module):
         return _FakeOut(torch.zeros(B, L // 320, self.config.hidden_size))
 
 
-def _fake_model_factory():
-    class _FakeFactory:
-        @staticmethod
-        def from_pretrained(model_name):
-            return _FakeW2V2()
+class _FakeFactory:
+    def __call__(self, *args, **kwargs):
+        return self
 
-    return _FakeFactory
+    @staticmethod
+    def from_pretrained(model_name):
+        return _FakeW2V2()
+
+
+def _fake_model_factory():
+    return _FakeFactory()
 
 
 @pytest.fixture
