@@ -23,7 +23,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from model.config.defaults import DYSFLUENCY_CLASSES
+from model.config.defaults import DYSFLUENCY_CLASSES, SAMPLE_RATE
 from model.fingerprint import (
     MULTITASK_RESUME_KEYS,
     multitask_fingerprint,
