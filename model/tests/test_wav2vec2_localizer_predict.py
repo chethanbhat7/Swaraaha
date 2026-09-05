@@ -80,8 +80,17 @@ class _FakeW2V2(torch.nn.Module):
         return type("O", (), {"last_hidden_state": torch.zeros(B, T, 768)})()
 
 
+class _F:
+    def __call__(self, *args, **kwargs):
+        return self
+
+    @staticmethod
+    def from_pretrained(name):
+        return _FakeW2V2()
+
+
 def _fake_backbone_factory():
-    return type("F", (), {"from_pretrained": staticmethod(lambda name: _FakeW2V2())})
+    return _F()
 
 
 def _build_localizer(monkeypatch):
