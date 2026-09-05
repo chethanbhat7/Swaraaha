@@ -51,7 +51,9 @@ def parse_args(argv: Optional[List[str]] = None):
                         help="Comma-separated head class names.")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility.")
     parser.add_argument("--freeze_backbone_epochs", type=int, default=3, help="Freeze backbone for first N epochs (train heads only).")
-    parser.add_argument("--loss_type", type=str, default="focal", choices=["focal", "cross_entropy"], help="Loss function.")
+    parser.add_argument("--loss_type", type=str, default="focal",
+                        choices=["focal", "cross_entropy", "bce_posweight"],
+                        help="Loss function.")
     parser.add_argument("--focal_gamma", type=float, default=2.0, help="Focal loss gamma (only used if --loss_type=focal).")
     parser.add_argument("--gradient_accumulation_steps", type=int, default=1, help="Accumulate gradients over N steps before optimizer update.")
     parser.add_argument("--cache_dir", type=str, default=None, help="Cache directory for preprocessed audio (auto-derived from data_dir if omitted).")
@@ -69,6 +71,25 @@ def compute_class_pos_weights(dataset, class_names=None):
     if label_vectors is None:
         label_vectors = [np.asarray(dataset[i][1], dtype=float) for i in range(len(dataset))]
     label_vectors = np.asarray(label_vectors, dtype=float)
+    weights = {}
+    for name in class_names:
+        col = label_vectors[:, DYSFLUENCY_CLASSES.index(name)]
+        n_pos = int(col.sum())
+        n_neg = len(col) - n_pos
+        weights[name] = round(n_neg / max(n_pos, 1), 4) if n_pos > 0 else 1.0
+    return weights
+
+
+def _train_pos_weights(dataset, train_idx, class_names=None):
+    """Per-class neg/pos ratio computed from the training subset only.
+
+    ``SubsetDataset`` does not expose ``label_vectors``, and materialising
+    every sample via ``__getitem__`` is slow, so restrict the base dataset's
+    label matrix (already cheap to access) to ``train_idx``.
+    """
+    if class_names is None:
+        class_names = DYSFLUENCY_CLASSES
+    label_vectors = np.asarray(dataset.label_vectors, dtype=float)[train_idx]
     weights = {}
     for name in class_names:
         col = label_vectors[:, DYSFLUENCY_CLASSES.index(name)]
@@ -318,6 +339,11 @@ def train(args) -> Dict:
     if args.loss_type == "focal":
         criterion = FocalLoss(gamma=args.focal_gamma)
         print(f"  Loss: Focal (gamma={args.focal_gamma}) per head, summed over {len(args.class_names)} heads")
+    elif args.loss_type == "bce_posweight":
+        pos_weights = _train_pos_weights(dataset, train_idx, args.class_names)
+        criterion = MultiLabelBCEWithLogitsLoss(pos_weights)
+        print(f"  Loss: BCE pos-weighted per head, summed over {len(args.class_names)} heads")
+        print(f"    pos_weights: {pos_weights}")
     else:
         criterion = torch.nn.CrossEntropyLoss()
         print(f"  Loss: CrossEntropy (no weights)")

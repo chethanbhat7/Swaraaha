@@ -22,11 +22,19 @@ class _Args:
     seed = 42
     gradient_accumulation_steps = 1
     epochs = 20
+    loss_type = "focal"
 
 
 def test_multitask_fingerprint_format():
     fp = multitask_fingerprint(_Args())
-    assert fp == "multi_e20_b16_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml10_s42_train_w2v2base"
+    assert fp == "multi_e20_b16_lr3e-5_frz3_ltfocal_g2_ga1_wu500_wd0.01_ml10_s42_train_w2v2base"
+
+
+def test_multitask_fingerprint_encodes_loss_type():
+    args = _Args()
+    args.loss_type = "bce_posweight"
+    fp = multitask_fingerprint(args)
+    assert "_ltbce_posweight_g2_" in fp
 
 
 def test_parse_multitask_fingerprint_roundtrip():
@@ -38,6 +46,7 @@ def test_parse_multitask_fingerprint_roundtrip():
     assert parsed["freeze_backbone_epochs"] == 3
     assert parsed["focal_gamma"] == 2.0
     assert parsed["model_name"] == "facebook/wav2vec2-base"
+    assert parsed["loss_type"] == "focal"
 
 
 def test_multitask_resume_keys_match_args():

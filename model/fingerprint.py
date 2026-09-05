@@ -24,6 +24,9 @@ FINGERPRINT_FMT = "{class_name}_e{epochs}_b{batch_size}_lr{lr}_frz{freeze_backbo
 MODEL_ALIASES = {
     "facebook/wav2vec2-base": "w2v2base",
     "facebook/wav2vec2-large": "w2v2large",
+    "facebook/wav2vec2-large-960h": "w2v2large960h",
+    "microsoft/wavlm-base-plus": "wavlmbase",
+    "facebook/hubert-base-ls960": "hubertbase",
 }
 
 MODEL_SHORT_TO_NAME = {v: k for k, v in MODEL_ALIASES.items()}
@@ -99,13 +102,13 @@ def parse_fingerprint_from_path(path: str) -> Dict:
 MULTITASK_RESUME_KEYS = [
     "data_dir", "model_name", "lr", "batch_size",
     "max_length_seconds", "warmup_steps", "weight_decay",
-    "freeze_backbone_epochs", "focal_gamma", "seed",
+    "freeze_backbone_epochs", "loss_type", "focal_gamma", "seed",
     "gradient_accumulation_steps", "epochs",
 ]
 
 MULTITASK_FINGERPRINT_FMT = (
     "multi_e{epochs}_b{batch_size}_lr{lr}_frz{freeze_backbone_epochs}"
-    "_focal_g{focal_gamma}_ga{gradient_accumulation_steps}_wu{warmup_steps}"
+    "_lt{loss_type}_g{focal_gamma}_ga{gradient_accumulation_steps}_wu{warmup_steps}"
     "_wd{weight_decay}_ml{max_length_seconds}_s{seed}_{data_short}_{model_short}"
 )
 
@@ -124,7 +127,8 @@ def parse_multitask_fingerprint(fp: str) -> dict:
     """Parse a multitask fingerprint string back into a dict of params."""
     pattern = (
         r'^multi_e(?P<epochs>\d+)_b(?P<batch_size>\d+)_lr(?P<lr>[\d.e\-]+)'
-        r'_frz(?P<freeze_backbone_epochs>\d+)_focal_g(?P<focal_gamma>[\d.e\-]+)'
+        r'_frz(?P<freeze_backbone_epochs>\d+)_lt(?P<loss_type>\w+)'
+        r'_g(?P<focal_gamma>[\d.e\-]+)'
         r'_ga(?P<gradient_accumulation_steps>\d+)_wu(?P<warmup_steps>\d+)'
         r'_wd(?P<weight_decay>[\d.e\-]+)_ml(?P<max_length_seconds>[\d.e\-]+)'
         r'_s(?P<seed>\d+)_(?P<data_short>\w+)_(?P<model_short>\w+)$'
