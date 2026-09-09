@@ -180,6 +180,9 @@ def train(args):
             augment_spectrogram=True,
             spectrogram_augmentor=SpectrogramAugmentor(),
         )
+        print(f"  Augmentation: ON (spectrogram masking)")
+    else:
+        print(f"  Augmentation: OFF")
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
                               num_workers=num_workers, pin_memory=(device.type == 'cuda'))
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False,

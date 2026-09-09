@@ -88,7 +88,7 @@ echo "=== I-2 / I-3: imbalance study on wav2vec2-base (no-aug) ==="
   --seed 42 --no-augmentation
 "${MULTI[@]}" --data_dir "$DATA_DIR" --output_dir "$OUT_DIR" \
   --model_name facebook/wav2vec2-base --loss_type bce_posweight --focal_gamma 2.0 \
-  --seed 42 --no-augmentation
+  --seed 42 --no-augmentation  # --focal_gamma ignored by bce_posweight; kept to match aug-on arm fingerprint
 
 echo "=== B-3 / B-4: backbone study (no-aug) ==="
 "${MULTI[@]}" --data_dir "$DATA_DIR" --output_dir "$OUT_DIR" \
