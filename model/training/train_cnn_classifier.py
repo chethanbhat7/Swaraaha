@@ -86,6 +86,9 @@ def parse_args(argv=None):
                         help='Cache directory for preprocessed audio (auto-derived from data_dir if omitted).')
     parser.add_argument('--clean', action='store_true',
                         help='Start training from scratch (ignore resume checkpoint)')
+    parser.add_argument('--no-augmentation', dest='augmentation', action='store_false',
+                        default=True,
+                        help='Disable spectrogram masking augmentation (ablation).')
     args = parser.parse_args(argv)
     args.class_names = [c.strip() for c in args.class_names.split(',') if c.strip()]
     return args
@@ -170,7 +173,7 @@ def train(args):
     train_idx, val_idx = stratified_split(dataset, val_ratio=0.2, seed=args.seed)
     train_dataset = SubsetDataset(dataset, train_idx)
     val_dataset = SubsetDataset(dataset, val_idx)
-    if AUGMENTATION_ENABLED:
+    if AUGMENTATION_ENABLED and args.augmentation:
         train_dataset = AugmentedDataset(
             train_dataset,
             augmentor=None,
