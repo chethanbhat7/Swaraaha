@@ -7,7 +7,7 @@ source of truth for both directions.
 
 import os
 import re
-from typing import Dict
+from typing import Dict, Tuple
 
 from model.config.defaults import DYSFLUENCY_CLASSES
 
@@ -39,7 +39,7 @@ def _augmentation_suffix(args) -> str:
     return NAUG_SUFFIX if getattr(args, "augmentation", True) is False else ""
 
 
-def _strip_naug(fp: str):
+def _strip_naug(fp: str) -> Tuple[str, bool]:
     """Split a trailing '_naug' marker if present; returns (fp, augmentation_bool)."""
     if fp.endswith(NAUG_SUFFIX):
         return fp[: -len(NAUG_SUFFIX)], False
