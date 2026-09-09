@@ -68,6 +68,9 @@ def parse_args():
     parser.add_argument("--gradient_accumulation_steps", type=int, default=1, help="Accumulate gradients over N steps before optimizer update.")
     parser.add_argument("--cache_dir", type=str, default=None, help="Cache directory for preprocessed audio (auto-derived from data_dir if omitted).")
     parser.add_argument("--clean", action="store_true", help="Ignore checkpoint and start training from scratch.")
+    parser.add_argument("--no-augmentation", dest="augmentation", action="store_false",
+                        default=True,
+                        help="Disable waveform augmentation (ablation).")
     return parser.parse_args()
 
 
@@ -214,9 +217,11 @@ def train(args) -> Dict:
 
     from model.data.augmentation import AugmentedDataset, AudioAugmentor
     from model.config.defaults import AUGMENTATION_ENABLED
-    if AUGMENTATION_ENABLED:
+    if AUGMENTATION_ENABLED and args.augmentation:
         train_dataset = AugmentedDataset(train_dataset, augmentor=AudioAugmentor())
         print(f"  Augmentation: ON")
+    else:
+        print(f"  Augmentation: OFF")
 
     # ---- Class distribution ----
     all_labels = np.array([dataset[i][1][class_idx] for i in range(len(dataset))])
