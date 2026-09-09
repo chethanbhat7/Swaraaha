@@ -23,27 +23,35 @@ run_single() { # $1=class_name
     --no-augmentation
 }
 
-run_cnn() { # $1=aggregator $2=class_names
+ALL_CLASSES="prolongation,block,soundrep,wordrep,interjection"
+
+run_cnn() { # $1=aggregator $2=class_names ('all' => full class list)
+  local cn="$2"
+  [ "$cn" = "all" ] && cn="$ALL_CLASSES"
   "${CNN[@]}" --data_dir "$DATA_DIR" --output_dir "$OUT_DIR" \
-    --aggregator "$1" --class_names "$2" \
+    --aggregator "$1" --class_names "$cn" \
     --epochs 20 --batch_size 16 --lr 3e-5 --n_mels 128 --hop_length 512 \
     --max_length_seconds 3.0 --hidden_dim 128 --dropout 0.4 --patience 5 \
     --warmup_steps 500 --weight_decay 0.01 --gradient_accumulation_steps 1 \
     --seed 42 --no-augmentation
 }
 
-run_cnn_lstm() { # $1=class_names, $2=num_lstm_layers
+run_cnn_lstm() { # $1=class_names ('all' => full class list), $2=num_lstm_layers
+  local cn="$1"
+  [ "$cn" = "all" ] && cn="$ALL_CLASSES"
   "${CNN[@]}" --data_dir "$DATA_DIR" --output_dir "$OUT_DIR" \
-    --aggregator lstm --num_lstm_layers "$2" --class_names "$1" \
+    --aggregator lstm --num_lstm_layers "$2" --class_names "$cn" \
     --epochs 20 --batch_size 16 --lr 3e-5 --n_mels 128 --hop_length 512 \
     --max_length_seconds 3.0 --hidden_dim 128 --dropout 0.4 --patience 5 \
     --warmup_steps 500 --weight_decay 0.01 --gradient_accumulation_steps 1 \
     --seed 42 --no-augmentation
 }
 
-run_cnn_tf() { # $1=class_names, $2=num_transformer_layers
+run_cnn_tf() { # $1=class_names ('all' => full class list), $2=num_transformer_layers
+  local cn="$1"
+  [ "$cn" = "all" ] && cn="$ALL_CLASSES"
   "${CNN[@]}" --data_dir "$DATA_DIR" --output_dir "$OUT_DIR" \
-    --aggregator transformer --num_transformer_layers "$2" --class_names "$1" \
+    --aggregator transformer --num_transformer_layers "$2" --class_names "$cn" \
     --epochs 20 --batch_size 16 --lr 3e-5 --n_mels 128 --hop_length 512 \
     --max_length_seconds 3.0 --hidden_dim 128 --dropout 0.4 --patience 5 \
     --warmup_steps 500 --weight_decay 0.01 --gradient_accumulation_steps 1 \
