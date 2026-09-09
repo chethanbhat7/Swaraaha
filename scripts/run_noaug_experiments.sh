@@ -8,11 +8,11 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 VENV_PY="$ROOT/.venv/bin/python"
 DATA_DIR="${DATA_DIR:-$ROOT/data/train}"
 OUT_DIR="${OUT_DIR:-$ROOT/model/weights}"
-MULTI=("$VENV_PY" "$ROOT/model/training/train_multitask_classifier.py")
-SINGLE=("$VENV_PY" "$ROOT/model/training/train_classifier.py")
-CNN=("$VENV_PY" "$ROOT/model/training/train_cnn_classifier.py")
-CNN_LOC=("$VENV_PY" "$ROOT/model/training/train_localizer.py")
-W2V2_LOC=("$VENV_PY" "$ROOT/model/training/train_wav2vec2_localizer.py")
+MULTI=("$VENV_PY" -m model.training.train_multitask_classifier)
+SINGLE=("$VENV_PY" -m model.training.train_classifier)
+CNN=("$VENV_PY" -m model.training.train_cnn_classifier)
+CNN_LOC=("$VENV_PY" -m model.training.train_localizer)
+W2V2_LOC=("$VENV_PY" -m model.training.train_wav2vec2_localizer)
 
 run_single() { # $1=class_name
   "${SINGLE[@]}" --data_dir "$DATA_DIR" --output_dir "$OUT_DIR" \
