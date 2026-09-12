@@ -34,6 +34,9 @@ RawData/
 # Debug output
 model/data/debug/
 
+# Eval sweep logs (large stdout captures, not tracked)
+**/sweep.log
+
 # IDE
 .vscode/
 .idea/
