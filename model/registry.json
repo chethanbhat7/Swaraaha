@@ -11,10 +11,10 @@
     "model_name": "facebook/wav2vec2-base",
     "thresholds": {
       "prolongation": 0.45,
-      "block": 0.4,
-      "soundrep": 0.4,
-      "wordrep": 0.4,
-      "interjection": 0.4
+      "block": 0.35,
+      "soundrep": 0.45,
+      "wordrep": 0.45,
+      "interjection": 0.45
     }
   },
   "localization": {

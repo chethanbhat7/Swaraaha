@@ -1,5 +1,6 @@
 """LocalizerRunner — dysfluency region detection with word/syllable alignment."""
 
+import logging
 import os
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -12,6 +13,8 @@ from ._utils import (
     _LOCALIZER_LOADERS,
     _LOCALIZER_PREDICTORS,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _get_reg():
@@ -55,9 +58,11 @@ class LocalizerRunner:
             loader = _LOCALIZER_LOADERS.get(lt)
             if loader is None:
                 raise ValueError(f"Unknown localizer type: {lt}")
+            logger.info("Loading localizer type=%s path=%s", lt, path)
             model = loader(path)
             model.max_length_seconds = AUDIO_DURATION_SECONDS
             self._models[lt] = model
+        logger.info("LocalizerRunner loaded types=%s", list(self._models))
 
     def predict(
         self, audio_tensor, threshold: float = 0.3

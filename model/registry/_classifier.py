@@ -1,5 +1,6 @@
 """ClassifierRunner — individual and all-class dysfluency classification."""
 
+import logging
 import os
 from typing import Any, Dict, Optional, Tuple, Union
 
@@ -13,6 +14,8 @@ from ._utils import (
     _preprocess_audio,
     _registry_classification_names,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _get_reg():
@@ -45,6 +48,8 @@ class ClassifierRunner:
                     f"Registry entry: classification.{self.class_name}"
                 )
 
+            logger.info("Loading classifier class=%s path=%s",
+                        self.class_name, path)
             self._model = _reg._load_classifier(self.class_name, path)
         else:
             missing = []
@@ -63,13 +68,12 @@ class ClassifierRunner:
             self._models = {}
             for name, entry in classification.items():
                 if name not in DYSFLUENCY_CLASSES:
-                    print(
-                        f"WARNING: ignoring unknown classification entry '{name}' "
-                        f"in registry (expected one of {sorted(DYSFLUENCY_CLASSES)})"
-                    )
+                    logger.warning("Ignoring unknown classification registry entry '%s'", name)
                     continue
                 path = _reg._resolve_path(entry)
+                logger.info("Loading classifier class=%s path=%s", name, path)
                 self._models[name] = _reg._load_classifier(name, path)
+            logger.info("ClassifierRunner loaded %d classifiers", len(self._models))
 
     def predict(
         self, audio_tensor, threshold: Optional[float] = None
