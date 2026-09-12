@@ -1,0 +1,44 @@
+{
+  "per_class": {
+    "prolongation": {
+      "class_name": "prolongation",
+      "model_path": "/home/kshku/Git/Swaraaha/model/weights/cnnclf_aggpool_e20_b16_lr3e-5_n128_h512_ml3_hd128_d0.4_pa5_wu500_wd0.01_ga1_s42_train_prolongation_naug_best.pt",
+      "num_samples": 53,
+      "threshold": 0.5,
+      "binary": {
+        "auroc": 0.4527,
+        "auprc": 0.3634,
+        "threshold": 0.5,
+        "precision": 0.2593,
+        "recall": 0.4375,
+        "f1": 0.3256,
+        "specificity": 0.4595,
+        "accuracy": 0.4528,
+        "support": 16,
+        "tn": 17,
+        "fp": 20,
+        "fn": 9,
+        "tp": 7
+      },
+      "support": 16,
+      "threshold_tuned": {
+        "auroc": 0.4527,
+        "auprc": 0.3634,
+        "threshold": 0.5,
+        "precision": 0.2593,
+        "recall": 0.4375,
+        "f1": 0.3256,
+        "specificity": 0.4595,
+        "accuracy": 0.4528,
+        "support": 16,
+        "tn": 17,
+        "fp": 20,
+        "fn": 9,
+        "tp": 7
+      }
+    }
+  },
+  "macro_f1": 0.3256,
+  "model_path": "/home/kshku/Git/Swaraaha/model/weights/cnnclf_aggpool_e20_b16_lr3e-5_n128_h512_ml3_hd128_d0.4_pa5_wu500_wd0.01_ga1_s42_train_prolongation_naug_best.pt",
+  "macro_f1_tuned": 0.3256
+}

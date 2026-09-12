@@ -1,0 +1,44 @@
+{
+  "per_class": {
+    "soundrep": {
+      "class_name": "soundrep",
+      "model_path": "/home/kshku/Git/Swaraaha/model/weights/cnnclf_aggpool_e20_b16_lr3e-5_n128_h512_ml3_hd128_d0.4_pa5_wu500_wd0.01_ga1_s42_train_soundrep_naug_best.pt",
+      "num_samples": 53,
+      "threshold": 0.5,
+      "binary": {
+        "auroc": 0.3824,
+        "auprc": 0.5994,
+        "threshold": 0.5,
+        "precision": 0.6415,
+        "recall": 1.0,
+        "f1": 0.7816,
+        "specificity": 0.0,
+        "accuracy": 0.6415,
+        "support": 34,
+        "tn": 0,
+        "fp": 19,
+        "fn": 0,
+        "tp": 34
+      },
+      "support": 34,
+      "threshold_tuned": {
+        "auroc": 0.3824,
+        "auprc": 0.5994,
+        "threshold": 0.65,
+        "precision": 0.6,
+        "recall": 0.4412,
+        "f1": 0.5085,
+        "specificity": 0.4737,
+        "accuracy": 0.4528,
+        "support": 34,
+        "tn": 9,
+        "fp": 10,
+        "fn": 19,
+        "tp": 15
+      }
+    }
+  },
+  "macro_f1": 0.7816,
+  "model_path": "/home/kshku/Git/Swaraaha/model/weights/cnnclf_aggpool_e20_b16_lr3e-5_n128_h512_ml3_hd128_d0.4_pa5_wu500_wd0.01_ga1_s42_train_soundrep_naug_best.pt",
+  "macro_f1_tuned": 0.5085
+}

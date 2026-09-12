@@ -1,0 +1,73 @@
+{
+  "per_class": {
+    "not_present": {
+      "precision": 0.9459,
+      "recall": 0.9519,
+      "f1": 0.9489,
+      "support": 5140
+    },
+    "present": {
+      "precision": 0.6389,
+      "recall": 0.6095,
+      "f1": 0.6238,
+      "support": 717
+    }
+  },
+  "macro": {
+    "precision": 0.7924,
+    "recall": 0.7807,
+    "f1": 0.7864
+  },
+  "accuracy": 0.91,
+  "binary": {
+    "auroc": 0.9072,
+    "auprc": 0.6574,
+    "threshold": 0.5,
+    "precision": 0.6389,
+    "recall": 0.6095,
+    "f1": 0.6238,
+    "specificity": 0.9519,
+    "accuracy": 0.91,
+    "support": 717,
+    "tn": 4893,
+    "fp": 247,
+    "fn": 280,
+    "tp": 437
+  },
+  "class_name": "soundrep",
+  "model_path": "/home/kshku/Git/Swaraaha/model/weights/soundrep_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml3_s42_train_w2v2base_naug_best.pt",
+  "num_samples": 5857,
+  "threshold": 0.5,
+  "model": {
+    "fingerprint": "soundrep_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml3_s42_train_w2v2base_naug",
+    "class_name": "soundrep",
+    "epochs": 20,
+    "batch_size": 8,
+    "lr": 3e-05,
+    "freeze_backbone_epochs": 3,
+    "loss_type": "focal",
+    "focal_gamma": 2.0,
+    "gradient_accumulation_steps": 1,
+    "warmup_steps": 500,
+    "weight_decay": 0.01,
+    "max_length_seconds": 3.0,
+    "seed": 42,
+    "data_short": "train",
+    "model_name": "facebook/wav2vec2-base",
+    "augmentation": false
+  },
+  "threshold_sweep": {
+    "best_f1": {
+      "threshold": 0.45000000000000007,
+      "f1": 0.6346025384101537
+    },
+    "best_specificity": {
+      "threshold": 0.9000000000000002,
+      "specificity": 1.0
+    },
+    "best_youden": {
+      "threshold": 0.20000000000000004,
+      "youden": 0.661783588123884
+    }
+  }
+}
