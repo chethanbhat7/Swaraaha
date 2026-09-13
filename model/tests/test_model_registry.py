@@ -878,3 +878,70 @@ def test_classifier_loads_nested_single_paths_and_thresholds(monkeypatch, tmp_pa
     assert set(clf._models) == set(names)
     assert clf._thresholds["prolongation"] == 0.61
 
+
+def test_classifier_saliency_returns_per_frame_per_class(monkeypatch, tmp_path):
+    import torch as _torch
+
+    from model.config.defaults import DYSFLUENCY_CLASSES
+
+    class _Encoder(_torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self._t = 10
+
+        def forward(self, x):
+            o = type("Out", (), {})()
+            o.last_hidden_state = _torch.zeros(x.shape[0], self._t, 4)
+            return o
+
+    class _Projector(_torch.nn.Module):
+        def forward(self, x):
+            return x
+
+    class _Head(_torch.nn.Module):
+        def __init__(self, k):
+            super().__init__()
+            self._k = k
+
+        def forward(self, x):
+            b, t, d = x.shape
+            logits = _torch.zeros(b, t, 2)
+            logits[..., 1] = (self._k + 1) / 6.0 * 4.0   # distinct, >0
+            logits[..., 0] = -4.0
+            return logits
+
+    class _FakeSeq(_torch.nn.Module):
+        def __init__(self, k):
+            super().__init__()
+            self.wav2vec2 = _Encoder()
+            self.projector = _Projector()
+            self.classifier = _Head(k)
+
+    names = ["prolongation", "block", "soundrep", "wordrep", "interjection"]
+    paths = {}
+    for n in names:
+        p = tmp_path / f"{n}.pt"
+        p.write_bytes(b"")
+        paths[n] = str(p)
+
+    registry = {"classification": {"single": {"paths": paths, "thresholds": {}}}}
+    monkeypatch.setattr("model.registry._load_registry", lambda: registry)
+
+    def _fake_load(name, path):
+        clf = type("C", (), {"max_length_seconds": 3.0})()
+        clf._model = _FakeSeq(DYSFLUENCY_CLASSES.index(name))
+        clf.forward = lambda tensor: clf._model.classifier(
+            clf._model.projector(clf._model.wav2vec2(tensor).last_hidden_state)
+        )
+        return clf
+
+    monkeypatch.setattr("model.registry._load_classifier", _fake_load)
+
+    from model.registry import ClassifierRunner
+
+    clf = ClassifierRunner()
+    sal = clf.saliency(_torch.zeros(16000, dtype=_torch.float32))
+    assert sal.shape == (1, 10, 5)
+    assert float(sal[0, 0, 1]) > float(sal[0, 0, 0])
+    assert float(sal.min()) >= 0.0 and float(sal.max()) <= 1.0
+

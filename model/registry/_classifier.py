@@ -218,3 +218,91 @@ class ClassifierRunner:
     @property
     def is_loaded(self) -> bool:
         return self._model is not None or bool(self._models)
+
+    @staticmethod
+    def _align_trim(sal, trim_offset_frames):
+        import torch
+        if trim_offset_frames <= 0:
+            return sal
+        shifted = torch.zeros_like(sal)
+        if trim_offset_frames < sal.shape[1]:
+            shifted[:, trim_offset_frames:, :] = sal[:, :-trim_offset_frames, :]
+        return shifted
+
+    def _saliency_chunk(self, audio, max_length_seconds, trim_offset_frames=0):
+        import librosa
+        import torch
+        from model.config.defaults import AUDIO_DURATION_SECONDS, SAMPLE_RATE
+        from model.data.preprocessing import load_audio_input
+
+        if torch.is_tensor(audio):
+            audio = audio.cpu().numpy()
+        audio_array = load_audio_input(audio, sr=SAMPLE_RATE)
+        if trim_offset_frames is None:
+            _, trim_index = librosa.effects.trim(audio_array, top_db=25)
+            trim_offset_frames = int(round(trim_index[0] / 320))
+        tensor = _preprocess_audio(audio, max_length_seconds=max_length_seconds)
+
+        frames = []
+        for name in DYSFLUENCY_CLASSES:
+            clf = self._models[name]
+            clf._model.eval()
+            with torch.no_grad():
+                hidden = clf._model.wav2vec2(tensor).last_hidden_state  # (B,T,768)
+                proj = clf._model.projector(hidden)                       # (B,T,256)
+                logits = clf._model.classifier(proj)                      # (B,T,2)
+                prob = torch.softmax(logits, dim=-1)[..., 1]              # (B,T)
+            frames.append(prob)
+        sal = torch.stack(frames, dim=-1)                                 # (B,T,5)
+        return self._align_trim(sal, trim_offset_frames)
+
+    def saliency(self, audio, max_length_seconds: Optional[float] = None):
+        """Per-frame per-class prob_present saliency, shape (B, T, num_classes).
+
+        CAM-style: each single-class model's encoder hidden states are pushed
+        through its trained projection + classifier head per frame (matching
+        how the multitask model computes saliency). Chunked and frame-aligned
+        for audio longer than the model window.
+        """
+        if self.class_name is not None:
+            raise RuntimeError("saliency() requires all classifiers loaded "
+                               "(construct ClassifierRunner without class_name)")
+        if _audio_is_empty(audio):
+            raise RuntimeError("Cannot compute saliency for empty audio")
+        if not self._models:
+            self._load()
+
+        import torch
+        if torch.is_tensor(audio):
+            audio = audio.cpu().numpy()
+
+        if max_length_seconds is None:
+            max_length_seconds = getattr(
+                list(self._models.values())[0], "max_length_seconds", AUDIO_DURATION_SECONDS
+            )
+        from model.data.preprocessing import load_audio_input
+
+        audio_array = load_audio_input(audio, sr=SAMPLE_RATE)
+        audio_sec = len(audio_array) / SAMPLE_RATE
+
+        if audio_sec <= max_length_seconds + 0.1:
+            return self._saliency_chunk(audio, max_length_seconds)
+
+        chunks = list(_chunk_audio(audio_array, max_length_seconds, sr=SAMPLE_RATE))
+        total_samples = len(audio_array)
+        total_frames = total_samples // 320
+        num_classes = len(DYSFLUENCY_CLASSES)
+        full_sal = torch.zeros(1, total_frames, num_classes)
+
+        for chunk, start_sample in chunks:
+            sal = self._saliency_chunk(chunk, max_length_seconds)
+            start_frame = start_sample // 320
+            sal_np = sal.squeeze(0).cpu().numpy()
+            n_frames_chunk = sal_np.shape[0]
+            end_frame = min(start_frame + n_frames_chunk, total_frames)
+            actual = end_frame - start_frame
+            if actual > 0:
+                full_sal[0, start_frame:end_frame, :] = torch.tensor(
+                    sal_np[:actual], dtype=torch.float32
+                )
+        return full_sal
