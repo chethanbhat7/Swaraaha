@@ -97,8 +97,37 @@ def test_localizer_analyze_raises_when_not_loaded(monkeypatch):
     # Registry points at a checkpoint file that does not exist.
     monkeypatch.setattr(
         "model.registry._load_registry",
-        lambda: {"localization": {"cnn": "model/weights/does_not_exist.pt"}},
+        lambda: {"localization": {"cnn": {"path": "model/weights/does_not_exist.pt",
+                                          "threshold": 0.3}}},
     )
     loc = Localizer("cnn")
     with pytest.raises(FileNotFoundError):
         loc.analyze(np.random.rand(16000).astype(np.float32))
+
+
+def test_localizer_uses_registry_threshold_default(monkeypatch, tmp_path):
+    from model.config.defaults import SAMPLE_RATE
+
+    recorded = {}
+
+    class _Spy:
+        max_length_seconds = 3.0
+
+        def predict(self, audio_array, sr=SAMPLE_RATE, threshold=0.3,
+                    max_length_seconds=3.0):
+            recorded["threshold"] = threshold
+            return []
+
+    (tmp_path / "x.pt").write_bytes(b"")
+    monkeypatch.setattr(
+        "model.registry._load_registry",
+        lambda: {"localization": {"cnn": {"path": "x.pt", "threshold": 0.42}}},
+    )
+    monkeypatch.setattr("model.registry._resolve_path", lambda p: str(tmp_path / p))
+    monkeypatch.setattr("model.registry._LOCALIZER_LOADERS",
+                        {"cnn": lambda p: _Spy()})
+    monkeypatch.setattr("model.registry._LOCALIZER_PREDICTORS",
+                        {"cnn": lambda m, a, thr, ml: (m.predict(a, threshold=thr, max_length_seconds=ml), a)[0]})
+    loc = Localizer("cnn")
+    loc.analyze(np.random.RandomState(0).randn(16000).astype(np.float32))
+    assert recorded["threshold"] == 0.42

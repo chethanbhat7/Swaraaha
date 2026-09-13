@@ -10,8 +10,6 @@ from ._utils import (
     _align_words_syllables,
     _audio_is_empty,
     _chunk_audio,
-    _LOCALIZER_LOADERS,
-    _LOCALIZER_PREDICTORS,
 )
 
 logger = logging.getLogger(__name__)
@@ -26,6 +24,7 @@ class LocalizerRunner:
     def __init__(self, model_type: Optional[str] = None):
         self.model_type = model_type
         self._models: Dict[str, Any] = {}
+        self._thresholds: Dict[str, float] = {}
 
     def _load(self) -> None:
         _reg = _get_reg()
@@ -48,20 +47,21 @@ class LocalizerRunner:
                 raise ValueError(
                     f"Localizer '{lt}' not in registry. Available: {available}"
                 )
-            path = _reg._resolve_path(localization[lt])
+            path = _reg._resolve_path(localization[lt]["path"])
             if not os.path.exists(path):
                 raise FileNotFoundError(
                     f"Model file not found: {path}\n"
-                    f"Registry entry: localization.{lt}"
+                    f"Registry entry: localization.{lt}.path"
                 )
 
-            loader = _LOCALIZER_LOADERS.get(lt)
+            loader = _reg._LOCALIZER_LOADERS.get(lt)
             if loader is None:
                 raise ValueError(f"Unknown localizer type: {lt}")
             logger.info("Loading localizer type=%s path=%s", lt, path)
             model = loader(path)
             model.max_length_seconds = AUDIO_DURATION_SECONDS
             self._models[lt] = model
+            self._thresholds[lt] = float(localization[lt].get("threshold", 0.3))
         logger.info("LocalizerRunner loaded types=%s", list(self._models))
 
     def predict(
@@ -83,7 +83,7 @@ class LocalizerRunner:
         audio,
         text: Optional[str] = None,
         language: str = "en",
-        threshold: float = 0.3,
+        threshold: Optional[float] = None,
         max_length_seconds: Optional[float] = None,
     ) -> Union[Dict[str, Any], Dict[str, Dict[str, Any]]]:
         """Analyze raw audio → dysfluency regions (+ words/syllables if text).
@@ -92,7 +92,9 @@ class LocalizerRunner:
             audio: File path, raw bytes, or 1-D numpy array.
             text: Optional transcript for word/syllable-level alignment.
             language: ISO language code for syllabification (en, kn, hi).
-            threshold: Detection threshold for regions.
+            threshold: Detection threshold for regions. ``None`` (default)
+                uses the per-type threshold stored in registry.json
+                (``localization.<type>.threshold``), falling back to 0.3.
             max_length_seconds: Max audio length to process (defaults to model's
                 fingerprint value).
 
@@ -125,13 +127,14 @@ class LocalizerRunner:
 
         for lt in types:
             model = self._models[lt]
+            thr = threshold if threshold is not None else self._thresholds.get(lt, 0.3)
 
             if audio_sec <= max_length_seconds + 0.1:
-                regions = self._localize_chunk(model, lt, audio_array, threshold, max_length_seconds)
+                regions = self._localize_chunk(model, lt, audio_array, thr, max_length_seconds)
             else:
                 regions = []
                 for chunk, start_sample in _chunk_audio(audio_array, max_length_seconds, sr=SAMPLE_RATE):
-                    chunk_regions = self._localize_chunk(model, lt, chunk, threshold, max_length_seconds)
+                    chunk_regions = self._localize_chunk(model, lt, chunk, thr, max_length_seconds)
                     offset_sec = start_sample / SAMPLE_RATE
                     for s, e, c in chunk_regions:
                         regions.append((round(s + offset_sec, 3), round(e + offset_sec, 3), c))
@@ -160,7 +163,8 @@ class LocalizerRunner:
     @staticmethod
     def _localize_chunk(model, lt, audio_array, threshold, max_length_seconds):
         """Run localizer on a single chunk, return list of (start, end, conf)."""
-        predictor = _LOCALIZER_PREDICTORS.get(lt)
+        import model.registry as _reg
+        predictor = _reg._LOCALIZER_PREDICTORS.get(lt)
         if predictor is None:
             raise ValueError(f"Unknown localizer type: {lt}")
         return predictor(model, audio_array, threshold, max_length_seconds)

@@ -47,6 +47,8 @@ from model.localization.ctc_alignment import SimpleForcedAligner
 from model.transcription import Transcriber
 
 from ._utils import (
+    _LOCALIZER_LOADERS,
+    _LOCALIZER_PREDICTORS,
     _REGISTRY_PATH,
     _align_words_syllables,
     _load_classifier,
