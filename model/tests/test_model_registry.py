@@ -945,3 +945,40 @@ def test_classifier_saliency_returns_per_frame_per_class(monkeypatch, tmp_path):
     assert float(sal[0, 0, 1]) > float(sal[0, 0, 0])
     assert float(sal.min()) >= 0.0 and float(sal.max()) <= 1.0
 
+
+def test_multitask_runner_loads_nested_entry(monkeypatch, tmp_path):
+    import json
+    import math
+    import torch as _torch
+
+    from model.registry import MultiTaskClassifier
+
+    class _FakeHeads(_torch.nn.Module):
+        def forward(self, pooled):
+            return {"block": _torch.tensor([[0.0, math.log(0.7 / 0.3)]])}
+
+    class _FakeModel:
+        def __init__(self):
+            self.model = _FakeHeads()
+            self.class_names = ["block"]
+
+        def forward(self, input_values):
+            return self.model(input_values)
+
+    (tmp_path / "weights").mkdir(exist_ok=True)
+    (tmp_path / "weights" / "mt.pt").write_bytes(b"dummy")
+    reg_path = tmp_path / "registry.json"
+    reg_path.write_text(json.dumps({"classification": {"multitask": {
+        "path": "weights/mt.pt", "model_name": "fake",
+        "thresholds": {"block": 0.75},
+    }}}))
+    monkeypatch.setattr("model.registry._REGISTRY_PATH", str(reg_path))
+    monkeypatch.setattr("model.registry._resolve_path",
+                        lambda p: str(tmp_path / p))
+    monkeypatch.setattr("model.registry._load_multitask_classifier",
+                        lambda path: _FakeModel())
+
+    clf = MultiTaskClassifier()
+    out = clf.analyze(np.zeros(1600, dtype=np.float32))
+    assert out["block"]["label"] == 0   # 0.70 < 0.75
+
