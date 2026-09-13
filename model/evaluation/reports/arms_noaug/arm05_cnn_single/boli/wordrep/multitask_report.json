@@ -1,0 +1,44 @@
+{
+  "per_class": {
+    "wordrep": {
+      "class_name": "wordrep",
+      "model_path": "/home/kshku/Git/Swaraaha/model/weights/cnnclf_aggpool_e20_b16_lr3e-5_n128_h512_ml3_hd128_d0.4_pa5_wu500_wd0.01_ga1_s42_train_wordrep_naug_best.pt",
+      "num_samples": 53,
+      "threshold": 0.5,
+      "binary": {
+        "auroc": 0.4103,
+        "auprc": 0.2161,
+        "threshold": 0.5,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "specificity": 1.0,
+        "accuracy": 0.7358,
+        "support": 14,
+        "tn": 39,
+        "fp": 0,
+        "fn": 14,
+        "tp": 0
+      },
+      "support": 14,
+      "threshold_tuned": {
+        "auroc": 0.4103,
+        "auprc": 0.2161,
+        "threshold": 0.45,
+        "precision": 0.2745,
+        "recall": 1.0,
+        "f1": 0.4308,
+        "specificity": 0.0513,
+        "accuracy": 0.3019,
+        "support": 14,
+        "tn": 2,
+        "fp": 37,
+        "fn": 0,
+        "tp": 14
+      }
+    }
+  },
+  "macro_f1": 0.0,
+  "model_path": "/home/kshku/Git/Swaraaha/model/weights/cnnclf_aggpool_e20_b16_lr3e-5_n128_h512_ml3_hd128_d0.4_pa5_wu500_wd0.01_ga1_s42_train_wordrep_naug_best.pt",
+  "macro_f1_tuned": 0.4308
+}

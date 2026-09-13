@@ -1,0 +1,38 @@
+{
+  "model_path": "/home/kshku/Git/Swaraaha/model/weights/multi_e20_b16_lr3e-5_frz3_ltfocal_g3_ga1_wu500_wd0.01_ml3_s42_train_w2v2base_naug_best.pt",
+  "source": "val_split (20%, seed 42)",
+  "thresholds": {
+    "prolongation": {
+      "f1_threshold": 0.5,
+      "youden_threshold": 0.35,
+      "f1_at_optimal": 0.4459,
+      "f1_at_0_5": 0.4459
+    },
+    "block": {
+      "f1_threshold": 0.4,
+      "youden_threshold": 0.35,
+      "f1_at_optimal": 0.4418,
+      "f1_at_0_5": 0.3966
+    },
+    "soundrep": {
+      "f1_threshold": 0.45,
+      "youden_threshold": 0.3,
+      "f1_at_optimal": 0.6146,
+      "f1_at_0_5": 0.5989
+    },
+    "wordrep": {
+      "f1_threshold": 0.4,
+      "youden_threshold": 0.25,
+      "f1_at_optimal": 0.5185,
+      "f1_at_0_5": 0.492
+    },
+    "interjection": {
+      "f1_threshold": 0.45,
+      "youden_threshold": 0.35,
+      "f1_at_optimal": 0.7857,
+      "f1_at_0_5": 0.7783
+    }
+  },
+  "macro_f1_at_0_5": 0.5423,
+  "macro_f1_at_optimal": 0.5613
+}

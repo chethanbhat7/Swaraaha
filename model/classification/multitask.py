@@ -21,10 +21,10 @@ from model.config.defaults import DYSFLUENCY_CLASSES
 
 
 def _wav2vec2_model_class():
-    """Resolve the Wav2Vec2 backbone class (lazily, for testability)."""
-    from transformers import Wav2Vec2Model
+    """Resolve the backbone class for the configured model (lazily)."""
+    from model.backbone import backbone_model_class
 
-    return Wav2Vec2Model
+    return backbone_model_class
 
 
 class MultiTaskWav2VecClassifier:
@@ -56,7 +56,7 @@ class MultiTaskWav2VecClassifier:
         class _MultiTaskBackbone(nn.Module):
             def __init__(self):
                 super().__init__()
-                self.wav2vec2 = _wav2vec2_model_class().from_pretrained(model_name)
+                self.wav2vec2 = _wav2vec2_model_class()(model_name).from_pretrained(model_name)
                 w2v2_dim = self.wav2vec2.config.hidden_size  # 768 for base
                 self.heads = nn.ModuleDict({
                     name: nn.Sequential(

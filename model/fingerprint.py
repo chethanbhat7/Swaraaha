@@ -7,7 +7,7 @@ source of truth for both directions.
 
 import os
 import re
-from typing import Dict
+from typing import Dict, Tuple
 
 from model.config.defaults import DYSFLUENCY_CLASSES
 
@@ -24,9 +24,26 @@ FINGERPRINT_FMT = "{class_name}_e{epochs}_b{batch_size}_lr{lr}_frz{freeze_backbo
 MODEL_ALIASES = {
     "facebook/wav2vec2-base": "w2v2base",
     "facebook/wav2vec2-large": "w2v2large",
+    "facebook/wav2vec2-large-960h": "w2v2large960h",
+    "microsoft/wavlm-base-plus": "wavlmbase",
+    "facebook/hubert-base-ls960": "hubertbase",
 }
 
 MODEL_SHORT_TO_NAME = {v: k for k, v in MODEL_ALIASES.items()}
+
+NAUG_SUFFIX = "_naug"
+
+
+def _augmentation_suffix(args) -> str:
+    """Return the trailing fingerprint suffix when augmentation is disabled."""
+    return NAUG_SUFFIX if getattr(args, "augmentation", True) is False else ""
+
+
+def _strip_naug(fp: str) -> Tuple[str, bool]:
+    """Split a trailing '_naug' marker if present; returns (fp, augmentation_bool)."""
+    if fp.endswith(NAUG_SUFFIX):
+        return fp[: -len(NAUG_SUFFIX)], False
+    return fp, True
 
 
 def _fmt_fp(v) -> str:
@@ -41,11 +58,12 @@ def fingerprint(args) -> str:
     values = {k: _fmt_fp(getattr(args, k)) for k in RESUME_KEYS}
     values["data_short"] = os.path.basename(args.data_dir.rstrip("/"))
     values["model_short"] = MODEL_ALIASES.get(args.model_name, args.model_name.replace("/", "_"))
-    return FINGERPRINT_FMT.format(**values)
+    return FINGERPRINT_FMT.format(**values) + _augmentation_suffix(args)
 
 
 def parse_fingerprint(fp: str) -> dict:
     """Parse a fingerprint string back into a dict of params."""
+    fp, augmentation = _strip_naug(fp)
     pattern = (
         r'^(?P<class_name>\w+)'
         r'_e(?P<epochs>\d+)'
@@ -73,6 +91,7 @@ def parse_fingerprint(fp: str) -> dict:
         d[k] = float(d[k])
     ms = d.pop("model_short")
     d["model_name"] = MODEL_SHORT_TO_NAME.get(ms, ms)
+    d["augmentation"] = augmentation
     return d
 
 
@@ -99,13 +118,13 @@ def parse_fingerprint_from_path(path: str) -> Dict:
 MULTITASK_RESUME_KEYS = [
     "data_dir", "model_name", "lr", "batch_size",
     "max_length_seconds", "warmup_steps", "weight_decay",
-    "freeze_backbone_epochs", "focal_gamma", "seed",
+    "freeze_backbone_epochs", "loss_type", "focal_gamma", "seed",
     "gradient_accumulation_steps", "epochs",
 ]
 
 MULTITASK_FINGERPRINT_FMT = (
     "multi_e{epochs}_b{batch_size}_lr{lr}_frz{freeze_backbone_epochs}"
-    "_focal_g{focal_gamma}_ga{gradient_accumulation_steps}_wu{warmup_steps}"
+    "_lt{loss_type}_g{focal_gamma}_ga{gradient_accumulation_steps}_wu{warmup_steps}"
     "_wd{weight_decay}_ml{max_length_seconds}_s{seed}_{data_short}_{model_short}"
 )
 
@@ -117,14 +136,16 @@ def multitask_fingerprint(args) -> str:
     values["model_short"] = MODEL_ALIASES.get(
         args.model_name, args.model_name.replace("/", "_")
     )
-    return MULTITASK_FINGERPRINT_FMT.format(**values)
+    return MULTITASK_FINGERPRINT_FMT.format(**values) + _augmentation_suffix(args)
 
 
 def parse_multitask_fingerprint(fp: str) -> dict:
     """Parse a multitask fingerprint string back into a dict of params."""
+    fp, augmentation = _strip_naug(fp)
     pattern = (
         r'^multi_e(?P<epochs>\d+)_b(?P<batch_size>\d+)_lr(?P<lr>[\d.e\-]+)'
-        r'_frz(?P<freeze_backbone_epochs>\d+)_focal_g(?P<focal_gamma>[\d.e\-]+)'
+        r'_frz(?P<freeze_backbone_epochs>\d+)_lt(?P<loss_type>\w+)'
+        r'_g(?P<focal_gamma>[\d.e\-]+)'
         r'_ga(?P<gradient_accumulation_steps>\d+)_wu(?P<warmup_steps>\d+)'
         r'_wd(?P<weight_decay>[\d.e\-]+)_ml(?P<max_length_seconds>[\d.e\-]+)'
         r'_s(?P<seed>\d+)_(?P<data_short>\w+)_(?P<model_short>\w+)$'
@@ -141,6 +162,7 @@ def parse_multitask_fingerprint(fp: str) -> dict:
     ms = d.pop("model_short")
     d["model_name"] = MODEL_SHORT_TO_NAME.get(ms, ms)
     d.pop("data_short", None)
+    d["augmentation"] = augmentation
     return d
 
 
@@ -210,10 +232,11 @@ def cnn_classifier_fingerprint(args):
         seed=args.seed,
         data_short=data_short,
         classes_short=classes_short,
-    )
+    ) + _augmentation_suffix(args)
 
 
 def parse_cnn_classifier_fingerprint(fp):
+    fp, augmentation = _strip_naug(fp)
     match = _CNN_CLASSIFIER_FP_PATTERN.match(fp)
     if not match:
         raise ValueError(f'Invalid CNN classifier fingerprint: {fp}')
@@ -247,6 +270,7 @@ def parse_cnn_classifier_fingerprint(fp):
     params['data_short'] = data_short
     params['class_names'] = (list(DYSFLUENCY_CLASSES) if classes_short == 'all'
                              else classes_short.split('_'))
+    params['augmentation'] = augmentation
     return params
 
 
@@ -298,11 +322,12 @@ def localizer_fingerprint(args, pipeline: str) -> str:
         values["model_short"] = MODEL_ALIASES.get(
             args.model_name, args.model_name.replace("/", "_")
         )
-    return fmt.format(**values)
+    return fmt.format(**values) + _augmentation_suffix(args)
 
 
 def parse_localizer_fingerprint(fp: str) -> dict:
     """Parse a localizer fingerprint string back into a params dict."""
+    fp, augmentation = _strip_naug(fp)
     if fp.startswith("cnnloc_"):
         pattern = (
             r'^cnnloc_e(?P<epochs>\d+)_b(?P<batch_size>\d+)_lr(?P<lr>[\d.e\-]+)'
@@ -343,4 +368,5 @@ def parse_localizer_fingerprint(fp: str) -> dict:
     if "model_short" in d:
         ms = d.pop("model_short")
         d["model_name"] = MODEL_SHORT_TO_NAME.get(ms, ms)
+    d["augmentation"] = augmentation
     return d

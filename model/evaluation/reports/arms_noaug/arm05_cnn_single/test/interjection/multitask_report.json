@@ -1,0 +1,44 @@
+{
+  "per_class": {
+    "interjection": {
+      "class_name": "interjection",
+      "model_path": "/home/kshku/Git/Swaraaha/model/weights/cnnclf_aggpool_e20_b16_lr3e-5_n128_h512_ml3_hd128_d0.4_pa5_wu500_wd0.01_ga1_s42_train_interjection_naug_best.pt",
+      "num_samples": 3715,
+      "threshold": 0.5,
+      "binary": {
+        "auroc": 0.6014,
+        "auprc": 0.2946,
+        "threshold": 0.5,
+        "precision": 0.2816,
+        "recall": 0.4329,
+        "f1": 0.3412,
+        "specificity": 0.6803,
+        "accuracy": 0.6248,
+        "support": 834,
+        "tn": 1960,
+        "fp": 921,
+        "fn": 473,
+        "tp": 361
+      },
+      "support": 834,
+      "threshold_tuned": {
+        "auroc": 0.6014,
+        "auprc": 0.2946,
+        "threshold": 0.5,
+        "precision": 0.2816,
+        "recall": 0.4329,
+        "f1": 0.3412,
+        "specificity": 0.6803,
+        "accuracy": 0.6248,
+        "support": 834,
+        "tn": 1960,
+        "fp": 921,
+        "fn": 473,
+        "tp": 361
+      }
+    }
+  },
+  "macro_f1": 0.3412,
+  "model_path": "/home/kshku/Git/Swaraaha/model/weights/cnnclf_aggpool_e20_b16_lr3e-5_n128_h512_ml3_hd128_d0.4_pa5_wu500_wd0.01_ga1_s42_train_interjection_naug_best.pt",
+  "macro_f1_tuned": 0.3412
+}
