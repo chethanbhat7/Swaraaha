@@ -1,137 +1,9 @@
 import numpy as np
 import pytest
 
-from model.registry import ModelRegistry
 from model.registry import Classifier
 
 import torch
-
-
-def test_run_all_composes(monkeypatch):
-    reg = ModelRegistry()
-
-    monkeypatch.setattr(
-        reg.classifier, "analyze",
-        lambda audio, threshold=None: {"prolongation": {"label": 0}, "summary": {"detected": []}},
-    )
-    monkeypatch.setattr(
-        reg.localizer, "analyze",
-        lambda audio, text=None, language="en", threshold=0.3, max_length_seconds=3.0: {
-            "regions": [{"start": 0.0, "end": 0.5, "confidence": 0.9}]
-        },
-    )
-    monkeypatch.setattr(
-        reg.transcriber, "transcribe",
-        lambda audio, language="english", localizations=None, passage_text=None, sample_rate=16000: {
-            "text": "hello world", "words": [], "duration_sec": 1.0
-        },
-    )
-
-    result = reg.run_all(np.zeros(16000, dtype=np.float32), text="hello world")
-    assert "classification" in result
-    assert result["localization"]["regions"]
-    assert result["transcription"]["text"] == "hello world"
-
-
-def test_run_all_language_maps_to_iso(monkeypatch):
-    reg = ModelRegistry()
-    seen = {}
-
-    def fake_analyze(audio, text=None, language="en", threshold=0.3, max_length_seconds=3.0):
-        seen["language"] = language
-        return {"regions": []}
-
-    monkeypatch.setattr(reg.localizer, "analyze", fake_analyze)
-    monkeypatch.setattr(
-        reg.classifier, "analyze",
-        lambda audio, threshold=None: {"summary": {"detected": []}},
-    )
-    monkeypatch.setattr(
-        reg.transcriber, "transcribe",
-        lambda audio, language="english", localizations=None, passage_text=None, sample_rate=16000: {
-            "text": "", "words": [], "duration_sec": 0.0
-        },
-    )
-
-    reg.run_all(np.zeros(16000, dtype=np.float32), language="english", text="hello")
-    assert seen["language"] == "en"
-
-
-def test_run_all_catches_missing_models(monkeypatch):
-    reg = ModelRegistry()
-
-    def _raise(*a, **k):
-        raise FileNotFoundError("no")
-
-    monkeypatch.setattr(reg.classifier, "analyze", _raise)
-    monkeypatch.setattr(reg.localizer, "analyze", _raise)
-    monkeypatch.setattr(
-        reg.transcriber, "transcribe",
-        lambda audio, **kwargs: {"text": "", "words": [], "duration_sec": 0.0},
-    )
-    result = reg.run_all(np.zeros(16000, dtype=np.float32))
-    assert result["classification"]["error"]
-    assert result["localization"]["error"]
-
-
-def test_run_all_catches_arbitrary_errors(monkeypatch):
-    """run_all must degrade classification/localization sub-results to
-    {"error": ...} for ANY exception, not just FileNotFoundError (e.g. a
-    ValueError from empty audio), mirroring the transcription handler."""
-    reg = ModelRegistry()
-
-    def _raise(*a, **k):
-        raise ValueError("empty audio")
-
-    monkeypatch.setattr(reg.classifier, "analyze", _raise)
-    monkeypatch.setattr(reg.localizer, "analyze", _raise)
-    monkeypatch.setattr(
-        reg.transcriber, "transcribe",
-        lambda audio, **kwargs: {"text": "", "words": [], "duration_sec": 0.0},
-    )
-    result = reg.run_all(np.zeros(16000, dtype=np.float32))
-    assert result["classification"]["error"] == "empty audio"
-    assert result["localization"]["error"] == "empty audio"
-    assert result["transcription"]["text"] == ""
-
-
-def test_run_all_runs_multitask_classifier(monkeypatch):
-    reg = ModelRegistry()
-    called = {}
-
-    def fake_multitask(audio, threshold=None):
-        called["audio"] = audio
-        called["threshold"] = threshold
-        return {
-            "prolongation": {"label": 1, "confidence": 0.9},
-            "summary": {"detected": ["prolongation"], "primary": "prolongation"},
-        }
-
-    monkeypatch.setattr(reg.multitask_classifier, "analyze", fake_multitask)
-    monkeypatch.setattr(
-        reg.cnn_multitask_classifier, "analyze",
-        lambda audio, threshold=None: {"error": "no weights"},
-    )
-    monkeypatch.setattr(
-        reg.classifier, "analyze",
-        lambda audio, threshold=None: {"summary": {"detected": []}},
-    )
-    monkeypatch.setattr(
-        reg.localizer, "analyze",
-        lambda audio, text=None, language="en", threshold=0.3, max_length_seconds=3.0: {
-            "regions": []
-        },
-    )
-    monkeypatch.setattr(
-        reg.transcriber, "transcribe",
-        lambda audio, **kwargs: {"text": "", "words": [], "duration_sec": 0.0},
-    )
-
-    result = reg.run_all(np.zeros(16000, dtype=np.float32))
-
-    assert called["threshold"] == 0.5
-    assert result["multitask"]["prolongation"] == {"label": 1, "confidence": 0.9}
-    assert result["multitask"]["summary"]["primary"] == "prolongation"
 
 
 def test_classifier_all_mode_skips_unknown_registry_entries(monkeypatch, tmp_path):
@@ -744,73 +616,45 @@ def test_multitask_thresholds_resolve_via_shared_helper(monkeypatch, tmp_path):
     assert _resolve_multitask_thresholds(entry, "model.pt") == {"block": 0.42}
 
 
-def test_run_all_adds_combined(monkeypatch):
-    reg = ModelRegistry()
-    monkeypatch.setattr(
-        reg.classifier, "analyze",
-        lambda audio, threshold=None: {"prolongation": {"label": 0}, "summary": {"detected": []}},
-    )
-    monkeypatch.setattr(
-        reg.multitask_classifier, "analyze",
-        lambda audio, threshold=None: {"block": {"label": 1}, "summary": {"detected": ["block"]}},
-    )
-    monkeypatch.setattr(
-        reg.cnn_multitask_classifier, "analyze",
-        lambda audio, threshold=None: {"block": {"label": 1}, "summary": {"detected": ["block"]}},
-    )
-    monkeypatch.setattr(
-        reg.localizer, "analyze",
-        lambda audio, text=None, language="en", threshold=0.3, max_length_seconds=3.0: {
-            "regions": [{"start": 0.0, "end": 0.5, "confidence": 0.9}]
-        },
-    )
-    monkeypatch.setattr(
-        reg.transcriber, "transcribe",
-        lambda audio, language="english", localizations=None, passage_text=None, sample_rate=16000: {
-            "text": "hello", "words": [], "duration_sec": 1.0
-        },
-    )
+def test_module_analyze_composes_four_pipelines(monkeypatch):
+    import model as _m
 
-    def fake_saliency(audio):
-        return torch.zeros((1, 500, 5))
+    calls = {"classifier": 0, "localizer": 0, "transcriber": 0, "fuse": 0}
 
-    monkeypatch.setattr(reg.multitask_classifier, "saliency", fake_saliency)
+    class _FakeClassifier:
+        def analyze(self, audio, threshold=None):
+            calls["classifier"] += 1
+            return {"prolongation": {"label": 1}, "summary": {"detected": ["prolongation"]}}
 
-    result = reg.run_all(np.zeros(16000, dtype=np.float32), text="hello world")
-    assert "combined" in result
-    assert result["combined"]["regions"]  # one region from localizer
-    assert set(result["combined"]["regions"][0]["classes"].keys()) == set(
-        ["prolongation", "block", "soundrep", "wordrep", "interjection"]
-    )
+        def saliency(self, audio):
+            import torch
+            return torch.zeros(1, 40, 5)
+
+        is_loaded = True
+
+    class _FakeLocalizer:
+        def analyze(self, audio, threshold=0.3, text=None, language="en"):
+            calls["localizer"] += 1
+            return {"regions": []}
+
+    class _FakeTranscriber:
+        def transcribe(self, audio, language="english"):
+            calls["transcriber"] += 1
+            return {"text": "", "words": [], "duration_sec": 0.0}
+
+    monkeypatch.setattr(_m, "_classifier", _FakeClassifier())
+    monkeypatch.setattr(_m, "_localizer", _FakeLocalizer())
+    monkeypatch.setattr(_m, "_transcriber", _FakeTranscriber())
+    monkeypatch.setattr(_m, "_init_done", True)
+
+    result = _m.analyze(np.zeros(16000, dtype=np.float32))
+    assert set(["classification", "localization", "transcription", "combined"]) <= set(result)
+    assert calls["classifier"] == 1
 
 
-def test_run_all_combined_errors_when_multitask_unavailable(monkeypatch):
-    reg = ModelRegistry()
-    monkeypatch.setattr(reg.classifier, "analyze",
-                        lambda audio, threshold=None: {"summary": {"detected": []}})
-    monkeypatch.setattr(reg.multitask_classifier, "analyze",
-                        lambda audio, threshold=None: {"summary": {"detected": []}})
-    monkeypatch.setattr(reg.cnn_multitask_classifier, "analyze",
-                        lambda audio, threshold=None: {"summary": {"detected": []}})
-    monkeypatch.setattr(reg.localizer, "analyze",
-                        lambda audio, text=None, language="en", threshold=0.3, max_length_seconds=3.0: {
-                            "regions": [{"start": 0.0, "end": 0.5, "confidence": 0.9}]
-                        })
-    monkeypatch.setattr(reg.transcriber, "transcribe",
-                        lambda audio, language="english", localizations=None, passage_text=None, sample_rate=16000: {
-                            "text": "", "words": [], "duration_sec": 1.0
-                        })
-    monkeypatch.setattr(reg.multitask_classifier, "saliency",
-                        lambda audio: (_ for _ in ()).throw(RuntimeError("no model")))
-
-    result = reg.run_all(np.zeros(16000, dtype=np.float32))
-    assert result["combined"]["error"]  # degraded gracefully
-
-
-def test_run_all_combined_empty_audio():
-    reg = ModelRegistry()
-    result = reg.run_all(np.zeros(0, dtype=np.float32))
-    assert result["combined"] == {"regions": [], "audio_duration": 0.0, "total_stutters": 0}
+def test_model_registry_class_removed():
+    import model.registry as reg_mod
+    assert not hasattr(reg_mod, "ModelRegistry")
 
 
 def test_registry_classification_names_reads_single_paths(monkeypatch):

@@ -2,7 +2,7 @@
 Model Registry — loads trained models and exposes a clean predict API.
 
 Usage:
-    from model.registry import ClassifierRunner, LocalizerRunner, ModelRegistry
+    from model.registry import ClassifierRunner, LocalizerRunner
 
     # All classifiers
     clf = ClassifierRunner()
@@ -30,14 +30,14 @@ Usage:
     tr = Transcriber()
     result = tr.transcribe("recording.wav")
 
-    # Everything at once — raw audio in, all results out
-    m = ModelRegistry()
-    all_results = m.run_all("recording.wav", text="the cat sat")
-    # all_results: {classification: {...}, localization: {...}, transcription: {...},
-    #               multitask: {...}, cnn_multitask: {...}, combined: {...}}
-    # combined: localizer regions fused with per-class saliency from the
-    # multitask classifier — each region: {start, end, confidence, classes,
-    # primary_type, severity, syllables[]}
+    # Everything at once — use the module API
+    import model
+    model.init()                                 # loads registry.json defaults
+    all_results = model.analyze("recording.wav", text="the cat sat")
+    # all_results: {classification: {...}, localization: {...},
+    #               transcription: {...}, combined: {...}}
+    # combined: localizer regions fused with per-class saliency — each region:
+    # {start, end, confidence, classes, primary_type, severity, syllables[]}
 """
 
 from model.config.defaults import DYSFLUENCY_CLASSES, FRAME_DURATION, MAX_AUDIO_LENGTH, SAMPLE_RATE
@@ -67,7 +67,6 @@ from ._multitask import CNNMultiTaskRunner, MultiTaskRunner
 from ._multitask import CNNMultiTaskRunner as CNNMultiTaskClassifier
 from ._multitask import MultiTaskRunner as MultiTaskClassifier
 from ._pipelines import (
-    ModelRegistry,
     classify_audio_bytes,
     combine_with_saliency,
     load_audio_16k,
