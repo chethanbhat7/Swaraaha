@@ -135,11 +135,22 @@ def _empty_classifier_output(include_logits: bool) -> Dict[str, float]:
 
 
 def _registry_classification_names() -> List[str]:
-    """Canonical classification model names from the registry (M1 filtering)."""
-    registry = _load_registry()
-    return [
-        name for name in registry.get("classification", {}) if name in DYSFLUENCY_CLASSES
-    ]
+    """Canonical classification model names for the default classifier kind."""
+    import model.registry as _reg
+
+    registry = _reg._load_registry()
+    kind = registry.get("defaults", {}).get("classifier", "single")
+    paths = (
+        registry.get("classification", {})
+        .get(kind, {})
+        .get("paths", {})
+    )
+    if not paths:
+        entry = (
+            registry.get("classification", {}).get(kind, {})
+        )
+        paths = {name: entry["path"] for name in entry if name == "path"} or {}
+    return [name for name in paths if name in DYSFLUENCY_CLASSES]
 
 
 def _load_multitask_classifier(path: str):
@@ -281,11 +292,16 @@ def _resolve_multitask_thresholds(entry, model_path):
 
 def _load_multitask_registry_entry(registry, entry_key):
     import model.registry as _reg
-    entry = registry.get(entry_key)
+    if isinstance(entry_key, str) and not isinstance(registry.get("classification", {}), dict):
+        entry = registry.get(entry_key)
+    elif isinstance(entry_key, str):
+        entry = registry.get("classification", {}).get(entry_key)
+    else:
+        entry = entry_key
     if not entry:
         raise FileNotFoundError(
             f"No '{entry_key}' entry in registry. "
-            f"Add model/registry.json {entry_key}.path."
+            f"Add model/registry.json classification.{entry_key}.path."
         )
     path = _reg._resolve_path(entry['path'])
     if not os.path.exists(path):

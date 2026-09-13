@@ -166,7 +166,8 @@ def registry_paths(registry_path: Optional[str] = None) -> Dict[str, Dict[str, s
 
     Returns:
         Dict with "classification" and "localization" sections, each mapping
-        model key → resolved absolute path.
+        model key → resolved absolute path, plus a "thresholds" section with
+        the per-class classification thresholds from the default entry.
     """
     import json
     import os
@@ -179,16 +180,23 @@ def registry_paths(registry_path: Optional[str] = None) -> Dict[str, Dict[str, s
 
     project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 
-    def resolve(section: Dict[str, str]) -> Dict[str, str]:
-        return {
-            name: os.path.join(project_root, rel) if not os.path.isabs(rel) else rel
-            for name, rel in section.items()
-        }
+    def resolve(rel: str) -> str:
+        return os.path.join(project_root, rel) if not os.path.isabs(rel) else rel
+
+    single = registry.get("classification", {}).get("single", {})
+    localization = registry.get("localization", {})
 
     return {
-        "classification": resolve(registry.get("classification", {})),
-        "localization": resolve(registry.get("localization", {})),
-        "thresholds": registry.get("thresholds", {}),
+        "classification": {
+            name: resolve(rel)
+            for name, rel in single.get("paths", {}).items()
+        },
+        "localization": {
+            lt: resolve(entry.get("path", ""))
+            for lt, entry in localization.items()
+            if isinstance(entry, dict)
+        },
+        "thresholds": single.get("thresholds", {}),
     }
 
 

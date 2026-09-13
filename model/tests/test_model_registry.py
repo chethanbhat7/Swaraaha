@@ -1,137 +1,8 @@
 import numpy as np
 import pytest
-
-from model.registry import ModelRegistry
-from model.registry import Classifier
-
 import torch
 
-
-def test_run_all_composes(monkeypatch):
-    reg = ModelRegistry()
-
-    monkeypatch.setattr(
-        reg.classifier, "analyze",
-        lambda audio, threshold=None: {"prolongation": {"label": 0}, "summary": {"detected": []}},
-    )
-    monkeypatch.setattr(
-        reg.localizer, "analyze",
-        lambda audio, text=None, language="en", threshold=0.3, max_length_seconds=3.0: {
-            "regions": [{"start": 0.0, "end": 0.5, "confidence": 0.9}]
-        },
-    )
-    monkeypatch.setattr(
-        reg.transcriber, "transcribe",
-        lambda audio, language="english", localizations=None, passage_text=None, sample_rate=16000: {
-            "text": "hello world", "words": [], "duration_sec": 1.0
-        },
-    )
-
-    result = reg.run_all(np.zeros(16000, dtype=np.float32), text="hello world")
-    assert "classification" in result
-    assert result["localization"]["regions"]
-    assert result["transcription"]["text"] == "hello world"
-
-
-def test_run_all_language_maps_to_iso(monkeypatch):
-    reg = ModelRegistry()
-    seen = {}
-
-    def fake_analyze(audio, text=None, language="en", threshold=0.3, max_length_seconds=3.0):
-        seen["language"] = language
-        return {"regions": []}
-
-    monkeypatch.setattr(reg.localizer, "analyze", fake_analyze)
-    monkeypatch.setattr(
-        reg.classifier, "analyze",
-        lambda audio, threshold=None: {"summary": {"detected": []}},
-    )
-    monkeypatch.setattr(
-        reg.transcriber, "transcribe",
-        lambda audio, language="english", localizations=None, passage_text=None, sample_rate=16000: {
-            "text": "", "words": [], "duration_sec": 0.0
-        },
-    )
-
-    reg.run_all(np.zeros(16000, dtype=np.float32), language="english", text="hello")
-    assert seen["language"] == "en"
-
-
-def test_run_all_catches_missing_models(monkeypatch):
-    reg = ModelRegistry()
-
-    def _raise(*a, **k):
-        raise FileNotFoundError("no")
-
-    monkeypatch.setattr(reg.classifier, "analyze", _raise)
-    monkeypatch.setattr(reg.localizer, "analyze", _raise)
-    monkeypatch.setattr(
-        reg.transcriber, "transcribe",
-        lambda audio, **kwargs: {"text": "", "words": [], "duration_sec": 0.0},
-    )
-    result = reg.run_all(np.zeros(16000, dtype=np.float32))
-    assert result["classification"]["error"]
-    assert result["localization"]["error"]
-
-
-def test_run_all_catches_arbitrary_errors(monkeypatch):
-    """run_all must degrade classification/localization sub-results to
-    {"error": ...} for ANY exception, not just FileNotFoundError (e.g. a
-    ValueError from empty audio), mirroring the transcription handler."""
-    reg = ModelRegistry()
-
-    def _raise(*a, **k):
-        raise ValueError("empty audio")
-
-    monkeypatch.setattr(reg.classifier, "analyze", _raise)
-    monkeypatch.setattr(reg.localizer, "analyze", _raise)
-    monkeypatch.setattr(
-        reg.transcriber, "transcribe",
-        lambda audio, **kwargs: {"text": "", "words": [], "duration_sec": 0.0},
-    )
-    result = reg.run_all(np.zeros(16000, dtype=np.float32))
-    assert result["classification"]["error"] == "empty audio"
-    assert result["localization"]["error"] == "empty audio"
-    assert result["transcription"]["text"] == ""
-
-
-def test_run_all_runs_multitask_classifier(monkeypatch):
-    reg = ModelRegistry()
-    called = {}
-
-    def fake_multitask(audio, threshold=None):
-        called["audio"] = audio
-        called["threshold"] = threshold
-        return {
-            "prolongation": {"label": 1, "confidence": 0.9},
-            "summary": {"detected": ["prolongation"], "primary": "prolongation"},
-        }
-
-    monkeypatch.setattr(reg.multitask_classifier, "analyze", fake_multitask)
-    monkeypatch.setattr(
-        reg.cnn_multitask_classifier, "analyze",
-        lambda audio, threshold=None: {"error": "no weights"},
-    )
-    monkeypatch.setattr(
-        reg.classifier, "analyze",
-        lambda audio, threshold=None: {"summary": {"detected": []}},
-    )
-    monkeypatch.setattr(
-        reg.localizer, "analyze",
-        lambda audio, text=None, language="en", threshold=0.3, max_length_seconds=3.0: {
-            "regions": []
-        },
-    )
-    monkeypatch.setattr(
-        reg.transcriber, "transcribe",
-        lambda audio, **kwargs: {"text": "", "words": [], "duration_sec": 0.0},
-    )
-
-    result = reg.run_all(np.zeros(16000, dtype=np.float32))
-
-    assert called["threshold"] == 0.5
-    assert result["multitask"]["prolongation"] == {"label": 1, "confidence": 0.9}
-    assert result["multitask"]["summary"]["primary"] == "prolongation"
+from model.registry import Classifier
 
 
 def test_classifier_all_mode_skips_unknown_registry_entries(monkeypatch, tmp_path):
@@ -146,7 +17,10 @@ def test_classifier_all_mode_skips_unknown_registry_entries(monkeypatch, tmp_pat
     clut_path.write_bytes(b"")
     classification["cluttering"] = str(clut_path)
 
-    registry = {"classification": classification}
+    registry = {
+        "defaults": {"classifier": "single"},
+        "classification": {"single": {"paths": classification, "thresholds": {}}},
+    }
     monkeypatch.setattr("model.registry._load_registry", lambda: registry)
 
     class _Stub:
@@ -211,7 +85,13 @@ def test_classifier_analyze_raw_empty_includes_logits(monkeypatch):
 
 
 def test_classifier_analyze_empty_audio_all_mode(monkeypatch):
-    registry = {"classification": {"prolongation": "x.pt", "block": "y.pt"}}
+    registry = {
+        "defaults": {"classifier": "single"},
+        "classification": {"single": {
+            "paths": {"prolongation": "x.pt", "block": "y.pt"},
+            "thresholds": {},
+        }},
+    }
     monkeypatch.setattr("model.registry._load_registry", lambda: registry)
 
     clf = Classifier()
@@ -227,7 +107,11 @@ def test_classifier_analyze_empty_audio_all_mode(monkeypatch):
 def test_classifier_predict_honors_threshold(monkeypatch, tmp_path):
     path = tmp_path / "prolongation.pt"
     path.write_bytes(b"")
-    registry = {"classification": {"prolongation": str(path)}}
+    registry = {
+        "defaults": {"classifier": "single"},
+        "classification": {"single": {"paths": {"prolongation": str(path)},
+                                      "thresholds": {}}},
+    }
     monkeypatch.setattr("model.registry._load_registry", lambda: registry)
     monkeypatch.setattr(
         "model.registry._load_classifier",
@@ -248,8 +132,11 @@ def test_classifier_predict_all_honors_thresholds(monkeypatch, tmp_path):
         path.write_bytes(b"")
         classification[name] = str(path)
     registry = {
-        "classification": classification,
-        "thresholds": {"prolongation": 0.8},
+        "defaults": {"classifier": "single"},
+        "classification": {"single": {
+            "paths": classification,
+            "thresholds": {"prolongation": 0.8},
+        }},
     }
     monkeypatch.setattr("model.registry._load_registry", lambda: registry)
     monkeypatch.setattr(
@@ -310,8 +197,8 @@ def test_multitask_classifier_analyze_returns_per_class_output(tmp_path, monkeyp
 
     reg_path = str(tmp_path / "registry.json")
     with open(reg_path, "w") as f:
-        json.dump({"classification_multitask": {"path": "weights/mt.pt",
-                                                 "model_name": "fake"}}, f)
+        json.dump({"classification": {"multitask": {"path": "weights/mt.pt",
+                                                 "model_name": "fake"}}}, f)
     monkeypatch.setattr("model.registry._REGISTRY_PATH", reg_path)
     monkeypatch.setattr("model.registry._resolve_path", lambda p: str(tmp_path / "mt.pt"))
     (tmp_path / "mt.pt").write_bytes(b"dummy")
@@ -382,8 +269,8 @@ def test_multitask_classifier_analyze_uses_per_class_thresholds(tmp_path, monkey
 
     reg_path = str(tmp_path / "registry.json")
     with open(reg_path, "w") as f:
-        json.dump({"classification_multitask": {"path": "weights/mt.pt",
-                                                 "model_name": "fake"}}, f)
+        json.dump({"classification": {"multitask": {"path": "weights/mt.pt",
+                                                 "model_name": "fake"}}}, f)
     monkeypatch.setattr("model.registry._REGISTRY_PATH", reg_path)
     monkeypatch.setattr("model.registry._resolve_path", lambda p: str(tmp_path / "mt.pt"))
     (tmp_path / "mt.pt").write_bytes(b"dummy")
@@ -450,11 +337,11 @@ def test_multitask_classifier_analyze_uses_registry_thresholds_path(tmp_path, mo
 
     reg_path = str(tmp_path / "registry.json")
     with open(reg_path, "w") as f:
-        json.dump({"classification_multitask": {
+        json.dump({"classification": {"multitask": {
             "path": "weights/mt.pt",
             "model_name": "fake",
             "thresholds_path": "weights/custom_thresholds.json",
-        }}, f)
+        }}}, f)
     monkeypatch.setattr("model.registry._REGISTRY_PATH", reg_path)
     monkeypatch.setattr("model.registry._resolve_path", lambda p: str(tmp_path / p))
     monkeypatch.setattr("model.registry._load_multitask_classifier",
@@ -502,8 +389,8 @@ def test_multitask_classifier_analyze_falls_back_to_single_threshold(tmp_path, m
 
     reg_path = str(tmp_path / "registry.json")
     with open(reg_path, "w") as f:
-        json.dump({"classification_multitask": {"path": "weights/mt.pt",
-                                                 "model_name": "fake"}}, f)
+        json.dump({"classification": {"multitask": {"path": "weights/mt.pt",
+                                                 "model_name": "fake"}}}, f)
     monkeypatch.setattr("model.registry._REGISTRY_PATH", reg_path)
     monkeypatch.setattr("model.registry._resolve_path", lambda p: str(tmp_path / "mt.pt"))
     (tmp_path / "mt.pt").write_bytes(b"dummy")
@@ -552,14 +439,14 @@ def test_multitask_classifier_analyze_uses_inline_registry_thresholds(tmp_path, 
 
     reg_path = str(tmp_path / "registry.json")
     with open(reg_path, "w") as f:
-        json.dump({"classification_multitask": {
+        json.dump({"classification": {"multitask": {
             "path": "weights/mt.pt",
             "model_name": "fake",
             "thresholds": {
                 "prolongation": 0.25,
                 "block": 0.75,
             },
-        }}, f)
+        }}}, f)
     monkeypatch.setattr("model.registry._REGISTRY_PATH", reg_path)
     monkeypatch.setattr("model.registry._resolve_path", lambda p: str(tmp_path / "mt.pt"))
     (tmp_path / "mt.pt").write_bytes(b"dummy")
@@ -608,14 +495,14 @@ def test_multitask_classifier_analyze_explicit_threshold_overrides(tmp_path, mon
 
     reg_path = str(tmp_path / "registry.json")
     with open(reg_path, "w") as f:
-        json.dump({"classification_multitask": {
+        json.dump({"classification": {"multitask": {
             "path": "weights/mt.pt",
             "model_name": "fake",
             "thresholds": {
                 "prolongation": 0.25,
                 "block": 0.75,
             },
-        }}, f)
+        }}}, f)
     monkeypatch.setattr("model.registry._REGISTRY_PATH", reg_path)
     monkeypatch.setattr("model.registry._resolve_path", lambda p: str(tmp_path / "mt.pt"))
     (tmp_path / "mt.pt").write_bytes(b"dummy")
@@ -692,9 +579,9 @@ def test_cnn_multitask_classifier_analyze_uses_spectogram(monkeypatch, tmp_path)
             return {"block": torch.tensor([[0.1, 0.9]])}
 
     monkeypatch.setattr("model.registry._load_registry", lambda: {
-        "classification_multitask_cnn": {
+        "classification": {"cnn_multitask": {
             "path": "model.pt", "thresholds": {"block": 0.5},
-        },
+        }},
     })
     monkeypatch.setattr("model.registry._resolve_path", lambda p: str(tmp_path / p))
     (tmp_path / "model.pt").write_bytes(b"")
@@ -712,8 +599,8 @@ def test_load_multitask_registry_entry_missing_key(monkeypatch):
     from model.registry import _load_multitask_registry_entry
 
     with pytest.raises(FileNotFoundError,
-                       match="No 'classification_multitask_cnn' entry"):
-        _load_multitask_registry_entry({}, "classification_multitask_cnn")
+                       match="No 'cnn_multitask' entry"):
+        _load_multitask_registry_entry({}, "cnn_multitask")
 
 
 def test_multitask_thresholds_resolve_via_shared_helper(monkeypatch, tmp_path):
@@ -728,71 +615,263 @@ def test_multitask_thresholds_resolve_via_shared_helper(monkeypatch, tmp_path):
     assert _resolve_multitask_thresholds(entry, "model.pt") == {"block": 0.42}
 
 
-def test_run_all_adds_combined(monkeypatch):
-    reg = ModelRegistry()
+def test_module_analyze_composes_four_pipelines(monkeypatch):
+    import model as _m
+
+    calls = {"classifier": 0, "localizer": 0, "transcriber": 0, "fuse": 0}
+
+    class _FakeClassifier:
+        def analyze(self, audio, threshold=None):
+            calls["classifier"] += 1
+            return {"prolongation": {"label": 1}, "summary": {"detected": ["prolongation"]}}
+
+        def saliency(self, audio):
+            import torch
+            return torch.zeros(1, 40, 5)
+
+        is_loaded = True
+
+    class _FakeLocalizer:
+        def analyze(self, audio, threshold=0.3, text=None, language="en"):
+            calls["localizer"] += 1
+            return {"regions": []}
+
+    class _FakeTranscriber:
+        def transcribe(self, audio, language="english"):
+            calls["transcriber"] += 1
+            return {"text": "", "words": [], "duration_sec": 0.0}
+
+    monkeypatch.setattr(_m, "_classifier", _FakeClassifier())
+    monkeypatch.setattr(_m, "_localizer", _FakeLocalizer())
+    monkeypatch.setattr(_m, "_transcriber", _FakeTranscriber())
+    monkeypatch.setattr(_m, "_init_done", True)
+
+    result = _m.analyze(np.zeros(16000, dtype=np.float32))
+    assert set(["classification", "localization", "transcription", "combined"]) <= set(result)
+    assert calls["classifier"] == 1
+
+
+def test_model_registry_class_removed():
+    import model.registry as reg_mod
+    assert not hasattr(reg_mod, "ModelRegistry")
+
+
+def test_registry_classification_names_reads_single_paths(monkeypatch):
+    from model.registry import _registry_classification_names
+    monkeypatch.setattr("model.registry._load_registry", lambda: {
+        "defaults": {"classifier": "single"},
+        "classification": {"single": {
+            "paths": {
+                "prolongation": "p.pt", "block": "b.pt",
+                "soundrep": "s.pt", "wordrep": "w.pt",
+                "interjection": "i.pt", "cluttering": "c.pt",
+            }
+        }},
+    })
+    assert _registry_classification_names() == [
+        "prolongation", "block", "soundrep", "wordrep", "interjection"
+    ]
+
+
+def test_load_multitask_registry_entry_resolves_nested(monkeypatch, tmp_path):
+    from model.registry import _load_multitask_registry_entry
+    ckpt = tmp_path / "mt.pt"
+    ckpt.write_bytes(b"dummy")
+    registry = {"classification": {"multitask": {
+        "path": "weights/mt.pt", "model_name": "fake",
+        "thresholds": {"block": 0.35},
+    }}}
+    monkeypatch.setattr("model.registry._resolve_path",
+                        lambda p: str(tmp_path / "weights" / p.split("/")[-1])
+                        if p == "weights/mt.pt" else str(tmp_path / p))
+    (tmp_path / "weights").mkdir(exist_ok=True)
+    (tmp_path / "weights" / "mt.pt").write_bytes(b"dummy")
+    monkeypatch.setattr("model.registry._load_multitask_classifier",
+                        lambda path: type("M", (), {"class_names": ["block"]})())
+    model, thresholds = _load_multitask_registry_entry(registry, "multitask")
+    assert thresholds == {"block": 0.35}
+
+
+def _threshold_clf_runner():
+    from model.registry import ClassifierRunner
+    return ClassifierRunner()
+
+
+def test_classifier_loads_nested_single_paths_and_thresholds(monkeypatch, tmp_path):
+    names = ["prolongation", "block", "soundrep", "wordrep", "interjection"]
+    paths = {}
+    for n in names:
+        p = tmp_path / f"{n}.pt"
+        p.write_bytes(b"")
+        paths[n] = str(p)
+    registry = {"classification": {"single": {
+        "paths": paths,
+        "thresholds": {"prolongation": 0.61, "block": 0.5,
+                       "soundrep": 0.5, "wordrep": 0.5, "interjection": 0.5},
+    }}}
+    monkeypatch.setattr("model.registry._load_registry", lambda: registry)
     monkeypatch.setattr(
-        reg.classifier, "analyze",
-        lambda audio, threshold=None: {"prolongation": {"label": 0}, "summary": {"detected": []}},
+        "model.registry._load_classifier",
+        lambda name, path: type("S", (), {"predict": lambda s, a, threshold=0.5: (0, 0.5),
+                                          "max_length_seconds": 3.0})(),
     )
+    clf = _threshold_clf_runner()
+    clf._load()
+    assert set(clf._models) == set(names)
+    assert clf._thresholds["prolongation"] == 0.61
+
+
+def test_classifier_saliency_returns_per_frame_per_class(monkeypatch, tmp_path):
+    import torch as _torch
+
+    from model.config.defaults import DYSFLUENCY_CLASSES
+
+    class _Encoder(_torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self._t = 10
+
+        def forward(self, x):
+            o = type("Out", (), {})()
+            o.last_hidden_state = _torch.zeros(x.shape[0], self._t, 4)
+            return o
+
+    class _Projector(_torch.nn.Module):
+        def forward(self, x):
+            return x
+
+    class _Head(_torch.nn.Module):
+        def __init__(self, k):
+            super().__init__()
+            self._k = k
+
+        def forward(self, x):
+            b, t, d = x.shape
+            logits = _torch.zeros(b, t, 2)
+            logits[..., 1] = (self._k + 1) / 6.0 * 4.0   # distinct, >0
+            logits[..., 0] = -4.0
+            return logits
+
+    class _FakeSeq(_torch.nn.Module):
+        def __init__(self, k):
+            super().__init__()
+            self.wav2vec2 = _Encoder()
+            self.projector = _Projector()
+            self.classifier = _Head(k)
+
+    names = ["prolongation", "block", "soundrep", "wordrep", "interjection"]
+    paths = {}
+    for n in names:
+        p = tmp_path / f"{n}.pt"
+        p.write_bytes(b"")
+        paths[n] = str(p)
+
+    registry = {"classification": {"single": {"paths": paths, "thresholds": {}}}}
+    monkeypatch.setattr("model.registry._load_registry", lambda: registry)
+
+    def _fake_load(name, path):
+        clf = type("C", (), {"max_length_seconds": 3.0})()
+        clf._model = _FakeSeq(DYSFLUENCY_CLASSES.index(name))
+        clf.forward = lambda tensor: clf._model.classifier(
+            clf._model.projector(clf._model.wav2vec2(tensor).last_hidden_state)
+        )
+        return clf
+
+    monkeypatch.setattr("model.registry._load_classifier", _fake_load)
+
+    from model.registry import ClassifierRunner
+
+    clf = ClassifierRunner()
+    sal = clf.saliency(_torch.zeros(16000, dtype=_torch.float32))
+    assert sal.shape == (1, 10, 5)
+    assert float(sal[0, 0, 1]) > float(sal[0, 0, 0])
+    assert float(sal.min()) >= 0.0 and float(sal.max()) <= 1.0
+
+
+def test_multitask_runner_loads_nested_entry(monkeypatch, tmp_path):
+    import json
+    import math
+
+    import torch as _torch
+
+    from model.registry import MultiTaskClassifier
+
+    class _FakeHeads(_torch.nn.Module):
+        def forward(self, pooled):
+            return {"block": _torch.tensor([[0.0, math.log(0.7 / 0.3)]])}
+
+    class _FakeModel:
+        def __init__(self):
+            self.model = _FakeHeads()
+            self.class_names = ["block"]
+
+        def forward(self, input_values):
+            return self.model(input_values)
+
+    (tmp_path / "weights").mkdir(exist_ok=True)
+    (tmp_path / "weights" / "mt.pt").write_bytes(b"dummy")
+    reg_path = tmp_path / "registry.json"
+    reg_path.write_text(json.dumps({"classification": {"multitask": {
+        "path": "weights/mt.pt", "model_name": "fake",
+        "thresholds": {"block": 0.75},
+    }}}))
+    monkeypatch.setattr("model.registry._REGISTRY_PATH", str(reg_path))
+    monkeypatch.setattr("model.registry._resolve_path",
+                        lambda p: str(tmp_path / p))
+    monkeypatch.setattr("model.registry._load_multitask_classifier",
+                        lambda path: _FakeModel())
+
+    clf = MultiTaskClassifier()
+    out = clf.analyze(np.zeros(1600, dtype=np.float32))
+    assert out["block"]["label"] == 0   # 0.70 < 0.75
+
+
+def test_init_reads_defaults_from_registry(monkeypatch):
+    import model as _m
+
+    calls = {}
+
+    def _fake_load_classifier(kind):
+        calls["classifier"] = kind
+
+    def _fake_load_localizer(kind):
+        calls["localizer"] = kind
+
+    def _fake_load_transcriber():
+        calls["transcriber"] = True
+
+    monkeypatch.setattr(_m, "_load_classifier", _fake_load_classifier)
+    monkeypatch.setattr(_m, "_load_localizer", _fake_load_localizer)
+    monkeypatch.setattr(_m, "_load_transcriber", _fake_load_transcriber)
     monkeypatch.setattr(
-        reg.multitask_classifier, "analyze",
-        lambda audio, threshold=None: {"block": {"label": 1}, "summary": {"detected": ["block"]}},
-    )
-    monkeypatch.setattr(
-        reg.cnn_multitask_classifier, "analyze",
-        lambda audio, threshold=None: {"block": {"label": 1}, "summary": {"detected": ["block"]}},
-    )
-    monkeypatch.setattr(
-        reg.localizer, "analyze",
-        lambda audio, text=None, language="en", threshold=0.3, max_length_seconds=3.0: {
-            "regions": [{"start": 0.0, "end": 0.5, "confidence": 0.9}]
-        },
-    )
-    monkeypatch.setattr(
-        reg.transcriber, "transcribe",
-        lambda audio, language="english", localizations=None, passage_text=None, sample_rate=16000: {
-            "text": "hello", "words": [], "duration_sec": 1.0
-        },
+        "model.registry._load_registry",
+        lambda: {"defaults": {"classifier": "single", "localizer": "cnn"}},
     )
 
-    def fake_saliency(audio):
-        return torch.zeros((1, 500, 5))
-
-    monkeypatch.setattr(reg.multitask_classifier, "saliency", fake_saliency)
-
-    result = reg.run_all(np.zeros(16000, dtype=np.float32), text="hello world")
-    assert "combined" in result
-    assert result["combined"]["regions"]  # one region from localizer
-    assert set(result["combined"]["regions"][0]["classes"].keys()) == set(
-        ["prolongation", "block", "soundrep", "wordrep", "interjection"]
-    )
+    _m.init()
+    assert calls == {"classifier": "single", "localizer": "cnn", "transcriber": True}
 
 
-def test_run_all_combined_errors_when_multitask_unavailable(monkeypatch):
-    reg = ModelRegistry()
-    monkeypatch.setattr(reg.classifier, "analyze",
-                        lambda audio, threshold=None: {"summary": {"detected": []}})
-    monkeypatch.setattr(reg.multitask_classifier, "analyze",
-                        lambda audio, threshold=None: {"summary": {"detected": []}})
-    monkeypatch.setattr(reg.cnn_multitask_classifier, "analyze",
-                        lambda audio, threshold=None: {"summary": {"detected": []}})
-    monkeypatch.setattr(reg.localizer, "analyze",
-                        lambda audio, text=None, language="en", threshold=0.3, max_length_seconds=3.0: {
-                            "regions": [{"start": 0.0, "end": 0.5, "confidence": 0.9}]
-                        })
-    monkeypatch.setattr(reg.transcriber, "transcribe",
-                        lambda audio, language="english", localizations=None, passage_text=None, sample_rate=16000: {
-                            "text": "", "words": [], "duration_sec": 1.0
-                        })
-    monkeypatch.setattr(reg.multitask_classifier, "saliency",
-                        lambda audio: (_ for _ in ()).throw(RuntimeError("no model")))
+def test_registry_paths_nested_shape(tmp_path):
+    import json as _json
 
-    result = reg.run_all(np.zeros(16000, dtype=np.float32))
-    assert result["combined"]["error"]  # degraded gracefully
+    from model.evaluation.loader import registry_paths
 
+    reg = {
+        "defaults": {"classifier": "single", "localizer": "wav2vec2"},
+        "classification": {"single": {
+            "paths": {"block": "weights/clf.pt"},
+            "thresholds": {"block": 0.35},
+        }},
+        "localization": {"wav2vec2": {"path": "weights/loc.pt", "threshold": 0.3}},
+    }
+    p = tmp_path / "registry.json"
+    p.write_text(_json.dumps(reg))
 
-def test_run_all_combined_empty_audio():
-    reg = ModelRegistry()
-    result = reg.run_all(np.zeros(0, dtype=np.float32))
-    assert result["combined"] == {"regions": [], "audio_duration": 0.0, "total_stutters": 0}
+    paths = registry_paths(str(p))
+    assert set(paths["classification"]) == {"block"}
+    assert paths["classification"]["block"].endswith("weights/clf.pt")
+    assert paths["thresholds"] == {"block": 0.35}
+    assert set(paths["localization"]) == {"wav2vec2"}
+    assert paths["localization"]["wav2vec2"].endswith("weights/loc.pt")
 

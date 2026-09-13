@@ -1,6 +1,6 @@
 """Combine localizer regions with classifier per-frame saliency.
 
-Pure data-fusion unit shared by the API (ModelRegistry.run_all) and the
+Pure data-fusion unit shared by the API (``model.analyze``) and the
 evaluation harness. No model internals are coupled in here.
 
 Frame alignment contract: wav2vec2 subsamples 320 samples/frame @ 16 kHz,

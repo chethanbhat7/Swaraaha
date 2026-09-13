@@ -39,8 +39,8 @@ _init_localizer: Optional[str] = None
 # ---------------------------------------------------------------------------
 
 def init(
-    classifier: str = "multitask",
-    localizer: str = "wav2vec2",
+    classifier: Optional[str] = None,
+    localizer: Optional[str] = None,
 ) -> None:
     """Pre-load models into memory.
 
@@ -48,16 +48,26 @@ def init(
     loaded models with zero lazy-load overhead.
 
     Args:
-        classifier: Classifier to load. Options: ``"multitask"`` (best),
-            ``"cnn_multitask"``, ``"individual"`` (5 separate classifiers).
-            Pass ``None`` to skip classification.
-        localizer: Localizer to load. Options: ``"wav2vec2"`` (best),
-            ``"cnn"``.
-            Pass ``None`` to skip localization.
+        classifier: Classifier kind to load. ``None`` (default) loads the
+            classifier named by ``registry.json defaults.classifier``.
+            Options: ``"single"`` (5 separate classifiers), ``"multitask"``,
+            ``"cnn_multitask"``. ``"individual"`` is an alias for
+            ``"single"``. Pass ``None`` to follow the registry default.
+        localizer: Localizer to load. ``None`` (default) loads the localizer
+            named by ``registry.json defaults.localizer``. Options:
+            ``"wav2vec2"``, ``"cnn"``. Pass ``None`` to follow the registry
+            default.
 
-    If not called, ``analyze()`` lazy-loads the defaults on first use.
+    If not called, ``analyze()`` lazy-loads the registry defaults on first
+    use.
     """
     global _init_done, _init_classifier, _init_localizer
+
+    defaults = _registry_defaults()
+    if classifier is None:
+        classifier = defaults.get("classifier", "single")
+    if localizer is None:
+        localizer = defaults.get("localizer", "wav2vec2")
 
     _init_classifier = classifier
     _init_localizer = localizer
@@ -72,6 +82,11 @@ def init(
     logger.info("Model init complete (classifier=%s, localizer=%s)", classifier, localizer)
 
 
+def _registry_defaults() -> Dict[str, str]:
+    from model.registry import _load_registry
+    return _load_registry().get("defaults", {})
+
+
 def analyze(
     audio: Any,
     *,
@@ -83,7 +98,7 @@ def analyze(
     """Run classification + localization + transcription on audio.
 
     If ``init()`` was called, reuses pre-loaded models.
-    Otherwise lazy-loads defaults (multitask classifier + wav2vec2 localizer).
+    Otherwise lazy-loads the registry defaults.
 
     Args:
         audio: File path, raw bytes, or 1-D numpy array.
@@ -375,8 +390,8 @@ def _ensure_init() -> None:
     """Lazy-load defaults if init() was never called."""
     if _init_done:
         return
-    logger.info("init() never called; lazy-loading defaults")
-    init()  # uses defaults: multitask + wav2vec2
+    logger.info("init() never called; lazy-loading registry defaults")
+    init()  # uses registry.json defaults
 
 
 def _load_classifier(kind: str) -> None:
@@ -385,16 +400,16 @@ def _load_classifier(kind: str) -> None:
     from model.registry._classifier import ClassifierRunner
 
     logger.info("Initializing classifier runner kind=%s", kind)
-    if kind == "multitask":
+    if kind == "single" or kind == "individual":
+        _classifier = ClassifierRunner()
+    elif kind == "multitask":
         _classifier = MultiTaskRunner()
     elif kind == "cnn_multitask":
         _classifier = CNNMultiTaskRunner()
-    elif kind == "individual":
-        _classifier = ClassifierRunner()
     else:
         raise ValueError(
             f"Unknown classifier type: {kind!r}. "
-            f"Options: 'multitask', 'cnn_multitask', 'individual'"
+            f"Options: 'single', 'multitask', 'cnn_multitask' ('individual' alias)"
         )
 
 
