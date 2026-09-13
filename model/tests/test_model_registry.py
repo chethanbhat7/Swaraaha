@@ -1,9 +1,8 @@
 import numpy as np
 import pytest
+import torch
 
 from model.registry import Classifier
-
-import torch
 
 
 def test_classifier_all_mode_skips_unknown_registry_entries(monkeypatch, tmp_path):
@@ -675,7 +674,6 @@ def test_registry_classification_names_reads_single_paths(monkeypatch):
 
 
 def test_load_multitask_registry_entry_resolves_nested(monkeypatch, tmp_path):
-    import os
     from model.registry import _load_multitask_registry_entry
     ckpt = tmp_path / "mt.pt"
     ckpt.write_bytes(b"dummy")
@@ -793,6 +791,7 @@ def test_classifier_saliency_returns_per_frame_per_class(monkeypatch, tmp_path):
 def test_multitask_runner_loads_nested_entry(monkeypatch, tmp_path):
     import json
     import math
+
     import torch as _torch
 
     from model.registry import MultiTaskClassifier

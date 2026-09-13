@@ -6,7 +6,6 @@ from model.config.defaults import FRAME_DURATION, SAMPLE_RATE
 
 from ._utils import _REGISTRY_PATH
 
-
 # ---------------------------------------------------------------------------
 # Utility functions (use model.classify / model.localize / model.fuse instead)
 # ---------------------------------------------------------------------------

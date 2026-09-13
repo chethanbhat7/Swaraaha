@@ -93,8 +93,8 @@ def split_dataset(dataset, val_ratio: float = 0.2, seed: int = 42) -> Tuple[List
 def maybe_compile(model, device):
     """Apply torch.compile to model if on CUDA. Safe no-op on CPU."""
     if device.type == "cuda":
-        import warnings
         import logging
+        import warnings
         warnings.filterwarnings("ignore", category=UserWarning, module="torch")
         logging.getLogger("torch._dynamo").setLevel(logging.ERROR)
         torch._dynamo.config.suppress_errors = True
@@ -435,6 +435,7 @@ def train_one_epoch(
         Average loss over the epoch.
     """
     import warnings
+
     from tqdm import tqdm
 
     warnings.filterwarnings(

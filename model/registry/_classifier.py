@@ -232,7 +232,8 @@ class ClassifierRunner:
     def _saliency_chunk(self, audio, max_length_seconds, trim_offset_frames=0):
         import librosa
         import torch
-        from model.config.defaults import AUDIO_DURATION_SECONDS, SAMPLE_RATE
+
+        from model.config.defaults import SAMPLE_RATE
         from model.data.preprocessing import load_audio_input
 
         if torch.is_tensor(audio):

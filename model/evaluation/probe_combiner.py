@@ -13,7 +13,7 @@ import argparse
 import numpy as np
 
 from model.combiner import FRAME_DURATION, mismatch_rate
-from model.registry import ModelRegistry
+from model.registry import LocalizerRunner, MultiTaskRunner
 
 
 def probe_from_regions(regions, saliency, threshold: float = 0.5) -> float:
@@ -48,18 +48,19 @@ def main(argv=None):
     dataset = ClassificationDataset(
         args.data_dir, max_length_seconds=args.max_length_seconds,
     )
-    reg = ModelRegistry()
+    localizer = LocalizerRunner()
+    multitask_classifier = MultiTaskRunner()
 
     rates = []
     n = len(dataset) if args.limit is None else min(args.limit, len(dataset))
     for i in range(n):
         audio, _ = dataset[i]
         audio = np.asarray(audio).reshape(-1)
-        loc = reg.localizer.analyze(
+        loc = localizer.analyze(
             audio, threshold=0.3, max_length_seconds=args.max_length_seconds,
         )
         regions = loc.get("regions", [])
-        saliency = reg.multitask_classifier.saliency(
+        saliency = multitask_classifier.saliency(
             audio, max_length_seconds=args.max_length_seconds,
         ).squeeze(0).cpu().numpy()
         rates.append(probe_from_regions(regions, saliency, threshold=args.threshold))
