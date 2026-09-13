@@ -146,7 +146,10 @@ def test_classifier_all_mode_skips_unknown_registry_entries(monkeypatch, tmp_pat
     clut_path.write_bytes(b"")
     classification["cluttering"] = str(clut_path)
 
-    registry = {"classification": classification}
+    registry = {
+        "defaults": {"classifier": "single"},
+        "classification": {"single": {"paths": classification, "thresholds": {}}},
+    }
     monkeypatch.setattr("model.registry._load_registry", lambda: registry)
 
     class _Stub:
@@ -211,7 +214,13 @@ def test_classifier_analyze_raw_empty_includes_logits(monkeypatch):
 
 
 def test_classifier_analyze_empty_audio_all_mode(monkeypatch):
-    registry = {"classification": {"prolongation": "x.pt", "block": "y.pt"}}
+    registry = {
+        "defaults": {"classifier": "single"},
+        "classification": {"single": {
+            "paths": {"prolongation": "x.pt", "block": "y.pt"},
+            "thresholds": {},
+        }},
+    }
     monkeypatch.setattr("model.registry._load_registry", lambda: registry)
 
     clf = Classifier()
@@ -227,7 +236,11 @@ def test_classifier_analyze_empty_audio_all_mode(monkeypatch):
 def test_classifier_predict_honors_threshold(monkeypatch, tmp_path):
     path = tmp_path / "prolongation.pt"
     path.write_bytes(b"")
-    registry = {"classification": {"prolongation": str(path)}}
+    registry = {
+        "defaults": {"classifier": "single"},
+        "classification": {"single": {"paths": {"prolongation": str(path)},
+                                      "thresholds": {}}},
+    }
     monkeypatch.setattr("model.registry._load_registry", lambda: registry)
     monkeypatch.setattr(
         "model.registry._load_classifier",
@@ -248,8 +261,11 @@ def test_classifier_predict_all_honors_thresholds(monkeypatch, tmp_path):
         path.write_bytes(b"")
         classification[name] = str(path)
     registry = {
-        "classification": classification,
-        "thresholds": {"prolongation": 0.8},
+        "defaults": {"classifier": "single"},
+        "classification": {"single": {
+            "paths": classification,
+            "thresholds": {"prolongation": 0.8},
+        }},
     }
     monkeypatch.setattr("model.registry._load_registry", lambda: registry)
     monkeypatch.setattr(
@@ -832,4 +848,33 @@ def test_load_multitask_registry_entry_resolves_nested(monkeypatch, tmp_path):
                         lambda path: type("M", (), {"class_names": ["block"]})())
     model, thresholds = _load_multitask_registry_entry(registry, "multitask")
     assert thresholds == {"block": 0.35}
+
+
+def _threshold_clf_runner():
+    from model.registry import ClassifierRunner
+    return ClassifierRunner()
+
+
+def test_classifier_loads_nested_single_paths_and_thresholds(monkeypatch, tmp_path):
+    names = ["prolongation", "block", "soundrep", "wordrep", "interjection"]
+    paths = {}
+    for n in names:
+        p = tmp_path / f"{n}.pt"
+        p.write_bytes(b"")
+        paths[n] = str(p)
+    registry = {"classification": {"single": {
+        "paths": paths,
+        "thresholds": {"prolongation": 0.61, "block": 0.5,
+                       "soundrep": 0.5, "wordrep": 0.5, "interjection": 0.5},
+    }}}
+    monkeypatch.setattr("model.registry._load_registry", lambda: registry)
+    monkeypatch.setattr(
+        "model.registry._load_classifier",
+        lambda name, path: type("S", (), {"predict": lambda s, a, threshold=0.5: (0, 0.5),
+                                          "max_length_seconds": 3.0})(),
+    )
+    clf = _threshold_clf_runner()
+    clf._load()
+    assert set(clf._models) == set(names)
+    assert clf._thresholds["prolongation"] == 0.61
 

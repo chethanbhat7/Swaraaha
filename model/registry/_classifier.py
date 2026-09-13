@@ -28,11 +28,19 @@ class ClassifierRunner:
         self.class_name = class_name
         self._model = None
         self._models: Dict[str, Any] = {}
+        self._thresholds: Dict[str, float] = {}
 
     def _load(self) -> None:
         _reg = _get_reg()
         registry = _reg._load_registry()
-        classification = registry.get("classification", {})
+        single_entry = registry.get("classification", {}).get("single", {})
+        # backward-compatible: accept flat old-style classification dict
+        if single_entry is None or "paths" not in single_entry:
+            single_entry = {"paths": registry.get("classification", {})}
+        classification = single_entry.get("paths", {})
+        self._thresholds = {
+            str(k): float(v) for k, v in single_entry.get("thresholds", {}).items()
+        }
 
         if self.class_name is not None:
             if self.class_name not in classification:
@@ -116,8 +124,13 @@ class ClassifierRunner:
         }
 
     def _resolve_thresholds(self, threshold: Optional[float]) -> Dict[str, float]:
-        registry = _get_reg()._load_registry()
-        configured = registry.get("thresholds", {})
+        if not self._thresholds:
+            entry = (
+                _get_reg()._load_registry()
+                .get("classification", {}).get("single", {})
+            )
+            self._thresholds = entry.get("thresholds", {})
+        configured = self._thresholds
         defaults = self._default_thresholds()
         thresholds = {
             name: configured.get(name, defaults.get(name, 0.5))
@@ -144,9 +157,7 @@ class ClassifierRunner:
             if self._models:
                 names = list(self._models)
             else:
-                _reg = _get_reg()
-                registry = _reg._load_registry()
-                names = [n for n in registry.get("classification", {}) if n in DYSFLUENCY_CLASSES]
+                names = _registry_classification_names()
             results: Dict[str, Any] = {
                 name: _empty_classifier_output(include_logits) for name in names
             }

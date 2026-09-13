@@ -136,7 +136,9 @@ def _empty_classifier_output(include_logits: bool) -> Dict[str, float]:
 
 def _registry_classification_names() -> List[str]:
     """Canonical classification model names for the default classifier kind."""
-    registry = _load_registry()
+    import model.registry as _reg
+
+    registry = _reg._load_registry()
     kind = registry.get("defaults", {}).get("classifier", "single")
     paths = (
         registry.get("classification", {})
