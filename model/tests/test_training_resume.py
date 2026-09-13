@@ -183,6 +183,7 @@ def test_update_registry_localizers(tmp_path):
     torch.save({"epoch": 5}, ckpt)
     mapping = update_registry_localizers(str(registry_path), str(tmp_path))
     expected = os.path.relpath(str(ckpt), str(tmp_path.parent))
-    assert mapping == {"cnn": expected}
+    assert mapping == {"cnn": {"path": expected, "threshold": 0.3}}
     data = json.loads(registry_path.read_text())
-    assert data["localization"] == {"cnn": expected}
+    assert data["localization"]["cnn"]["path"] == expected
+    assert data["localization"]["cnn"]["threshold"] == 0.3

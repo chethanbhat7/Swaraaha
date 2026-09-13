@@ -852,3 +852,27 @@ def test_init_reads_defaults_from_registry(monkeypatch):
     _m.init()
     assert calls == {"classifier": "single", "localizer": "cnn", "transcriber": True}
 
+
+def test_registry_paths_nested_shape(tmp_path):
+    import json as _json
+
+    from model.evaluation.loader import registry_paths
+
+    reg = {
+        "defaults": {"classifier": "single", "localizer": "wav2vec2"},
+        "classification": {"single": {
+            "paths": {"block": "weights/clf.pt"},
+            "thresholds": {"block": 0.35},
+        }},
+        "localization": {"wav2vec2": {"path": "weights/loc.pt", "threshold": 0.3}},
+    }
+    p = tmp_path / "registry.json"
+    p.write_text(_json.dumps(reg))
+
+    paths = registry_paths(str(p))
+    assert set(paths["classification"]) == {"block"}
+    assert paths["classification"]["block"].endswith("weights/clf.pt")
+    assert paths["thresholds"] == {"block": 0.35}
+    assert set(paths["localization"]) == {"wav2vec2"}
+    assert paths["localization"]["wav2vec2"].endswith("weights/loc.pt")
+
