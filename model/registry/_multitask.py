@@ -31,7 +31,7 @@ class MultiTaskRunner:
         self._model = None
         self._thresholds: Dict[str, float] = {}
 
-    REGISTRY_KEY = "classification_multitask"
+    REGISTRY_KEY = "multitask"
 
     def _load(self) -> None:
         _reg = _get_reg()
@@ -83,7 +83,7 @@ class MultiTaskRunner:
             names = (
                 list(self._model.class_names)
                 if self._model is not None
-                else [n for n in _get_reg()._load_registry().get("classification", {}) if n in DYSFLUENCY_CLASSES]
+                else list(DYSFLUENCY_CLASSES)
             )
             return self._empty_result(names)
 
@@ -223,7 +223,7 @@ class CNNMultiTaskRunner(MultiTaskRunner):
     overridden to feed mel-spectrograms instead of raw waveforms.
     """
 
-    REGISTRY_KEY = 'classification_multitask_cnn'
+    REGISTRY_KEY = 'cnn_multitask'
 
     def _preprocess(self, audio):
         import torch

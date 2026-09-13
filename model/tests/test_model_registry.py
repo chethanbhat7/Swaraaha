@@ -310,8 +310,8 @@ def test_multitask_classifier_analyze_returns_per_class_output(tmp_path, monkeyp
 
     reg_path = str(tmp_path / "registry.json")
     with open(reg_path, "w") as f:
-        json.dump({"classification_multitask": {"path": "weights/mt.pt",
-                                                 "model_name": "fake"}}, f)
+        json.dump({"classification": {"multitask": {"path": "weights/mt.pt",
+                                                 "model_name": "fake"}}}, f)
     monkeypatch.setattr("model.registry._REGISTRY_PATH", reg_path)
     monkeypatch.setattr("model.registry._resolve_path", lambda p: str(tmp_path / "mt.pt"))
     (tmp_path / "mt.pt").write_bytes(b"dummy")
@@ -382,8 +382,8 @@ def test_multitask_classifier_analyze_uses_per_class_thresholds(tmp_path, monkey
 
     reg_path = str(tmp_path / "registry.json")
     with open(reg_path, "w") as f:
-        json.dump({"classification_multitask": {"path": "weights/mt.pt",
-                                                 "model_name": "fake"}}, f)
+        json.dump({"classification": {"multitask": {"path": "weights/mt.pt",
+                                                 "model_name": "fake"}}}, f)
     monkeypatch.setattr("model.registry._REGISTRY_PATH", reg_path)
     monkeypatch.setattr("model.registry._resolve_path", lambda p: str(tmp_path / "mt.pt"))
     (tmp_path / "mt.pt").write_bytes(b"dummy")
@@ -450,11 +450,11 @@ def test_multitask_classifier_analyze_uses_registry_thresholds_path(tmp_path, mo
 
     reg_path = str(tmp_path / "registry.json")
     with open(reg_path, "w") as f:
-        json.dump({"classification_multitask": {
+        json.dump({"classification": {"multitask": {
             "path": "weights/mt.pt",
             "model_name": "fake",
             "thresholds_path": "weights/custom_thresholds.json",
-        }}, f)
+        }}}, f)
     monkeypatch.setattr("model.registry._REGISTRY_PATH", reg_path)
     monkeypatch.setattr("model.registry._resolve_path", lambda p: str(tmp_path / p))
     monkeypatch.setattr("model.registry._load_multitask_classifier",
@@ -502,8 +502,8 @@ def test_multitask_classifier_analyze_falls_back_to_single_threshold(tmp_path, m
 
     reg_path = str(tmp_path / "registry.json")
     with open(reg_path, "w") as f:
-        json.dump({"classification_multitask": {"path": "weights/mt.pt",
-                                                 "model_name": "fake"}}, f)
+        json.dump({"classification": {"multitask": {"path": "weights/mt.pt",
+                                                 "model_name": "fake"}}}, f)
     monkeypatch.setattr("model.registry._REGISTRY_PATH", reg_path)
     monkeypatch.setattr("model.registry._resolve_path", lambda p: str(tmp_path / "mt.pt"))
     (tmp_path / "mt.pt").write_bytes(b"dummy")
@@ -552,14 +552,14 @@ def test_multitask_classifier_analyze_uses_inline_registry_thresholds(tmp_path, 
 
     reg_path = str(tmp_path / "registry.json")
     with open(reg_path, "w") as f:
-        json.dump({"classification_multitask": {
+        json.dump({"classification": {"multitask": {
             "path": "weights/mt.pt",
             "model_name": "fake",
             "thresholds": {
                 "prolongation": 0.25,
                 "block": 0.75,
             },
-        }}, f)
+        }}}, f)
     monkeypatch.setattr("model.registry._REGISTRY_PATH", reg_path)
     monkeypatch.setattr("model.registry._resolve_path", lambda p: str(tmp_path / "mt.pt"))
     (tmp_path / "mt.pt").write_bytes(b"dummy")
@@ -608,14 +608,14 @@ def test_multitask_classifier_analyze_explicit_threshold_overrides(tmp_path, mon
 
     reg_path = str(tmp_path / "registry.json")
     with open(reg_path, "w") as f:
-        json.dump({"classification_multitask": {
+        json.dump({"classification": {"multitask": {
             "path": "weights/mt.pt",
             "model_name": "fake",
             "thresholds": {
                 "prolongation": 0.25,
                 "block": 0.75,
             },
-        }}, f)
+        }}}, f)
     monkeypatch.setattr("model.registry._REGISTRY_PATH", reg_path)
     monkeypatch.setattr("model.registry._resolve_path", lambda p: str(tmp_path / "mt.pt"))
     (tmp_path / "mt.pt").write_bytes(b"dummy")
@@ -692,9 +692,9 @@ def test_cnn_multitask_classifier_analyze_uses_spectogram(monkeypatch, tmp_path)
             return {"block": torch.tensor([[0.1, 0.9]])}
 
     monkeypatch.setattr("model.registry._load_registry", lambda: {
-        "classification_multitask_cnn": {
+        "classification": {"cnn_multitask": {
             "path": "model.pt", "thresholds": {"block": 0.5},
-        },
+        }},
     })
     monkeypatch.setattr("model.registry._resolve_path", lambda p: str(tmp_path / p))
     (tmp_path / "model.pt").write_bytes(b"")
@@ -712,8 +712,8 @@ def test_load_multitask_registry_entry_missing_key(monkeypatch):
     from model.registry import _load_multitask_registry_entry
 
     with pytest.raises(FileNotFoundError,
-                       match="No 'classification_multitask_cnn' entry"):
-        _load_multitask_registry_entry({}, "classification_multitask_cnn")
+                       match="No 'cnn_multitask' entry"):
+        _load_multitask_registry_entry({}, "cnn_multitask")
 
 
 def test_multitask_thresholds_resolve_via_shared_helper(monkeypatch, tmp_path):
@@ -795,4 +795,41 @@ def test_run_all_combined_empty_audio():
     reg = ModelRegistry()
     result = reg.run_all(np.zeros(0, dtype=np.float32))
     assert result["combined"] == {"regions": [], "audio_duration": 0.0, "total_stutters": 0}
+
+
+def test_registry_classification_names_reads_single_paths(monkeypatch):
+    from model.registry import _registry_classification_names
+    monkeypatch.setattr("model.registry._load_registry", lambda: {
+        "defaults": {"classifier": "single"},
+        "classification": {"single": {
+            "paths": {
+                "prolongation": "p.pt", "block": "b.pt",
+                "soundrep": "s.pt", "wordrep": "w.pt",
+                "interjection": "i.pt", "cluttering": "c.pt",
+            }
+        }},
+    })
+    assert _registry_classification_names() == [
+        "prolongation", "block", "soundrep", "wordrep", "interjection"
+    ]
+
+
+def test_load_multitask_registry_entry_resolves_nested(monkeypatch, tmp_path):
+    import os
+    from model.registry import _load_multitask_registry_entry
+    ckpt = tmp_path / "mt.pt"
+    ckpt.write_bytes(b"dummy")
+    registry = {"classification": {"multitask": {
+        "path": "weights/mt.pt", "model_name": "fake",
+        "thresholds": {"block": 0.35},
+    }}}
+    monkeypatch.setattr("model.registry._resolve_path",
+                        lambda p: str(tmp_path / "weights" / p.split("/")[-1])
+                        if p == "weights/mt.pt" else str(tmp_path / p))
+    (tmp_path / "weights").mkdir(exist_ok=True)
+    (tmp_path / "weights" / "mt.pt").write_bytes(b"dummy")
+    monkeypatch.setattr("model.registry._load_multitask_classifier",
+                        lambda path: type("M", (), {"class_names": ["block"]})())
+    model, thresholds = _load_multitask_registry_entry(registry, "multitask")
+    assert thresholds == {"block": 0.35}
 
