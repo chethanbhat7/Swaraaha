@@ -982,3 +982,29 @@ def test_multitask_runner_loads_nested_entry(monkeypatch, tmp_path):
     out = clf.analyze(np.zeros(1600, dtype=np.float32))
     assert out["block"]["label"] == 0   # 0.70 < 0.75
 
+
+def test_init_reads_defaults_from_registry(monkeypatch):
+    import model as _m
+
+    calls = {}
+
+    def _fake_load_classifier(kind):
+        calls["classifier"] = kind
+
+    def _fake_load_localizer(kind):
+        calls["localizer"] = kind
+
+    def _fake_load_transcriber():
+        calls["transcriber"] = True
+
+    monkeypatch.setattr(_m, "_load_classifier", _fake_load_classifier)
+    monkeypatch.setattr(_m, "_load_localizer", _fake_load_localizer)
+    monkeypatch.setattr(_m, "_load_transcriber", _fake_load_transcriber)
+    monkeypatch.setattr(
+        "model.registry._load_registry",
+        lambda: {"defaults": {"classifier": "single", "localizer": "cnn"}},
+    )
+
+    _m.init()
+    assert calls == {"classifier": "single", "localizer": "cnn", "transcriber": True}
+
