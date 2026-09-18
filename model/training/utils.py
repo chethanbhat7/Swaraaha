@@ -93,8 +93,8 @@ def split_dataset(dataset, val_ratio: float = 0.2, seed: int = 42) -> Tuple[List
 def maybe_compile(model, device):
     """Apply torch.compile to model if on CUDA. Safe no-op on CPU."""
     if device.type == "cuda":
-        import warnings
         import logging
+        import warnings
         warnings.filterwarnings("ignore", category=UserWarning, module="torch")
         logging.getLogger("torch._dynamo").setLevel(logging.ERROR)
         torch._dynamo.config.suppress_errors = True
@@ -435,6 +435,7 @@ def train_one_epoch(
         Average loss over the epoch.
     """
     import warnings
+
     from tqdm import tqdm
 
     warnings.filterwarnings(
@@ -616,18 +617,26 @@ def find_latest_localizer(output_dir: str, pipeline: str) -> Optional[str]:
     return max(paths, key=os.path.getmtime)
 
 
-def update_registry_localizers(registry_path: str, output_dir: str) -> Dict[str, str]:
+def update_registry_localizers(
+    registry_path: str, output_dir: str
+) -> Dict[str, Dict[str, float]]:
     """Scan output_dir for the newest localizer checkpoints and write them into
-    the registry.json localization section. Returns the new localization mapping
-    (may be empty if no checkpoints were found)."""
+    the registry.json ``localization`` section as ``{path, threshold}`` entries,
+    preserving any existing per-type thresholds. Returns the new localization
+    mapping (may be empty if no checkpoints were found)."""
+    with open(registry_path) as f:
+        registry = json.load(f)
+
+    existing = registry.get("localization", {})
     mapping = {}
     for pipeline, key in (("loc", "cnn"), ("wav2vec", "wav2vec2")):
         best = find_latest_localizer(output_dir, pipeline)
         if best:
-            mapping[key] = os.path.relpath(best, os.path.dirname(os.path.dirname(registry_path)))
+            rel = os.path.relpath(best, os.path.dirname(os.path.dirname(registry_path)))
+            prev = existing.get(key)
+            threshold = prev.get("threshold", 0.3) if isinstance(prev, dict) else 0.3
+            mapping[key] = {"path": rel, "threshold": threshold}
 
-    with open(registry_path) as f:
-        registry = json.load(f)
     registry["localization"] = mapping
     with open(registry_path, "w") as f:
         json.dump(registry, f, indent=2)
