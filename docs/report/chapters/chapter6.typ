@@ -62,6 +62,10 @@ Results on 3,715 held-out test samples at the default threshold of 0.5 are in Ta
 
 The macro F1 at the default threshold is 0.490. Interjection performs best (F1=0.741, AUROC=0.932), which makes sense because filler words like "um" and "uh" have distinct acoustic patterns. Block is the hardest class (F1=0.243). Silent pauses and hesitations are hard to distinguish from normal speech pauses.
 
+#add_image(align(center, image("/assets/classifier_test_f1.png", width: 90%)), caption: [Per-class F1 scores of the multitask Wav2Vec2 classifier on the clip-level test set])
+
+#add_image(align(center, image("/assets/classifier_test_auc.png", width: 90%)), caption: [Per-class AUROC and AUPRC of the multitask Wav2Vec2 classifier on the clip-level test set])
+
 === Threshold Optimization
 A threshold sweep on the validation set tested thresholds from 0.1 to 0.9 in steps of 0.05. The threshold that maximized F1 for each class was stored in the model registry. The results are in Table 4.2.
 
@@ -107,6 +111,22 @@ Wav2Vec2 models score highest in-distribution (F1 up to 0.522), helped by large-
 
 Freezing the backbone for 3 epochs (arm02) clearly beats 20 epochs (arm03). Early unfreezing matters for fine-tuning.
 
+#add_image(align(center, image("/assets/classifier_boli_f1.png", width: 90%)), caption: [Per-class tuned F1 on the Project Boli cross-corpus set for the shared-backbone Wav2Vec2 model and the CNN-LSTM model])
+
+#add_image(
+  grid(
+    columns: (1fr, 1fr, 1fr),
+    column-gutter: 5pt,
+    row-gutter: 5pt,
+    image("/assets/prolongation_confusion_matrix.png", width: 100%),
+    image("/assets/block_confusion_matrix.png", width: 100%),
+    image("/assets/soundrep_confusion_matrix.png", width: 100%),
+    image("/assets/wordrep_confusion_matrix.png", width: 100%),
+    image("/assets/interjection_confusion_matrix.png", width: 100%),
+  ),
+  caption: [Confusion matrices (TP, FP, TN, FN) for the five binary Wav2Vec2 classifiers (5x Wav2Vec2) on the clip-level test set. Top row: prolongation, block, and sound repetition; bottom row: word repetition and interjection.]
+)
+
 == LOCALIZATION RESULTS
 
 === Wav2Vec2 Localizer
@@ -127,6 +147,8 @@ The Wav2Vec2 localizer was evaluated on 3,715 test samples at threshold 0.5. Res
 )
 
 Frame-level precision is high (0.676): when the model predicts dysfluency, it is usually right. Recall is low (0.065), so it misses most dysfluency frames. The mean IoU of 0.751 means the regions it does find overlap well with ground truth. In short, the localizer is conservative: few false alarms, but many missed events.
+
+#add_image(align(center, image("/assets/localizer_metrics.png", width: 90%)), caption: [Frame-level metrics of the Wav2Vec2 localizer on the test set])
 
 === CNN Spectrogram Localizer
 The CNN localizer was evaluated on only 2 test samples because of data availability at the time. It predicted a single dysfluency event with 100% recall but zero precision. A larger annotated localization dataset is needed before drawing conclusions.

@@ -8,6 +8,7 @@
 #let chapter_heading(body) = {
   counter(heading).step()
   counter(figure.where(kind: table)).update(0)
+  counter(figure.where(kind: image)).update(0)
 
   context {
     let chap = counter(heading).get().first()
