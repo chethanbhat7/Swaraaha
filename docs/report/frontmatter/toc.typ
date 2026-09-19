@@ -51,9 +51,9 @@
 #v(0.5em)
 
 #grid(
-  columns: (auto, 1fr, auto),
-  align: center,
-  stack(dir: ltr)[*Table \ No.*], [*Title*], [*Page \ No.*]
+  columns: (8em, 1fr, 6.5em),
+  align: (left, left, right),
+  [*Table No.*], [*Title*], [*Page No.*]
 )
 #outline(
   title: none,
@@ -67,9 +67,9 @@
 #v(0.5em)
 
 #grid(
-  columns: (auto, 1fr, auto),
-  align: center,
-  stack(dir: ltr)[*Table \ No.*], [*Title*], [*Page \ No.*]
+  columns: (8.5em, 1fr, 6.5em),
+  align: (left, left, right),
+  [*Figure No.*], [*Title*], [*Page No.*]
 )
 #outline(
   title: none,

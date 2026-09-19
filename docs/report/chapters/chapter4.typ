@@ -56,7 +56,7 @@ This registry, implemented using a registry module and a configuration file, ens
 
 == SYSTEM ARCHITECTURE BLOCK DIAGRAM
 
-#add_image(image("/assets/architecture-verticle.png", height: 50%), caption: [System Architecture])
+#add_image(image("/assets/architecture-verticle.png", height: 50%), caption: [System Architecture (vertical view)])
 
 == MODULE DESCRIPTION
 The system is organized into multiple functional modules, each responsible for a specific stage in the speech processing pipeline.

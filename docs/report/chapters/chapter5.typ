@@ -94,7 +94,11 @@ The web frontend is built with React 19, TypeScript, and Tailwind CSS 4. The lay
 
 The input page supports audio file upload (WAV, MP3, FLAC, M4A, OGG, WMA) and direct microphone recording via the MediaRecorder API. Files are validated on the client side before being sent to the backend as multipart form data.
 
+#add_image(align(center, image("/assets/Home Page.png", width: 100%)), caption: [Web application home page with audio upload and microphone recording])
+
 The results page shows classification results with confidence scores, an interactive waveform with color-coded dysfluency region overlays, a timestamped transcript, and a button to generate and download a PDF report.
+
+#add_image(align(center, image("/assets/resultpage.png", width: 100%)), caption: [Web application results page showing classification results, waveform overlays, and the timestamped transcript])
 
 Assessment history is stored in the browser. Audio files go into IndexedDB for offline access; analysis metadata goes into localStorage.
 
