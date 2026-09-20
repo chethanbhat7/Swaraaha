@@ -1,0 +1,38 @@
+{
+  "model_path": "model/weights/multi_e20_b16_lr3e-5_frz3_ltfocal_g2_ga1_wu500_wd0.01_ml3_s42_train_hubertbase_best.pt",
+  "source": "val_split (20%, seed 42)",
+  "thresholds": {
+    "prolongation": {
+      "f1_threshold": 0.45,
+      "youden_threshold": 0.35,
+      "f1_at_optimal": 0.4107,
+      "f1_at_0_5": 0.3875
+    },
+    "block": {
+      "f1_threshold": 0.4,
+      "youden_threshold": 0.35,
+      "f1_at_optimal": 0.428,
+      "f1_at_0_5": 0.3262
+    },
+    "soundrep": {
+      "f1_threshold": 0.4,
+      "youden_threshold": 0.3,
+      "f1_at_optimal": 0.6019,
+      "f1_at_0_5": 0.554
+    },
+    "wordrep": {
+      "f1_threshold": 0.4,
+      "youden_threshold": 0.35,
+      "f1_at_optimal": 0.4521,
+      "f1_at_0_5": 0.4357
+    },
+    "interjection": {
+      "f1_threshold": 0.4,
+      "youden_threshold": 0.35,
+      "f1_at_optimal": 0.7678,
+      "f1_at_0_5": 0.7452
+    }
+  },
+  "macro_f1_at_0_5": 0.4897,
+  "macro_f1_at_optimal": 0.5321
+}
