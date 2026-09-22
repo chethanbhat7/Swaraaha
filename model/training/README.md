@@ -5,7 +5,7 @@
 ## Prerequisites
 
 ```bash
-pip install -r model/requirements.txt
+uv sync   # project root; installs all training deps
 ```
 
 Prepare the dataset first (see [`model/data/README.md`](../data/README.md)):
