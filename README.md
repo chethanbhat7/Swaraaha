@@ -46,12 +46,32 @@ Swaraaha/
 
 Both `frontend/` + `backend/` (web) and `app/` (desktop) load from the shared `model/` directory via the model registry.
 
+## Development Setup
+
+The project uses [uv](https://docs.astral.sh/uv/) for Python toolchain and
+dependency management (Python 3.12, pinned in `.python-version`).
+
+Prerequisites: [Install uv](https://docs.astral.sh/uv/getting-started/installation/).
+
+```bash
+# Create the .venv and install all dependencies (incl. dev: pytest, ruff)
+uv sync
+
+# Verify the setup
+uv run pytest
+uv run ruff check .
+```
+
+Use `uv run <command>` (or the `.venv/bin/*` scripts) instead of activating the
+venv, e.g. `uv run uvicorn backend.main:app`. Never use `pip install` / manual
+venvs — `pyproject.toml` + `uv.lock` are the single source of truth.
+
 ### Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
 | Frontend | React 19, Vite, TypeScript, Tailwind CSS |
-| Backend | FastAPI, Python 3.11, Uvicorn |
+| Backend | FastAPI, Python 3.12, Uvicorn |
 | Desktop | PySide6, sounddevice, NumPy |
 | ML | PyTorch, Hugging Face Transformers (Wav2Vec 2.0), librosa |
 | Container | Docker, docker-compose |
@@ -134,7 +154,6 @@ KAGGLE_KEY=your_api_key
 Then run the full setup:
 
 ```bash
-pip install -r model/requirements.txt
 python -m model.data.setup
 
 # Show available flags
@@ -259,12 +278,8 @@ Evaluation on the held-out test set (3,715 clips). The currently deployed models
 
 ### Backend
 
-Note: run the backend from the root `.venv` (Python 3.10, has all ML deps).
-Do not use `backend/.venv` — it is incomplete (missing numpy/torch).
-
 ```bash
-source .venv/bin/activate
-uvicorn backend.main:app --reload --port 8000
+uv run uvicorn backend.main:app --reload --port 8000
 ```
 
 API runs at `http://localhost:8000`. Health check: `GET /health`.
@@ -290,9 +305,5 @@ Backend available at `http://localhost:8000`.
 ## Running the Desktop App
 
 ```bash
-cd app
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt ../model/requirements.txt
-python -m app.main
+uv run python -m app.main
 ```

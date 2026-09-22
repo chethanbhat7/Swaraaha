@@ -1,12 +1,15 @@
 # Swaraaha backend — production image for Zoho Catalyst AppSail custom runtime.
 # Build: docker buildx build --platform linux/amd64 -t swaraaha-backend:<tag> -f deploy/Dockerfile .
-FROM python:3.11-slim
+FROM python:3.12-slim-trixie
+COPY --from=ghcr.io/astral-sh/uv:0.12.17 /uv /uvx /bin/
 
 WORKDIR /app
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    HF_HOME=/app/hf-cache
+    HF_HOME=/app/hf-cache \
+    UV_SYSTEM_PYTHON=1 \
+    UV_NO_CACHE=1
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ffmpeg \
@@ -16,12 +19,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY model/requirements.txt ./model-requirements.txt
 COPY backend/requirements.txt ./backend-requirements.txt
 
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir \
+RUN uv pip install \
         torch --index-url https://download.pytorch.org/whl/cpu && \
-    pip install --no-cache-dir \
+    uv pip install \
         $(sed 's/[[:space:]]*#.*$//' model-requirements.txt | grep -v -iE '^(torch|$)' | tr '\n' ' ') && \
-    pip install --no-cache-dir -r backend-requirements.txt
+    uv pip install -r backend-requirements.txt
 
 COPY model/ ./model/
 COPY backend/ ./backend/

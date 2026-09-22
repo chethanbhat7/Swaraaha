@@ -5,7 +5,7 @@
 ## Quick Start
 
 ```bash
-pip install -r model/requirements.txt
+uv sync   # project root; installs the data-pipeline deps
 ```
 
 Set your Kaggle credentials in a `.env` file in the project root:
@@ -256,7 +256,7 @@ See the [root README](../../README.md#accessing-trained-models) for full API det
 
 | Problem | Fix |
 |---------|-----|
-| `kaggle: command not found` | `pip install -r model/requirements.txt` |
+| `kaggle: command not found` | `uv sync` from the project root (installs kaggle) |
 | `KAGGLE_KEY not set` | Create a `.env` file with `KAGGLE_USERNAME` and `KAGGLE_KEY` |
 | `Git clone timeout` | Increase `GIT_CLONE_TIMEOUT_SECONDS` in `config.py` |
 | `Dataset not found, skipping` | Check the download succeeded in `RawData/` |
