@@ -1,150 +1,105 @@
 #import "../lib.typ": *
+#import "../meta.typ": *
 
-// --- Chapter 4: System Design ---
-#chapter_heading[SYSTEM DESIGN]
+// --- Chapter 4: System Implementation ---
+#chapter_heading[SYSTEM IMPLEMENTATION]
 
 == INTRODUCTION
-This chapter presents the overall system design for an end-to-end framework developed for automated stutter detection and localization.
-The design outlines how different components of the system interact to process speech data and generate meaningful analytical results.
 
-A key feature of the system is the use of two independent model pipelines.
-The first pipeline focuses on classification, identifying the type of dysfluency present in the speech.
-The second pipeline is responsible for localization, determining the exact position in the audio where the dysfluency occurs.
-These pipelines operate independently to preserve clarity and interpretability, and their outputs are presented together without being combined or fused.
-
-The system follows a multi-layered architecture.
-User interaction is supported through both a web-based interface developed using React and a desktop application built with PySide6.
-These interfaces communicate with a FastAPI-based backend, which handles the core processing tasks.
-The backend relies on a shared model package that contains all machine learning components, while a centralized model registry ensures consistent loading and management of trained models.
-
-The design is guided by several important objectives.
-Modularity allows different components to be developed and maintained independently.
-Maintainability ensures that the system can be updated and extended with minimal effort.
-Interpretability is prioritized so that outputs remain clear and useful, especially in analytical or clinical contexts.
-Scalability enables the addition of new dysfluency types and language support.
-Additionally, the desktop application is designed to function offline, ensuring accessibility even in environments without internet connectivity.
-
-== OVERALL SYSTEM ARCHITECTURE
-The overall system architecture is designed to support efficient and structured processing of speech data, from input acquisition to final result generation.
-The process begins when the user either records audio directly or uploads a pre-recorded file through the web interface or desktop application.
-The web application uses MediaRecorder APIs, while the desktop application utilizes sounddevice for capturing audio input.
-
-Once the audio is received, it is sent to the backend, where it undergoes normalization.
-This involves converting the input into a standardized 16 kHz mono WAV format using FFmpeg, ensuring consistency across all processing stages.
-
-After preprocessing, the system processes the audio through three parallel pipelines.
-The first pipeline focuses on classification.
-In this stage, Wav2Vec 2.0 is used to extract meaningful speech representations, which are then passed through five independent binary classifiers.
-The outputs of these classifiers are aggregated into a multi-label result that reports the presence probability of each dysfluency type and summarizes the detected classes and the primary dysfluency.
-
-The second pipeline handles transcription.
-The Whisper Automatic Speech Recognition (ASR) model is used to generate a timestamped transcript of the audio.
-This component supports multiple languages, including English, Kannada, and Hindi.
-
-The third pipeline is responsible for localization.
-Dysfluency regions are identified at the frame level using either a CNN-based spectrogram approach or Wav2Vec2 frame-level feature extraction.
-This enables the system to detect the precise segments of speech where dysfluencies occur.
-
-To connect these outputs meaningfully, a Connectionist Temporal Classification (CTC) based time alignment process is used.
-This step maps the detected dysfluency regions to specific words or syllables in the transcript.
-Language-specific adapters are incorporated to ensure accurate alignment across English, Kannada, and Hindi.
-
-The final results are presented through multiple visual and textual outputs, including waveform overlays, spectrogram visualizations, timestamped transcripts, confidence scores, and a detailed clinical-style report.
-
-Both the web and desktop applications rely on a centralized model registry for loading trained models.
-This registry, implemented using a registry module and a configuration file, ensures that model checkpoints can be updated or replaced without requiring changes to the application code, thereby improving flexibility and maintainability.
-
-== SYSTEM ARCHITECTURE BLOCK DIAGRAM
-
-#add_image(image("/assets/architecture-verticle.png", height: 50%), caption: [System Architecture (vertical view)])
-
-== MODULE DESCRIPTION
-The system is organized into multiple functional modules, each responsible for a specific stage in the speech processing pipeline.
-This modular design improves clarity, maintainability, and ease of extension.
-- Audio Acquisition Module: this module handles input collection, letting users either record speech using a microphone or upload pre-recorded audio files in formats such as WAV, MP3, FLAC, or M4A.
-- Audio Conversion Module: the acquired audio is converted into a standardized format using FFmpeg, specifically into 16 kHz mono WAV. A fallback mechanism is provided in case FFmpeg is not available.
-- Preprocessing Module: this module prepares the audio for further analysis. It includes resampling, removal of DC offset, peak normalization (set to 0.95), and trimming of silent segments. These steps ensure consistent input quality across the system.
-- Feature Extraction Module: in this stage, meaningful representations of the audio are generated. Wav2Vec 2.0 is used to produce contextual embeddings, while mel-spectrograms (with 128 mel bands, hop length of 512, and FFT size of 2048) are computed for spectral analysis.
-- Classification Module: this module consists of five parallel Wav2Vec2-based binary classifiers, each responsible for detecting a specific type of dysfluency.
-  Each classifier uses a two-logit output with softmax activation and yields the presence probability of its dysfluency type.
-  The per-classifier outputs are aggregated into a multi-label result that reports each class probability and summarizes the detected classes and the primary dysfluency.
-- Localization Module: this module identifies the temporal regions of dysfluencies within the audio. It uses two approaches: a CNN-based spectrogram localizer with multiple convolutional layers operating at approximately 32 ms frame resolution, and a Wav2Vec2-based localizer that works at around 20 ms resolution.
-- Speech-to-Text Module: the system uses Whisper-based pipelines to convert speech into text. It supports multiple languages, including English, Kannada, and Hindi, and generates word-level timestamps for accurate alignment.
-- Timestamp Alignment Module: this module aligns detected dysfluency regions with corresponding words or syllables. It uses a CTC-based alignment approach, with a fallback mechanism for forced alignment. Language-specific adapters are used to improve accuracy across supported languages.
-- Model Registry Module: a centralized model registry manages all trained models, including classifiers and localization models. It is designed to be configuration-driven and supports lazy loading, ensuring efficient resource utilization and easy model updates.
-- Visualization Module: the system provides multiple visualization outputs, including waveform displays with highlighted dysfluency regions, spectrograms, transcripts, confidence scores, and a timeline view. These visualizations improve interpretability of results.
-- Report Generation Module: this module generates a structured report containing patient details, classification results, and localized dysfluency events. It also maintains a history of analyses using local storage mechanisms such as LocalStorage or IndexedDB.
-
-== DATA FLOW DESIGN
-The data flow design describes how audio data is processed through different stages of the system, from input acquisition to final output generation.
-
-The process begins with the input audio, which is either recorded or uploaded by the user.
-This audio is first converted into a standardized 16 kHz mono WAV format using FFmpeg.
-To ensure uniform input length, the audio is then padded or truncated to 48,000 samples, corresponding to a duration of 3 seconds.
-
-After normalization, the audio is processed through three parallel pipelines: classification, transcription, and localization.
-The classification pipeline generates dysfluency probabilities, the transcription pipeline produces a timestamped transcript, and the localization pipeline identifies frame-level dysfluency regions.
-
-These outputs are then combined using a CTC-based alignment process, which maps detected dysfluencies to specific words or syllables.
-The final processed data is used to generate per-word annotations, which are visualized through waveform and spectrogram displays and included in the final analysis report.
-
-In addition to inference, the system also defines a structured data flow for training.
-The training process utilizes three primary datasets: Project Boli (sourced via Git repositories), SEP-28K (approximately 28,000 audio clips), and UCLASS (both obtained via Kaggle).
-Each dataset undergoes normalization through dataset-specific preprocessing functions.
-
-The processed datasets are merged into a unified format consisting of a combined_labels.csv file containing multi-label binary annotations, along with individual interval CSV files for each audio clip.
-The complete dataset is then divided into training, validation, and testing subsets using an 80:10:10 split.
-These subsets are organized using symbolic links for efficient access, and preprocessed audio files are cached to improve training performance.
+The system implementation process is a multifaceted endeavor focused on developing a robust software architecture capable of effectively managing diverse user interactions, data processing tasks, and model inference operations.
+By employing meticulous design and coding practices, the implementation ensures that the application is scalable, reliable, and secure, capable of handling varying workloads and protecting sensitive data.
+Iterative testing and debugging procedures are integral components of the implementation process, allowing for the identification and resolution of any issues or bugs that may arise.
+This iterative approach ensures that the application delivers a seamless user experience, free from disruptions or errors.
+Additionally, post-deployment monitoring and maintenance mechanisms are established to continually assess system performance and address evolving requirements.
+This ongoing maintenance ensures that the system remains optimized and responsive to user needs, even as conditions change over time, thereby facilitating long-term success and user satisfaction.
 
 == ALGORITHM
-The inference process of the system follows a structured sequence of steps, ensuring accurate and efficient detection and localization of dysfluencies.
+The inference process follows a fixed sequence of steps that turns raw speech input into a complete, annotated analysis result.
+
 - Step 1, Input Acquisition: the system acquires speech input either through real-time recording or by uploading an audio file.
-- Step 2, Audio Conversion: the input audio is converted into a 16 kHz mono WAV format using FFmpeg to maintain consistency.
-- Step 3, Preprocessing: the audio is cleaned by removing DC offset, applying peak normalization, and trimming silent segments.
-- Step 4, Length Normalization: the processed audio is adjusted to a fixed length of 48,000 samples by padding or truncating as required.
-- Step 5, Parallel Processing: the system processes the audio simultaneously through three parallel branches:
-  + Classification: Wav2Vec 2.0 embeddings are generated and passed through five binary classifiers.
-    The outputs are aggregated into a multi-label result with a probability score for each dysfluency type.
-  + Transcription: the Whisper model generates a timestamped transcript of the speech.
-  + Localization: a spectrogram-based CNN or a Wav2Vec2-based model identifies frame-level dysfluency regions within the audio.
-- Step 6, Alignment: the detected dysfluency regions are aligned with corresponding words or syllables using a CTC-based alignment method.
-- Step 7, Visualization: the system displays the results through waveform overlays, spectrograms, transcripts, and confidence scores, along with clearly marked dysfluency regions.
-- Step 8, Report Generation: a detailed clinical-style report is generated and stored for future reference.
+- Step 2, Audio Conversion: the input audio is converted into a 16 kHz mono WAV format using FFmpeg to maintain consistency across all inputs.
+- Step 3, Preprocessing: the audio is cleaned by removing the DC offset, applying peak normalization to a target amplitude, and trimming silent segments.
+- Step 4, Length Normalization: the processed audio is adjusted to a fixed length of 48,000 samples (three seconds at 16 kHz) by padding or truncating as required.
+- Step 5, Parallel Processing: the system processes the audio simultaneously through three independent branches:
+  + Classification: Wav2Vec 2.0 embeddings are generated and passed through five binary classifiers, one per dysfluency type, and the outputs are aggregated into a multi-label result with a probability score for each dysfluency type.
+  + Transcription: the Whisper model generates a timestamped transcript of the speech in English, Kannada, or Hindi.
+  + Localization: the Wav2Vec2 frame-level localizer identifies the frame-level regions within the audio where dysfluencies occur.
+- Step 6, Alignment: the detected dysfluency regions are mapped to the corresponding words or syllables in the transcript using CTC-based time alignment.
+- Step 7, Combination and Severity: the combiner labels each localized region with per-class saliency scores from the classifier and fuses the classification and localization views, and the severity module computes a stutter index from the ratio of dysfluent speech duration to total speech duration.
+- Step 8, Visualization and Report Generation: the system displays the results through waveform overlays, spectrograms, transcripts, and confidence scores, and generates a detailed clinical-style report.
 
-In addition to inference, the training procedure for each classifier follows a structured approach. Initially, the backbone model is frozen for the first three epochs to stabilize learning. It is then unfrozen with a reduced learning rate (scaled by a factor of 0.1). Training is performed using Focal Loss with a gamma value of 2 to handle class imbalance, and optimization is carried out using the AdamW optimizer with a learning rate of $3 times 10^(-5)$. A warm-up phase of 500 steps is applied, followed by early stopping to prevent overfitting. The best-performing model is selected based on the highest F1-score and saved as the final checkpoint.
+== IMPLEMENTATION REQUIREMENTS
 
-== DESIGN CONSIDERATIONS
-The system is designed with a focus on accuracy, scalability, interpretability, usability, maintainability, and performance.
-Key design goals and their corresponding implementation strategies are outlined below: \
-- Accuracy: achieved using Wav2Vec 2.0 embeddings combined with per-class fine-tuned binary classifiers.
-  A focal loss function is used to handle hard examples and improve classification robustness.
-- Scalability: the use of independent binary classifiers allows new dysfluency classes to be added without requiring architectural redesign, making the system easy to extend.
-- Interpretability: timestamp alignment enables word- and syllable-level outputs.
-  Visual overlays on waveform and spectrogram provide intuitive understanding of detected dysfluencies.
-- Usability: the system provides both a React-based web interface and a PySide6 desktop application, featuring dark mode and guided workflows for ease of use.
-- Maintainability: a modular monorepo structure is adopted, along with a centralized model registry and fingerprint-based checkpoint naming for version control and reproducibility.
-- Performance: models are lazy-loaded and cached to reduce latency.
-  Training leverages GPU acceleration with mixed precision and torch.compile for efficiency.
-- Class Imbalance Handling: focal loss is used alongside positive class weighting (pos_weight) in the localizer.
-  Performance is monitored using per-class evaluation metrics.
+This section presents the implementation requirements for the detection and localization of stuttering using a hybrid deep learning model that integrates Wav2Vec 2.0 feature extraction, five independent Wav2Vec 2.0 binary classifiers, a Wav2Vec2 frame-level localizer, and Whisper automatic speech recognition.
+The primary objective is to develop a robust and efficient system capable of accurately identifying speech dysfluencies and localizing them within the audio.
+The hybrid model leverages the strengths of both architectures: Wav2Vec 2.0 contributes self-supervised, contextual speech representations that facilitate efficient feature reuse and capture fine-grained phonetic and prosodic patterns, while Whisper introduces sequence-level transcription that enhances the model's ability to map localized dysfluency regions to specific words and syllables in the transcript.
+Together, these architectures form a powerful hybrid framework that improves classification performance and generalization ability.
+The implementation is carried out using the Python ecosystem, which provides an interactive environment for model development, experimentation, and analysis.
+Python serves as the primary programming language for backend development due to its versatility and support for a wide range of scientific and deep learning libraries such as PyTorch, the Hugging Face Transformers library, and NumPy, which aid in model construction, training, and evaluation.
+For the frontend, React 19 and PySide6 are utilized to design a user-friendly web interface and desktop application that allow users to record or upload speech audio and view classification and localization results.
+All trained models are managed by a centralized model registry configured through a `registry.json` file that maps each task to its checkpoint and per-class thresholds, so checkpoints can be updated or replaced without changing application code.
+The Python ecosystem also facilitates matrix manipulation, data visualization, algorithm implementation, and seamless integration with other programming environments, making it an ideal platform for developing and testing the hybrid model for stuttering classification and localization.
 
-== COMPONENT INTERACTION
-The system components interact through clearly defined interfaces across different layers: \
-- Frontend #sym.arrow.l.r Backend: communication occurs via REST APIs exposed by FastAPI, including endpoints such as `/api/classify`, `/api/localize`, `/api/analyze`, and `/health`.
-- Backend Services: core services include audio processing utilities, classification, localization, and transcription modules.
-  These services interact with a shared model registry (`model/registry.py`) to dynamically load models.
-- Desktop Components: the desktop application includes modules such as ModelRunner, AudioHandler, and AudioTranscriber, currently structured for inference and real-time transcription.
-- Data Pipeline: the data layer follows a structured workflow: `download → merge → prepare → train → evaluate`, ensuring reproducibility and consistency across experiments.
+=== Train the Model
 
-== CHAPTER SUMMARY
-This chapter presented the complete system design of the proposed framework, covering its architecture, data flow, modules, and processing algorithms.
-The design clearly separates key functional stages, including audio acquisition, preprocessing, classification and localization pipelines, transcription, alignment, visualization, and report generation.
+The training phase is a key step in developing the proposed system for stutter classification and localization.
+In this phase, the speech audio dataset is first collected from Project Boli, SEP-28K, and UCLASS, and preprocessed through conversion to 16 kHz mono WAV, DC offset removal, peak normalization, silence trimming, and fixed-length padding, along with data augmentation, to enhance audio quality and reduce overfitting.
+Initially, the Wav2Vec 2.0 model is trained to extract high-level contextual speech features from the audio, benefiting from its self-supervised pretraining that allows efficient information flow and robust representation learning.
+To further improve classification accuracy, a hybrid model is developed by combining five independent Wav2Vec 2.0 binary classifiers with a Wav2Vec2 frame-level localizer.
+The Wav2Vec2 localizer captures fine-grained and localized temporal features at the frame level, complementing the broader segment-level feature extraction of the classifiers.
+The outputs from both models are then fused through CTC-based time alignment to form a comprehensive feature representation.
+During training, the AdamW optimizer is used to adjust learning rates adaptively and ensure stable convergence.
+The model is trained using mini-batches of audio, with weights updated through backpropagation based on the computed loss.
+Validation is performed periodically to monitor accuracy and prevent overfitting.
+After training, the optimized parameters and learned weights are saved, enabling the models to make efficient and accurate predictions on new speech audio without retraining.
 
-The modular and registry-driven architecture ensures flexibility, maintainability, and ease of integration of new models or features.
-By keeping classification and localization as independent pipelines, the system improves interpretability while maintaining high accuracy.
-Additionally, the design supports scalability for future extensions such as new dysfluency classes and multilingual capabilities.
+=== Test the Model
 
-Overall, the system design provides a robust foundation for efficient and interpretable stutter detection and analysis.
-The next chapter focuses on the implementation details of the system.
+The testing phase is carried out after completing the training process to evaluate how effectively the proposed model can detect stutter events from unseen speech audio.
+When the user records or uploads a speech sample through the system's web interface or desktop application, it undergoes the same preprocessing steps used during training, including conversion to 16 kHz mono WAV, DC offset removal, peak normalization, silence trimming, and fixed-length padding, to ensure uniformity and accurate analysis.
+Initially, the trained Wav2Vec 2.0 model processes the audio to extract high-level contextual speech features.
+To further enhance accuracy, the audio is also analyzed using the hybrid model that combines five independent Wav2Vec 2.0 binary classifiers with a Wav2Vec2 frame-level localizer, allowing the system to capture both segment-level dysfluency patterns and fine-grained temporal details.
+The extracted features from both models are fused through CTC-based time alignment to form a comprehensive representation, which is then passed through the final aggregation layer to generate the classification result as containing blocks, prolongations, sound repetitions, word repetitions, or interjections, along with the precise localized regions.
+The outcome is displayed on the interface in a clear and user-friendly format, with waveform overlays, spectrograms, a timestamped transcript, and confidence scores.
+Additionally, the model's predictions are compared with the actual ground truth labels to assess its accuracy and generalization performance.
+This phase confirms that the hybrid model performs effectively on new and unseen speech samples, demonstrating its potential for reliable stutter classification and localization in real-world clinical use.
+
+=== Model Evaluation
+Model evaluation is essential to assess the overall performance and reliability of the proposed system.
+Once the models are trained and tested, various quantitative metrics are employed to evaluate their classification performance comprehensively, including:
+
+- Accuracy: measures the proportion of correctly predicted samples.
+- Precision: evaluates how many of the predicted positive instances are truly positive.
+- Recall (Sensitivity): measures how effectively the model identifies all relevant positive samples.
+- F1-Score: provides a harmonic mean of precision and recall to balance both metrics.
+
+The five Wav2Vec 2.0 binary classifiers, one per dysfluency type, are further measured with AUROC (Area Under the Receiver Operating Characteristic Curve), AUPRC (Area Under the Precision-Recall Curve), and specificity, summarized per class and as a macro average across the five dysfluency classes.
+The Wav2Vec2 frame-level localizer is measured with frame-level precision, recall, and F1, detection accuracy, mean Intersection over Union (IoU) between predicted and ground-truth regions, and the false alarm rate per minute.
+
+A confusion matrix is generated for each of the five binary classifiers to visualize the distribution of predictions, highlighting true positives, false positives, true negatives, and false negatives.
+This detailed evaluation helps identify the strengths and weaknesses of each class, for example that interjections are detected most reliably while blocks are the hardest class.
+
+All reported results use the held-out test set of 3,715 clips, which is never touched during training or threshold selection, together with a cross-corpus Boli set that checks how well the models transfer to unseen languages and speakers.
+
+== USER INTERFACE
+The web-based interface connects the user to the proposed stutter detection and localization system.
+Users record speech or upload audio files for analysis.
+Once audio is provided, the backend system carries out the preprocessing steps, followed by feature extraction, classification, transcription, and localization using the trained models.
+Initially, the Wav2Vec 2.0 model is used to extract high-level contextual speech features, and to achieve higher accuracy, the hybrid pipeline combining five independent Wav2Vec 2.0 binary classifiers with the Wav2Vec2 frame-level localizer is employed.
+Within a few seconds, the system presents the predicted result on the screen for each of the five dysfluency types, along with confidence scores, the localized regions, and the timestamped transcript.
+The tool is designed for clinicians, speech-language pathologists, researchers, and individuals who stutter.
+
+The system provides two interfaces to the same analysis pipeline: a web application and a desktop application.
+The web frontend is built with React 19, TypeScript, and Tailwind CSS, with a sidebar layout covering the input page, results page, history, and reading passages.
+The input page supports audio file upload (WAV, MP3, FLAC, M4A, OGG, WMA) and direct microphone recording through the MediaRecorder API, with client-side validation before the file is sent to the backend as multipart form data.
+The results page shows classification results with confidence scores, an interactive waveform with color-coded dysfluency region overlays, a timestamped transcript, and a button to generate and download a PDF report.
+The backend runs on FastAPI served through Uvicorn, exposing the `/api/classify`, `/api/localize`, `/api/analyze`, and `/api/report` endpoints.
+Assessment history stays in the browser: audio files go into IndexedDB for offline access and analysis metadata into localStorage.
+
+The desktop application is built with PySide6 (Qt for Python) for a native cross-platform interface.
+It includes modules for audio recording and playback (sounddevice), file handling (soundfile), and model inference, calling the shared model package directly with no separate server, so it works fully offline.
+PDF report generation uses Typst with pypdfium2 for viewing.
+
+Screenshots of both interfaces are shown in Chapter 6.
 
 #pagebreak()

@@ -1,12 +1,16 @@
 #import "lib.typ": *
 
 #set text(size: 12pt)
-#set par(justify: true, leading: 12pt, spacing: 18pt)
+#set par(justify: true, leading: 18pt, spacing: 18pt)
 
-#align(center)[
-  #text(size: 18pt, weight: "bold")[BIBLIOGRAPHY]
-  #v(1em)
+// Heading for the TOC; rendered invisibly so the visible title below is centered like other chapter heads
+#[
+  #set text(size: 0pt)
+  #v(-0.8em)
+  #heading(level: 1, numbering: none)[REFERENCES]
 ]
+#align(center)[#text(size: 18pt, weight: "bold")[REFERENCES]]
+#v(1em)
 
 #set text(size: 11pt)
 #set par(hanging-indent: 2em)
@@ -81,8 +85,4 @@
 
 #bib(32)[Hugging Face, "Transformers: State-of-the-Art Machine Learning for Pytorch, TensorFlow, and JAX," 2024. [Online]. Available: https://huggingface.co/docs/transformers]
 
-#bib(33)[Typst GmbH, "Typst: A New Markup-Based Typesetting System," 2024. [Online]. Available: https://typst.app]
-
-#bib(34)[React, "React: A JavaScript Library for Building User Interfaces," Meta, 2024. [Online]. Available: https://react.dev]
-
-#bib(35)[Docker Inc., "Docker: Accelerated Application Development," 2024. [Online]. Available: https://www.docker.com]
+#bib(33)[React, "React: A JavaScript Library for Building User Interfaces," Meta, 2024. [Online]. Available: https://react.dev]

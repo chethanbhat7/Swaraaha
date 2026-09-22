@@ -55,7 +55,6 @@
 #let guide = "Prof. Ajay Shastry C G"
 #let guide_pronoun = "his"
 #let guide_designation = "Assistant Professor"
-#let project_coordinator = "Prof. Ajay Shastry C G"
 #let hod = "Dr. Radhika Shetty D S"
 #let hod_pronoun = "her"
 #let principal = "Dr. Mahesh Prasanna K"

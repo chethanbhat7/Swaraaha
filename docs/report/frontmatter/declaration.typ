@@ -12,7 +12,7 @@
 
   // -- declaration body --
   #block(width: 100%)[
-    #set par(justify: true, leading: 16.42pt, spacing: 16.42pt)
+    #set par(justify: true, leading: 18pt, spacing: 16.42pt)
     #set text(size: 12pt, hyphenate: false)
     #text(weight: "bold")[We], #text(fill: rgb("#7030a0"), weight: "bold")[#author_decl_list] students of #degree_short #semester#super[th] Semester in #department, #text(fill: rgb("#00b0f0"), weight: "bold")[#college_name], #college_place, hereby declare that the project work entitled #text(weight: "bold")[“#text(fill: rgb("#ff0000"))[#project_title]”] has been carried out by us at #college_short, #college_place, under the guidance of #text(fill: rgb("#c0504d"), weight: "bold")[#guide,] #guide_designation, Department of #department, #college_name, #college_place, and submitted in partial fulfilment of the requirements for the award of degree in #text(fill: rgb("#0070c0"), weight: "bold")[#degree in #department] by #text(fill: rgb("#c00000"), weight: "bold")[#university_name], #university_city during the academic year #academic_year_full.
   ]
@@ -26,13 +26,10 @@
       stroke: 0.6pt,
       inset: (y: 4pt),
       align: center + horizon,
-      text(size: 12pt)[Name of the students],
+      table.cell(align: left)[Name of the students],
       text(size: 12pt)[USN],
       text(size: 12pt)[Signature with date],
-      table.cell()[], table.cell()[], table.cell()[],
-      table.cell()[], table.cell()[], table.cell()[],
-      table.cell()[], table.cell()[], table.cell()[],
-      table.cell()[], table.cell()[], table.cell()[],
+      ..authors.map(a => (table.cell(align: left, text(size: 12pt)[#a.name]), text(size: 12pt)[#a.usn], table.cell()[])).flatten(),
     )
   ]
 

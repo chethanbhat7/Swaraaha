@@ -4,7 +4,7 @@
 // --- Title page ---
 #[
   #set page(paper: "a4", margin: (top: 57.5pt, bottom: 54pt, left: 90pt, right: 72pt))
-  #set text(font: "Times New Roman")
+  #set text(font: "Times New Roman", hyphenate: false)
   #set par(leading: 0pt, spacing: 0pt)
 
   #let cl(size, body, weight: "regular", fill: black) = align(center, text(size: size, weight: weight, fill: fill)[#body])
@@ -38,7 +38,7 @@
   #v(21.7pt)
   #cl(13pt, weight: "bold")[Submitted By]
   #v(6.15pt)
-  #grid(columns: (68.3pt, 1fr, 90pt, 119.18pt), column-gutter: 0pt,
+  #grid(columns: (30pt, 1fr, 70pt, 95pt), column-gutter: 0pt,
     [],
     align(left, text(size: 13pt, weight: "bold", fill: rgb("#002060"))[Name]),
     align(right, text(size: 13pt, weight: "bold", fill: rgb("#002060"))[USN]),
@@ -46,7 +46,7 @@
   )
   #v(6.05pt)
   #for a in authors [
-    #grid(columns: (55.3pt, 1fr, 90pt, 88.98pt), column-gutter: 0pt,
+    #grid(columns: (30pt, 1fr, 70pt, 95pt), column-gutter: 0pt,
       [],
       align(left, text(size: 13pt, weight: "bold", fill: rgb("#0070c0"))[#upper(a.name)]),
       align(right, text(size: 13pt, weight: "bold", fill: rgb("#0070c0"))[#a.usn]),

@@ -1,5 +1,7 @@
 // --- Abbreviations ---
-#align(center)[= LIST OF ABBREVIATIONS]
+#import "../lib.typ": *
+
+#non_outlined_heading[LIST OF ABBREVIATIONS]
 #table(
   columns: (1fr, 3fr),
   stroke: none,
@@ -27,7 +29,7 @@
   [*RAG*], [Retrieval-Augmented Generation],
   [*ReLU*], [Rectified Linear Unit],
   [*RNN*], [Recurrent Neural Network],
-  [*Sep-28k*], [Stuttering Event Prediction Dataset (28,000 samples)],
+  [*SEP-28K*], [Stuttering Event Detection Dataset (28,000 samples)],
   [*SLP*], [Speech-Language Pathologist],
   [*SOTA*], [State of the Art],
   [*SVM*], [Support Vector Machine],
