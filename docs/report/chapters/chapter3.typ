@@ -1,162 +1,165 @@
 #import "../lib.typ": *
 
-// --- Chapter 3: Analysis and Requirement Specification ---
-#chapter_heading([ANALYSIS AND REQUIREMENT SPECIFICATION])
+// --- Chapter 3: System Design ---
+#chapter_heading[SYSTEM DESIGN]
 
 == INTRODUCTION
-The main aim of the proposed system is to build an automated method for stuttering detection and localization to overcome the disadvantages of the traditional subjective assessment methods adopted by Speech-Language Pathologists (SLPs).
-The conventional methods depend on the manual observation and interpretation, which can be time-consuming, inconsistent, and dependent on the evaluator’s expertise.
-To address these issues, the system proposes an objective and data-driven approach to analyze speech dysfluencies.
 
-The system is designed to perform two primary functions.
-First, it classifies the type of dysfluency in speech which includes prolongation, block, repetition of sound, repetition of word, and interjection.
-Second, it identifies and localises the exact temporal locations of these dysfluencies in the audio signal.
-This dual capability enhances diagnostic accuracy and interpretability, making the system useful for clinical and assistive applications.
+System design is an essential stage in software development that focuses on defining the overall structure and functionality of a system.
+It translates user and technical requirements into a detailed framework that outlines how different components, modules, and interfaces will interact.
+The process involves creating both high-level architecture, which defines the system's major elements and their interconnections, and low-level design, which specifies detailed components such as data structures, algorithms, and communication flows.
 
-The overall workflow of the system is a processing pipeline from start to end.
-The first step is the recording or the upload of an audio sample, which is preprocessed with different techniques for the analysis.
-For feature extraction, we leverage Wav2Vec 2.0 embeddings which captures rich acoustic and contextual information of the speech signal.
-The features are then passed through five parallel binary classifiers, each responsible for detecting a specific type of dysfluency.
-The per-classifier outputs are aggregated into a multi-label result that reports the presence probability of every dysfluency type along with a summary of the detected classes.
+The main objective of system design is to build a solution that fulfills user needs while ensuring performance, reliability, scalability, and security.
+It also emphasizes maintainability and flexibility so the system can adapt to future enhancements.
+Effective system design requires collaboration among developers, architects, and domain experts to ensure the architecture aligns with functional goals and business requirements.
+By carefully organizing how each part of the system operates and communicates, system design establishes a strong foundation for efficient implementation and long-term stability.
 
-The system utilizes the Whisper model to convert speech to text and temporal segmentation to generate the transcriptions and the timestamp information.
-We apply Connectionist Temporal Classification (CTC) based time alignment to accurately align detected dysfluencies to their corresponding places in the audio.
-The final output is delivered through a visualization interface and a detailed report.
+== SYSTEM ARCHITECTURE AND DESIGN
 
-== EXISTING SYSTEM ANALYSIS
-Current approaches to stuttering detection and analysis reveal several limitations, particularly in terms of accuracy, scalability, and usability.
-Traditionally, diagnosis is performed manually by Speech-Language Pathologists (SLPs).
-While this method benefits from expert knowledge, it is inherently subjective, often time-consuming, and difficult to scale.
-Moreover, assessments can vary significantly between experts, leading to inconsistencies in diagnosis.
+The system architecture defines the overall structure and organization of the Stuttering Classification and Localization System using deep learning.
+It provides a comprehensive framework describing how different components interact to process speech audio, extract discriminative features, and classify utterances into normal and dysfluent categories.
+A well-structured architecture ensures efficient data flow, modularity, and scalability, allowing the model to deliver high diagnostic accuracy while remaining adaptable to future advancements.
+The architecture incorporates critical stages such as preprocessing, feature extraction, model training, and classification to ensure robust performance.
+Furthermore, it supports seamless integration with user interfaces for audio upload, visualization, and prediction display.
+Emphasis is placed on maintaining data security and patient confidentiality, ensuring ethical and reliable operation throughout the analysis workflow.
+Additionally, the architecture allows for performance optimization, enabling fast and accurate stutter detection even when deployed on large speech datasets.
 
-Earlier computational methods relied on traditional machine learning techniques such as Support Vector Machines (SVM) and Hidden Markov Models (HMM), combined with handcrafted features like MFCC, pitch, and Linear Predictive Coding (LPC).
-Although these approaches introduced automation, they depend heavily on manual feature engineering.
-This makes them less adaptable and often results in poor generalization when applied to different speakers, accents, or recording environments.
+Figure 3.1 illustrates the proposed deep learning architecture designed for the automatic classification and localization of stuttering using speech audio.
+The framework integrates two model pathways, five independent Wav2Vec 2.0 binary classifiers for classification and a Wav2Vec2 frame-level pipeline for localization, to improve feature extraction, multi-perspective learning, and classification robustness.
+The complete workflow consists of five major phases: Input, Pre-processing, Feature Extraction, Classification, and Output.
+This dual-model structure enables richer representation learning and enhances overall detection accuracy.
 
-In recent years, several commercial speech-therapy applications have emerged.
-However, most of these platforms focus primarily on providing exercises and training rather than accurate diagnosis.
-They are typically subscription-based, require continuous internet connectivity, and lack the ability to precisely identify where dysfluencies occur within speech.
+#add_image(align(center, image("/assets/architecture-verticle.png", height: 32.5%)), caption: [System Architecture])
 
-Some deep learning-based systems have improved classification performance by analyzing entire audio recordings.
-Despite this progress, they generally treat speech as a whole and fail to pinpoint the exact word or segment where a dysfluency occurs.
-This limits their effectiveness in detailed clinical analysis and feedback.
+*Speech Audio Input:* The system begins with the collection of speech audio samples, which serve as the primary dataset for stutter detection.
+Audio enters the system when the user records directly or uploads a pre-recorded file through the web interface or desktop application.
+The web app captures audio with MediaRecorder APIs; the desktop app uses sounddevice.
+Each sample may contain one or more dysfluencies, including blocks, prolongations, word repetitions, sound repetitions, and interjections.
+Ensuring adequate recording quality is crucial, as variations in microphone hardware, background noise, and speaking rate can affect model reliability.
+The dataset includes recordings from Project Boli, SEP-28K, and UCLASS captured across English, Kannada, and Hindi.
+This stage establishes the foundation of the diagnostic system by providing high-quality data for subsequent processing.
 
-Overall, existing systems suffer from multiple shortcomings, including subjectivity in evaluation, reliance on handcrafted features, limited generalization capability, lack of precise localization, minimal visualization and interpretability, dependence on internet connectivity, and absence of robust offline support.
+*Preprocessing:* Before being fed into the deep learning model, speech audio undergoes preprocessing to enhance clarity, reduce noise, and ensure consistency across samples.
+The audio is sent to the backend and converted to 16 kHz mono WAV with FFmpeg so every clip is handled the same way.
+The preprocessing pipeline also includes DC offset removal, peak normalization, and silence trimming to clean the signal and remove unwanted artifacts.
+Fixed-length padding truncates or pads each clip to 48,000 samples, three seconds at 16 kHz, so all inputs have the same length.
+This step ensures that the input audio is standardized, optimized, and ready for accurate feature extraction and classification by the deep learning architecture.
 
-== FUNCTIONAL REQUIREMENTS
-The functional requirements of the proposed system define the core features and operations necessary for automated stuttering detection and analysis.
-These requirements are structured as a set of functional units, each corresponding to a specific capability within the system.
-- Speech Recording: the system shall allow users to record speech directly using a microphone.
-  For the web application, this is implemented using MediaRecorder or getUserMedia APIs, while the desktop application uses the system sound device interfaces.
-- Audio Upload: the system shall support uploading of prerecorded audio files in multiple formats, including WAV, MP3, FLAC, and M4A, giving users flexibility.
-- Audio Preprocessing: the system shall preprocess input audio by converting it to 16 kHz mono format, removing DC offset, applying peak normalization (up to 0.95), and trimming silence segments.
-  This ensures consistency and improves model performance.
-- Feature Extraction: the system shall generate high-level speech representations using Wav2Vec 2.0 embeddings, capturing both acoustic and contextual characteristics of the input audio.
-- Dysfluency Detection: the system shall detect five types of dysfluencies (prolongation, block, sound repetition, word repetition, and interjection) using five parallel binary classification models.
-- Multi-Label Aggregation: the system shall aggregate the outputs of the five individual classifiers into a multi-label result that reports the probability of each dysfluency type and summarizes the detected classes and the primary dysfluency.
-- Speech Transcription: the system shall generate a timestamped transcript of the input audio using the Whisper model, supporting multiple languages such as English, Kannada, and Hindi.
-- Dysfluency Localization: the system shall identify the exact temporal locations of dysfluencies within the audio using CNN-based spectrogram analysis and Wav2Vec2 frame-level feature extraction, followed by alignment with the corresponding words or syllables.
-- Visualization: the system shall provide visual representations of the analysis, including waveform displays with dysfluency overlays, spectrograms, and prediction probability graphs for better interpretability.
-- Report Generation: the system shall generate a detailed analysis report and maintain user history using local storage mechanisms such as LocalStorage or IndexedDB.
-- Model Management: the system shall include a model registry to ensure consistent loading and management of trained model checkpoints across both web and desktop platforms.
+*Wav2Vec 2.0:* The first part of the detection framework is Wav2Vec 2.0, a deep self-supervised model pre-trained on large amounts of unlabeled speech.
+Wav2Vec 2.0 quantizes the raw waveform into contextualized speech representations, learning robust acoustic features without requiring manually labeled data.
+This structure helps the model retain important information and capture fine-grained phonetic and prosodic patterns, such as broken phonation, repetitions, and elongated sounds, which are key indicators of dysfluent speech.
+Since it is pre-trained on large speech corpora, the model already understands general speech features, which makes it easier to adapt to stutter detection with limited labeled data.
+Its ability to extract multi-level, contextual features makes it a powerful foundation for detecting stutter events with high precision.
 
-== NON-FUNCTIONAL REQUIREMENTS
-The non-functional requirements define the quality attributes and operational constraints of the system.
-These requirements cover how well the system performs, how easy it is to use, and how it can be maintained and extended over time.
-- Performance: the system is designed to deliver analysis results within a few seconds. This is achieved through optimized processing techniques such as lazy loading and caching of models, efficient audio conversion using FFmpeg, and standardizing input to a fixed duration of 3 seconds at 16 kHz.
-- Accuracy: the system aims to provide reliable and consistent classification of dysfluencies. To address class imbalance, techniques such as Focal Loss are employed during training. Performance is evaluated using metrics like AUROC, AUPRC, and F1-score.
-- Usability: the interface is designed to be intuitive and accessible for both clinicians and non-technical users, with a clean graphical user interface and dark mode.
-- Reliability: the system ensures stable operation over extended usage, supporting multiple recordings without failure. It also incorporates proper error handling mechanisms, particularly for scenarios such as missing or incompatible model weights.
-- Maintainability: a modular architecture is adopted to simplify development and future updates. The system is organized into distinct components such as model, backend, frontend, and application layers. A configuration-driven model registry and uniquely fingerprinted checkpoints enable efficient model management.
-- Portability: the system is built to run across multiple platforms. It uses Python for backend and desktop components, and React for the web interface. Containerization using Docker ensures consistent deployment across different environments.
-- Scalability: the architecture supports easy extension to additional dysfluency classes and languages. This is achieved through independent binary classifiers and the use of language-specific adapters, allowing the system to evolve without major redesign.
-- Offline Capability: the desktop application can function without an internet connection, ensuring accessibility in environments with limited or no connectivity.
-- Data Privacy: user data is handled with a strong focus on privacy. Audio recordings are stored locally using mechanisms such as IndexedDB or local file storage, eliminating the need for cloud-based data transmission.
+*Detection and Localization Pipelines:* To achieve higher accuracy, the proposed system uses a hybrid detection framework that combines classification and localization.
+After preprocessing, the audio runs through three parallel pipelines: classification, transcription, and localization.
+The classification pipeline extracts speech representations with Wav2Vec 2.0 and passes them through five independent binary classifiers, each trained for a distinct dysfluency type.
+The localization pipeline identifies dysfluency regions at the frame level using Wav2Vec2 frame-level feature extraction, so it can mark the precise segments of speech where dysfluencies occur.
+By integrating both approaches, the system captures fine acoustic details and broader prosodic structures in the speech signal, ensuring robust results even when recordings vary in noise, clarity, or speaking style.
 
-== SOFTWARE REQUIREMENTS
-The software requirements of the proposed system include the tools, frameworks, and technologies used for developing, deploying, and maintaining the application across different platforms.
-- Machine Learning Frameworks: the system is developed using Python 3.11 as the primary programming language. Deep learning models are implemented using PyTorch, while Hugging Face Transformers are used for integrating pretrained models such as Wav2Vec 2.0 (base and large variants). For audio processing and numerical computations, libraries such as librosa and NumPy are employed.
-- Web Application Technologies: the web-based interface is built using React 19, along with Vite for fast development and TypeScript for type safety. Tailwind CSS is used to design a responsive, modern user interface. The backend is implemented using FastAPI and served via Uvicorn, enabling efficient handling of API requests. Audio preprocessing and format conversion are supported using FFmpeg, while speech recognition is handled using the Whisper ASR model.
-- Desktop Application Technologies: the desktop application is developed using PySide6, providing a native graphical interface. Audio recording and processing are managed using libraries such as sounddevice and soundfile. Typst is used for generating report documents, while pypdfium2 handles PDF viewing within the application.
-- Development and Deployment Tools: for deployment and environment consistency, Docker and Docker Compose are used. The application can be hosted on platforms such as Render. Code quality and consistency are maintained using ruff for linting, while pytest is used for testing, particularly for the desktop components.
-- Model Registry: a centralized model registry is implemented to manage trained models efficiently. This includes a registry module (`model/registry.py`) and a configuration file (`registry.json`), which together serve as the standardized pathway for loading model checkpoints across the system.
+*Classification:* Once the feature extraction is complete, the Wav2Vec 2.0 representations are passed to the classification stage.
+Here, five independent binary classifiers assign the presence probability of each dysfluency type, using decision boundaries learned during training to separate fluent and dysfluent speech.
+Sigmoid outputs generate per-class probabilities, while binary cross-entropy loss ensures efficient optimization during training.
+Their outputs are aggregated into a multi-label result that reports the presence probability of each dysfluency type and summarizes the detected classes and the primary dysfluency.
+A multitask shared-backbone variant was also trained for comparison, and its outputs are combined with localization at prediction time: the combiner labels each localized region with per-class saliency scores and fuses the two views into a single annotated result.
+This stage translates complex audio data into clear diagnostic outcomes that can assist speech-language pathologists in identifying stutter events.
 
-== HARDWARE REQUIREMENTS
-The hardware requirements define the minimum and recommended system specifications necessary for efficient execution of the proposed system.
-These requirements ensure smooth performance during both development and deployment phases.
+*Transcription and Alignment:* The transcription pipeline uses the Whisper Automatic Speech Recognition (ASR) model to produce a timestamped transcript, with support for English, Kannada, and Hindi.
+A Connectionist Temporal Classification (CTC) based time alignment step ties the pipelines together, mapping the detected dysfluency regions to specific words or syllables in the transcript.
+Language-specific adapters keep the alignment accurate for English, Kannada, and Hindi.
 
-- Processor: a system with at least an Intel Core i5 or AMD Ryzen 5 processor (or higher) to handle audio processing and model inference efficiently.
-- Memory (RAM): 8 GB RAM for basic functionality, with 16 GB recommended for smoother performance, especially when handling multiple recordings or running resource-intensive tasks.
-- Storage: at least 10 GB of available storage to accommodate datasets, trained model weights, and application files. Additional storage may be needed depending on usage and data accumulation.
-- Graphics Processing Unit (GPU): an NVIDIA GPU is recommended for training deep learning models, as it enables faster computation through features such as torch.compile, mixed precision, and TensorFloat-32 (TF32). A GPU is not mandatory for inference; the system can run on CPU for deployment.
-- Audio Input Device: a functional microphone is required for recording speech input within the application.
+*Output:* In the final stage, the system presents its predictions through a user-friendly interface.
+The output typically shows the detected dysfluency types along with confidence scores that indicate how certain the model is about each decision, and a summary of the primary dysfluency.
+To make the results more interpretable, the outputs surface as waveform overlays, spectrogram visualizations, timestamped transcripts, and a detailed clinical-style report.
+The outputs are designed to be simple, clear, and clinically relevant, making them suitable for practical use in clinical or self-assessment settings.
+By providing accurate and interpretable results, the system supports early assessment and can play a valuable role in improving outcomes for people who stutter.
 
-== FEASIBILITY STUDY
-The feasibility study evaluates the practicality of the proposed system from technical, economic, operational, and future expansion perspectives.
+Both the web and desktop applications load trained models through the centralized model registry.
+The registry reads from a registry module (the `model/registry` package) and a configuration file (`registry.json`), so checkpoints can be updated or replaced without changing application code, which keeps the system flexible and easy to maintain.
 
-- Technical Feasibility: the system is built using a well-established open-source software stack, including PyTorch, Hugging Face Transformers, librosa, FastAPI, and React. These technologies are widely adopted, tested, and supported by strong developer communities, making implementation reliable and manageable.
-- Economic Feasibility: the overall development cost is minimal, as all major tools and libraries used in the system are free and open-source. The primary expense is computational resources for model training, which can be managed using platforms such as Kaggle or Google Colab.
-- Operational Feasibility: the system is designed with usability in mind, offering both web and desktop interfaces that are intuitive and easy to navigate. This reduces the learning curve for users, including clinicians and non-technical individuals, and allows for smooth day-to-day operation without extensive training.
-- Schedule and Data Feasibility: the project is supported by the availability of publicly accessible datasets such as Project Boli, SEP-28K, and UCLASS, obtainable through platforms like GitHub and Kaggle. An automated pipeline downloads, merges, and preprocesses the data, ensuring efficient dataset preparation.
-- Future Feasibility: the system is designed with extensibility in mind. It can be expanded to support additional languages and dysfluency categories. Future enhancements may include cloud-based synchronization, as well as features for tracking therapy progress over time, further increasing its practical value.
+== FLOWCHART
+The data flow design follows the audio from input acquisition to final output.
+
+The process begins with the input audio, recorded or uploaded by the user.
+The audio is converted to 16 kHz mono WAV with FFmpeg, then padded or truncated to 48,000 samples, three seconds at 16 kHz, so all inputs have the same length.
+
+After normalization, the audio runs through three parallel pipelines: classification, transcription, and localization.
+Classification produces dysfluency probabilities, transcription a timestamped transcript, and localization frame-level dysfluency regions.
+
+A CTC-based alignment step combines these outputs and maps the detected dysfluencies to specific words or syllables.
+The final data is turned into per-word annotations, shown in waveform and spectrogram displays, and written into the analysis report.
+
+The system also defines a structured data flow for training.
+Training uses three datasets: Project Boli (sourced via Git repositories), SEP-28K (approximately 28,000 audio clips), and UCLASS (both obtained via Kaggle).
+Each dataset goes through its own normalization functions.
+
+The processed datasets merge into a unified format: a combined_labels.csv file with multi-label binary annotations, plus individual interval CSV files for each audio clip.
+The merged dataset is split into training, validation, and testing subsets with an 80:10:10 split, with the training subset further re-split 80/20 during model training.
+The subsets are organized with symbolic links for efficient access, and preprocessed audio files are cached to speed up training.
+
+#add_image(align(center, image("/assets/Flowchart.png", height: 38%)), caption: [Flowchart])
+
+The flowchart shown in Figure 3.2 illustrates the workflow for stutter detection using the proposed hybrid deep learning approach.
+The process begins with the collection of speech audio recordings, followed by preprocessing steps such as conversion to 16 kHz mono WAV, DC offset removal, peak normalization, silence trimming, and fixed-length padding to improve signal quality and variability.
+The refined audio is then split into training, validation, and testing datasets with an 80:10:10 split.
+Initially, the Wav2Vec 2.0 model is used to extract high-level contextual speech features.
+To enhance performance, a hybrid model combining five independent Wav2Vec 2.0 binary classifiers with a Wav2Vec2 frame-level localizer is developed, where the classifiers capture dysfluency-specific acoustic patterns and the localizer identifies fine-grained temporal segments.
+The outputs from both pipelines are fused through CTC-based alignment and passed through a final aggregation layer that categorizes the audio samples as containing blocks, prolongations, sound repetitions, word repetitions, or interjections, along with the precise localized regions.
+This flowchart provides a clear overview of the systematic steps involved in the proposed framework for stutter detection.
 
 == USE CASE DIAGRAM AND DESCRIPTIONS
-The use case diagram represents the interaction between the user and the system.
-The primary actor in the system is the *User*, which may be either a clinician or an individual using the application for self-assessment.
 
-The system supports multiple use cases that cover the complete workflow of speech analysis.
-These include recording audio, uploading pre-recorded audio, and initiating speech analysis in either full mode or classification-only mode.
-Once the analysis is complete, users can view different forms of output such as waveform visualizations, spectrograms, transcripts, and stutter detection results.
+The use case diagram shows how the user interacts with the system.
+The primary actor is the *User*, either a clinician or an individual using the application for self-assessment.
 
-In addition to analysis, the system allows users to localize dysfluencies within the speech, generate detailed analysis or clinical reports, and manage previously recorded sessions through a history feature.
-Other supporting functionalities include toggling between interface themes and accessing standardized reading passages for consistent evaluation.
+The main workflow covers recording audio, uploading pre-recorded audio, and running speech analysis in either full mode or classification-only mode.
+After analysis, users can view waveform visualizations, spectrograms, transcripts, and stutter detection results.
 
-The user records or uploads audio, initiates analysis, reviews visualizations and results, and finally generates or saves the report.
+Users can also localize dysfluencies within the speech, generate analysis or clinical reports, and revisit previously recorded sessions through a history feature.
+Supporting actions include toggling between interface themes and accessing standardized reading passages for consistent evaluation.
 
-== ACTIVITY DIAGRAM
-The activity diagram illustrates the step-by-step workflow of the system.
-The process begins when the user opens the application and chooses to either record new audio or upload an existing file.
-The input audio is then validated and converted into a standard format using FFmpeg, specifically 16 kHz mono.
+The typical flow is: record or upload audio, initiate analysis, review the visualizations and results, and generate or save the report.
 
-Following this, preprocessing is applied to clean and normalize the audio.
-The processed audio is then passed through multiple stages: classification, transcription, localization, and alignment.
-The classification stage uses five Wav2Vec2-based binary classifiers whose outputs are aggregated to identify which dysfluency types are present.
-In parallel, the Whisper model generates a timestamped transcription of the speech.
+#add_image(align(center, image("/assets/UseCaseDiagram.jpeg", height: 35%)), caption: [Use Case Diagram])
 
-Localization is performed using spectrogram-based CNN analysis or Wav2Vec2 temporal features.
-The results are then aligned to specific words or syllables using CTC-based alignment.
-Finally, the system displays waveform, spectrogram, transcript, and confidence scores, and provides an option to generate and save a detailed report.
+The use case diagram shown in Figure 3.3 illustrates the interactions between the user and the stutter detection system.
+The user can register or log in, then either record audio through the microphone or upload a pre-recorded speech file, which is analyzed through the full or classification-only pipeline.
+The system displays the classification results with confidence scores, localized dysfluency regions, and a timestamped transcript, and allows the user to generate and download analysis or clinical reports.
+Additional use cases include viewing the session history, switching between light and dark themes, and accessing standardized reading passages for consistent assessment.
+This diagram provides a clear overview of the functional interactions supported by the proposed framework.
+
+== WORKFLOW DIAGRAM
+
+A workflow diagram is a structured visual representation of a sequence of operations or tasks carried out to complete a specific process, typically used to analyse, design, or manage complex systems.
+It employs standardized symbols such as rectangles to denote actions, diamonds for decision points, and arrows to indicate the direction of flow, thereby offering clarity and insight into the procedural steps involved.
+In the context of deep learning and stutter detection, the workflow diagram illustrated here systematically maps out the process for developing a stutter classification and localization system.
+
+#add_image(align(center, image("/assets/workflow-diagram.png", width: 92%)), caption: [Workflow Diagram])
+
+The workflow diagram illustrates the workflow of the proposed deep learning pipeline for stutter detection and localization.
+The process begins with the collection of speech audio samples from three public stuttering datasets, Project Boli, SEP-28K, and UCLASS, all converted to 16 kHz mono and standardized through DC offset removal, peak normalization, silence trimming, and fixed-length padding.
+Data augmentation techniques such as random noise injection, time stretching, pitch shifting, temporal shifting, and amplitude scaling are applied to the waveforms, along with time and frequency masking on the spectrograms, expanding the effective dataset so the models generalize well across varied speaking patterns.
+The processed audio is then split into training, validation, and testing sets using an 80:10:10 ratio, with the training subset further re-split 80/20 during training.
+Model development begins with fine-tuning a pre-trained Wav2Vec 2.0 backbone, followed by a hybrid architecture that combines five independent Wav2Vec 2.0 binary classifiers with a Wav2Vec2 frame-level localizer to capture both global dysfluency patterns and fine-grained temporal segments.
+Hyperparameters including learning rate, backbone freeze duration, optimizer, and the number of trainable layers are tuned to enhance performance, and the trained network is periodically validated to ensure stable learning and prevent overfitting.
+Finally, evaluation metrics such as precision, recall, F1-score, AUROC, and mean IoU are computed, and the best-performing model is selected for reliable automated assessment of speech dysfluencies.
 
 == SEQUENCE DIAGRAM
-The sequence diagram describes the interaction between different system components during execution.
-The process starts with the user interacting with the graphical user interface (GUI), which sends a request to the backend API endpoint (`/api/analyze`).
 
-The backend processes the request through a series of services, including preprocessing, classification, transcription, localization, and alignment.
-Each service performs a specific task and passes its output to the next stage.
-Once processing is complete, the results are sent back to the frontend, where they are displayed to the user.
+The sequence diagram shows how the components interact during execution.
+The user works through the graphical user interface (GUI), which sends a request to the backend API endpoint (`/api/analyze`).
+
+The backend runs the request through a chain of services: preprocessing, classification, transcription, localization, and alignment.
+Each service does its part and passes its output to the next stage.
+When processing completes, the results go back to the frontend, where the user sees them.
 The system also stores the results for report generation and history management.
 
-== DATA FLOW DESCRIPTION
-The data flow within the system begins with the input audio, which is first converted into a standardized 16 kHz mono WAV format using FFmpeg.
-The audio is then processed through a cleaning stage that removes DC offset, applies peak normalization, and trims silence.
+#add_image(align(center, image("/assets/SequenceDiagram.jpeg", height: 35%)), caption: [Sequence Diagram])
 
-The cleaned audio is routed through three parallel processing paths.
-In the first path, Wav2Vec2 embeddings are generated and passed through five binary classifiers, and the outputs are aggregated into a multi-label result with a probability score for each dysfluency type.
-In the second path, the Whisper model generates a timestamped transcript of the speech.
-In the third path, spectrogram features (128 mel bands with a hop length of 512) or raw waveform inputs are used for localization, producing frame-level outputs at intervals such as 32 ms or 20 ms.
-
-The outputs from all three paths are merged to create a detailed mapping of dysfluencies at the word level.
-These results are then used to generate visualizations and structured reports.
-
-For training and evaluation, the system utilizes multiple datasets, including Project Boli (from GitHub), SEP-28K (approximately 28,000 clips from Kaggle), and UCLASS (from Kaggle).
-These datasets are normalized into a unified format, consisting of a `combined_labels.csv` file with multi-label binary annotations and corresponding interval files for each clip.
-The dataset is split into training, validation, and testing sets in an 80:10:10 ratio.
-
-== CHAPTER SUMMARY
-This chapter presented a detailed analysis of the system requirements, covering both functional and non-functional aspects.
-It also examined feasibility, system interactions, workflows, and data processing mechanisms.
-The requirements point to a need for an accurate, interpretable, and multilingual-ready stuttering detection system that can operate efficiently in both online and offline environments.
-
-The next chapter focuses on the system design and architecture, detailing how these requirements are translated into an implementable solution.
+The sequence diagram shown in Figure 3.5 illustrates the interaction flow between the user, the frontend, the backend services, and the stored results during a speech analysis session.
+The user initiates the analysis through the graphical user interface, which sends a request to the backend API endpoint.
+The backend sequentially invokes the preprocessing, classification, transcription, localization, and alignment services, each consuming the output of the previous stage.
+Once the processing completes, the fused results are returned to the frontend for display and saved in the local storage for reports and the session history.
+This diagram provides a clear overview of the message exchange that drives the proposed framework.
 
 #pagebreak()
