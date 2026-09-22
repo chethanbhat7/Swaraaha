@@ -1,7 +1,7 @@
 #import "../lib.typ": *
 
 #set outline(
-  indent: 61pt
+  indent: 0pt
 )
 
 #set outline.entry(
@@ -12,7 +12,7 @@
   outlined: true,
 )
 
-#show outline: set align(center)
+#show outline: set align(left)
 
 #show outline.entry: it => {
   v(12pt, weak: true)
@@ -21,18 +21,47 @@
   if it.level == 1 and it.element.func() == heading {
     v(0.5em)
     strong(it)
+  } else if it.element.func() == figure {
+    link(it.element.location())[
+      #grid(
+        columns: (8em, 1fr, 6.5em),
+        align: (left, left, right),
+        it.prefix(),
+        it.body(),
+        it.page(),
+      )
+    ]
+  } else if it.level == 3 {
+    context {
+      let num = counter(heading).at(it.element.location())
+      link(it.element.location())[
+        #grid(
+          columns: (1fr, auto),
+          align: (left, right),
+          [
+            #h(24pt)
+            #numbering("1.1.1", ..num)
+            #h(0.5em)
+            #it.body()
+          ],
+          it.page(),
+        )
+      ]
+    }
+  } else if it.level >= 4 {
+    hide(it)
   } else {
     it
   }
 }
 
 // --- TOC outline ---
-#non_outlined_heading[TABLE OF CONTENT]
+#non_outlined_heading[TABLE OF CONTENTS]
 
 #grid(
   columns: (1fr, auto),
   align: (left, center),
-  stack(dir: ltr)[*Title*], [*Page \ No.*]
+  stack(dir: ltr)[*Title*], [*Page No.*]
 )
 
 #outline(
@@ -47,8 +76,7 @@
 #counter(page).update(1)
 
 // --- Tables list ---
-#align(center)[= LIST OF TABLES]
-#v(0.5em)
+#non_outlined_heading[LIST OF TABLES]
 
 #grid(
   columns: (8em, 1fr, 6.5em),
@@ -63,8 +91,7 @@
 #pagebreak()
 
 // --- Figure list ---
-#align(center)[= LIST OF FIGURES]
-#v(0.5em)
+#non_outlined_heading[LIST OF FIGURES]
 
 #grid(
   columns: (8.5em, 1fr, 6.5em),

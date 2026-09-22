@@ -48,7 +48,7 @@
 #set page(
   paper: "a4",
   margin: (top: 53.85pt, bottom: 72pt, left: 87.9pt, right: 72pt),
-  numbering: "1",
+  numbering: (cur, ..t) => if cur < 10 { "0" + str(cur) } else { str(cur) },
   
   // Header definition
   header: [
@@ -82,7 +82,7 @@
 
 #set par(
   justify: true,
-  leading: 12.37pt,
+  leading: 18pt,
   spacing: 18.32pt,
   justification-limits: (spacing: (min: 100%, max: 150%)),
 )

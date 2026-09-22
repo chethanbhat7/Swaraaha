@@ -66,14 +66,11 @@
   }
 }
 
-#let literature_survey(author, conjunctive, title, body) = {
+#let literature_survey(author, title, body) = {
   lit_survey_counter.step()
 
   author
-  [ [#context lit_survey_counter.display()]]
-  [
-    #conjunctive #body
-  ]
+  [ [#context lit_survey_counter.display()] #body]
   v(1em)
 }
 
