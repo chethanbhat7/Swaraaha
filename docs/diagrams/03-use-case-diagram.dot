@@ -1,0 +1,62 @@
+// Swaraaha — Use Case Diagram (essence, simplified for report legibility).
+// A single runtime actor (User) + the essential use cases inside the system boundary.
+digraph SwaraahaUseCaseDiagram {
+
+    // ---- global style (shared across all diagrams) ----
+    fontname = "Times New Roman";
+    fontsize = 16;
+    rankdir = LR;
+    nodesep = 0.6;
+    ranksep = 0.8;
+    bgcolor = "white";
+    compound = true;
+
+    edge [
+        color = "black",
+        fontname = "Times New Roman",
+        fontsize = 13,
+        arrowsize = 0.9
+    ];
+
+    // ================= actors (plaintext) =================
+    node [shape = plaintext, fillcolor = "white", style = "", fontsize = 16];
+    user      [label = "User"];
+
+    // ================= system boundary =================
+    subgraph cluster_system {
+        label = "Swaraaha Speech Dysfluency\nAnalysis System";
+        style = "rounded,filled";
+        fillcolor = "#EAF6FC";
+        color = "black";
+        fontname = "Times New Roman";
+        fontsize = 14;
+        pencolor = "black";
+        penwidth = 1.5;
+
+        node [
+            shape = ellipse,
+            style = "filled",
+            fillcolor = "#83C5E5",
+            color = "black",
+            fontname = "Times New Roman",
+            fontsize = 14,
+            penwidth = 1.2,
+            margin = "0.15,0.1"
+        ];
+
+        uc_upload   [label = "Upload / record\nspeech"];
+        uc_language [label = "Select language\n(En / Kn / Hi)"];
+        uc_analyze  [label = "Analyze speech\n(classify, localize,\ntranscribe)"];
+        uc_severity [label = "View waveform,\nclass cards &\nlive transcript"];
+        uc_report   [label = "Download clinical\nPDF report"];
+        uc_history  [label = "Review assessment\nhistory"];
+    }
+
+    // ================= associations =================
+    user      -> uc_upload    [dir = none];
+    user      -> uc_language  [dir = none];
+    user      -> uc_analyze   [dir = none];
+    user      -> uc_severity  [dir = none];
+    user      -> uc_report    [dir = none];
+    user      -> uc_history   [dir = none];
+}

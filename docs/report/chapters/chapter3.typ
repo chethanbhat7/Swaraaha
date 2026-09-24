@@ -120,7 +120,7 @@ Supporting actions include toggling between interface themes and accessing stand
 
 The typical flow is: record or upload audio, initiate analysis, review the visualizations and results, and generate or save the report.
 
-#add_image(align(center, image("/assets/UseCaseDiagram.jpeg", height: 35%)), caption: [Use Case Diagram])
+#add_image(align(center, image("/assets/UseCaseDiagram.png", height: 35%)), caption: [Use Case Diagram])
 
 The use case diagram shown in Figure 3.3 illustrates the interactions between the user and the stutter detection system.
 The user can register or log in, then either record audio through the microphone or upload a pre-recorded speech file, which is analyzed through the full or classification-only pipeline.
