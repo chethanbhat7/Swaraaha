@@ -3,24 +3,36 @@
 digraph SwaraahaUseCaseDiagram {
 
     // ---- global style (shared across all diagrams) ----
-    fontname = "Times New Roman";
+    fontname = "Times-Roman";
     fontsize = 16;
     rankdir = LR;
     nodesep = 0.6;
-    ranksep = 0.8;
+    ranksep = 1.0;
     bgcolor = "white";
     compound = true;
 
     edge [
         color = "black",
-        fontname = "Times New Roman",
+        fontname = "Times-Roman",
         fontsize = 13,
         arrowsize = 0.9
     ];
 
-    // ================= actors (plaintext) =================
-    node [shape = plaintext, fillcolor = "white", style = "", fontsize = 16];
-    user      [label = "User"];
+    // ======== actor: UML stick figure (single node, outside system boundary) ========
+    // Drawn with an HTML-table label; no external images or extra nodes are needed.
+    user [
+        shape = plaintext,
+        margin = 0,
+        label = <<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="0">
+            <TR><TD FIXEDSIZE="TRUE" WIDTH="4" HEIGHT="16"></TD><TD FIXEDSIZE="TRUE" WIDTH="5" HEIGHT="16"></TD><TD FIXEDSIZE="TRUE" BORDER="2" WIDTH="8" HEIGHT="16"></TD><TD FIXEDSIZE="TRUE" WIDTH="5" HEIGHT="16"></TD><TD FIXEDSIZE="TRUE" WIDTH="4" HEIGHT="16"></TD></TR>
+            <TR><TD FIXEDSIZE="TRUE" WIDTH="4" HEIGHT="3"></TD><TD FIXEDSIZE="TRUE" WIDTH="5" HEIGHT="3"></TD><TD FIXEDSIZE="TRUE" WIDTH="8" HEIGHT="3"></TD><TD FIXEDSIZE="TRUE" WIDTH="5" HEIGHT="3"></TD><TD FIXEDSIZE="TRUE" WIDTH="4" HEIGHT="3"></TD></TR>
+            <TR><TD FIXEDSIZE="TRUE" WIDTH="4" HEIGHT="2" BGCOLOR="black"></TD><TD FIXEDSIZE="TRUE" WIDTH="5" HEIGHT="2" BGCOLOR="black"></TD><TD FIXEDSIZE="TRUE" WIDTH="8" HEIGHT="2" BGCOLOR="black"></TD><TD FIXEDSIZE="TRUE" WIDTH="5" HEIGHT="2" BGCOLOR="black"></TD><TD FIXEDSIZE="TRUE" WIDTH="4" HEIGHT="2" BGCOLOR="black"></TD></TR>
+            <TR><TD FIXEDSIZE="TRUE" WIDTH="4" HEIGHT="14"></TD><TD FIXEDSIZE="TRUE" WIDTH="5" HEIGHT="14"></TD><TD FIXEDSIZE="TRUE" WIDTH="8" HEIGHT="14" BGCOLOR="black"></TD><TD FIXEDSIZE="TRUE" WIDTH="5" HEIGHT="14"></TD><TD FIXEDSIZE="TRUE" WIDTH="4" HEIGHT="14"></TD></TR>
+            <TR><TD FIXEDSIZE="TRUE" WIDTH="4" HEIGHT="2"></TD><TD FIXEDSIZE="TRUE" WIDTH="5" HEIGHT="2"></TD><TD FIXEDSIZE="TRUE" WIDTH="8" HEIGHT="2"></TD><TD FIXEDSIZE="TRUE" WIDTH="5" HEIGHT="2"></TD><TD FIXEDSIZE="TRUE" WIDTH="4" HEIGHT="2"></TD></TR>
+            <TR><TD FIXEDSIZE="TRUE" WIDTH="4" HEIGHT="8" BGCOLOR="black"></TD><TD FIXEDSIZE="TRUE" WIDTH="5" HEIGHT="8"></TD><TD FIXEDSIZE="TRUE" WIDTH="8" HEIGHT="8"></TD><TD FIXEDSIZE="TRUE" WIDTH="5" HEIGHT="8"></TD><TD FIXEDSIZE="TRUE" WIDTH="4" HEIGHT="8" BGCOLOR="black"></TD></TR>
+            <TR><TD FIXEDSIZE="TRUE" COLSPAN="5" WIDTH="34" HEIGHT="19"><FONT FACE="Times-Roman" POINT-SIZE="16">User</FONT></TD></TR>
+        </TABLE>>
+    ];
 
     // ================= system boundary =================
     subgraph cluster_system {
@@ -28,7 +40,7 @@ digraph SwaraahaUseCaseDiagram {
         style = "rounded,filled";
         fillcolor = "#EAF6FC";
         color = "black";
-        fontname = "Times New Roman";
+        fontname = "Times-Roman";
         fontsize = 14;
         pencolor = "black";
         penwidth = 1.5;
@@ -38,21 +50,21 @@ digraph SwaraahaUseCaseDiagram {
             style = "filled",
             fillcolor = "#83C5E5",
             color = "black",
-            fontname = "Times New Roman",
+            fontname = "Times-Roman",
             fontsize = 14,
             penwidth = 1.2,
             margin = "0.15,0.1"
         ];
 
-        uc_upload   [label = "Upload / record\nspeech"];
-        uc_language [label = "Select language\n(En / Kn / Hi)"];
-        uc_analyze  [label = "Analyze speech\n(classify, localize,\ntranscribe)"];
-        uc_severity [label = "View waveform,\nclass cards &\nlive transcript"];
-        uc_report   [label = "Download clinical\nPDF report"];
-        uc_history  [label = "Review assessment\nhistory"];
+        uc_upload   [label = "Upload /\nRecord Speech"];
+        uc_language [label = "Select Language"];
+        uc_analyze  [label = "Analyze Speech"];
+        uc_severity [label = "View Analysis\nResults"];
+        uc_report   [label = "Download Clinical\nReport"];
+        uc_history  [label = "Review Assessment\nHistory"];
     }
 
-    // ================= associations =================
+    // ================= associations (no arrowheads) =================
     user      -> uc_upload    [dir = none];
     user      -> uc_language  [dir = none];
     user      -> uc_analyze   [dir = none];

@@ -21,8 +21,8 @@ sizes (Graphviz coordinates, inches):
 |---|---|---|
 | 01 System flowchart | 9.6 | 12.7 |
 | 02 Workflow | 9.8 | 6.1 |
-| 03 Use case | 5.0 | 9.8 |
-| 04 Sequence | 10.4 | 11.5 |
+| 03 Use case | 4.5 | 8.9 |
+| 04 Sequence | 9.7 | 11.7 |
 
 Diagram 01 is portrait. Diagram 02 uses a serpentine (snake) layout —
 four steps down, a break to the right, four steps up, a second break to
@@ -115,7 +115,12 @@ The model pipeline (as depicted in the diagrams) is:
 - The original visual style of the reference report figures was not
   directly available; the figures use the specified academic palette
   (light blue node fills `#83C5E5`, black outlines, serif
-  `Times New Roman`).
+  `Times-Roman`). Graphviz on macOS renders `fontname =
+  "Times-Roman"` (and `"Times"`) as the genuine Times font; the alias
+  `"Times New Roman"` silently falls back to Helvetica. Diagrams 03
+  (use case) and 04 (sequence) therefore use `Times-Roman` so the
+  report figures show true serif text; diagrams 01 and 02 keep their
+  original `"Times New Roman"` setting.
 - No metric values are fabricated. Per-class thresholds quoted in the
   diagrams come from `model/registry.json` (source of truth for the
   active configuration). Published README evaluation numbers are not
