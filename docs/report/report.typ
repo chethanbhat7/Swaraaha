@@ -104,3 +104,6 @@
 
 // --- Bibliography ---
 #include "bibliography.typ"
+
+// --- Personal Profile ---
+#include "personal_profile.typ"

@@ -67,7 +67,7 @@
   #v(30.6pt)
   #align(center, image("../assets/vcet_logo.png", width: 165pt, height: 102.1pt))
   #v(9.8pt)
-  #place(top + left, dy: 604.8pt, line(length: 100%, stroke: 1.3pt))
+  #place(top + left, dy: 597pt, line(length: 100%, stroke: 1.3pt))
 
   // -- college block --
   #cl(12pt, weight: "bold", fill: rgb("#0070c0"))[DEPARTMENT OF #department_upper]

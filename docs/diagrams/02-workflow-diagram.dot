@@ -1,0 +1,86 @@
+// Swaraaha — Detailed Workflow Diagram (simplified for report legibility).
+// Serpentine ("snake") layout: four steps down, break right, four steps up,
+// break right, then the final steps down. Multi-head shared-backbone only.
+digraph SwaraahaWorkflowDiagram {
+
+    // ---- global style (shared across all diagrams) ----
+    fontname = "Times New Roman";
+    fontsize = 16;
+    rankdir = TB;
+    splines = polyline;
+    nodesep = 0.55;
+    ranksep = 0.5;
+    bgcolor = "white";
+    newrank = true;
+
+    node [
+        shape = box,
+        style = "filled",
+        fillcolor = "#83C5E5",
+        color = "black",
+        fontname = "Times New Roman",
+        fontsize = 15,
+        penwidth = 1.2,
+        margin = "0.25,0.14"
+    ];
+
+    edge [
+        color = "black",
+        fontname = "Times New Roman",
+        fontsize = 13,
+        arrowsize = 0.9
+    ];
+
+    // ================= pipeline steps =================
+    n1  [label = "1. Datasets\nSEP-28K, UCLASS,\nProject Boli", group = "c1"];
+    n2  [label = "2. Merge &\nlabel normalisation", group = "c1"];
+    n3  [label = "3. Cleaning &\nquality filtering", group = "c1"];
+    n4  [label = "4. Feature extraction\n(Wav2Vec2 frames,\nspectral frames)", group = "c1"];
+
+    n5  [label = "5. Balancing &\naugmentation\n(time stretch, pitch,\nnoise, masking)", group = "c2"];
+    n6  [label = "6. Dataset split\n(train 80%,\nvalidation, test)", group = "c2"];
+    n7  [label = "7. Model training\nWav2Vec2 multi-head\nclassifier (5 heads)\n+ temporal localizer", group = "c2"];
+    n8  [label = "8. Checkpoints\n(best / final)", group = "c2"];
+
+    n9  [label = "9. Evaluation &\nthreshold tuning\n(metrics, F1-optimal\n-> registry.json)", group = "c3"];
+    n10 [label = "10. Deployment\nmodel.analyze() ->\nseverity & PDF report\n-> Web + Desktop apps", group = "c3"];
+
+    // ================= columns (rank alignment) =================
+    // column 1: n1(top) -> n4(bottom); column 2: n5(bottom) -> n8(top);
+    // column 3: n9(top) -> n10(below)
+    { rank = same; n1; n8; n9; }
+    { rank = same; n2; n7; n10; }
+    { rank = same; n3; n6; }
+    { rank = same; n4; n5; }
+
+    // ================= flow =================
+    // column 1: down
+    n1 -> n2;
+    n2 -> n3;
+    n3 -> n4;
+
+    // break right to column 2
+    n4 -> n5;
+
+    // column 2: up (declared tail-up + dir=back so the arrows point upward)
+    n6 -> n5 [dir = back];
+    n7 -> n6 [dir = back];
+    n8 -> n7 [dir = back];
+
+    // break right to column 3
+    n8 -> n9;
+
+    // column 3: down
+    n9 -> n10;
+
+    // ================= keep columns left-to-right =================
+    edge [style = invis];
+    n1 -> n8;
+    n2 -> n7;
+    n7 -> n10;
+    n3 -> n6;
+
+    // evaluation -> training retrain/tune feedback loop
+    edge [style = dashed, constraint = false, label = "retrain / tune"];
+    n9 -> n7;
+}

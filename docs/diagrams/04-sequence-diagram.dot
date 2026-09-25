@@ -1,0 +1,156 @@
+// Swaraaha — Sequence Diagram (web runtime, essence, simplified for report legibility).
+// Participants: User, Frontend, Backend, multi-head Classifier, Localizer, Transcriber.
+// Internal backend steps are self-messages; PDF generation folded into the backend.
+digraph SwaraahaSequenceDiagram {
+
+    fontname = "Times-Roman";
+    fontsize = 16;
+    rankdir = TB;
+    splines = false;
+    nodesep = 0.25;
+    ranksep = 0.42;
+    bgcolor = "white";
+
+    // ================= participant header boxes =================
+    node [fontname = "Times-Roman", fontsize = 13, color = "black", penwidth = 1.2];
+    node [shape = box, style = "filled", fillcolor = "#83C5E5", fontsize = 13, margin = "0.18,0.10"];
+
+    P_usr [label = "User", group = "usr"];
+    P_fr  [label = "Frontend", group = "fr"];
+    P_be  [label = "Backend", group = "be"];
+    P_clf [label = "Classifier\n(multi-head)", group = "clf"];
+    P_loc [label = "Localizer", group = "loc"];
+    P_tr  [label = "Transcriber", group = "tr"];
+
+    { rank = same; P_usr; P_fr; P_be; P_clf; P_loc; P_tr; }
+
+    // ================= invisible point anchors (idle cells) =================
+    node [shape = point, style = invis, width = 0, height = 0];
+
+    a1_usr [group = "usr"]; a1_fr [group = "fr"]; a1_be [group = "be"];
+    a1_clf [group = "clf"]; a1_loc [group = "loc"]; a1_tr [group = "tr"];
+
+    a2_usr [group = "usr"]; a2_fr [group = "fr"];
+    a2_clf [group = "clf"]; a2_loc [group = "loc"]; a2_tr [group = "tr"];
+
+    a3_usr [group = "usr"]; a3_fr [group = "fr"];
+    a3_loc [group = "loc"]; a3_tr [group = "tr"];
+
+    a4_usr [group = "usr"]; a4_fr [group = "fr"];
+    a4_loc [group = "loc"]; a4_tr [group = "tr"];
+
+    a5_usr [group = "usr"]; a5_fr [group = "fr"];
+    a5_clf [group = "clf"]; a5_tr [group = "tr"];
+
+    a6_usr [group = "usr"]; a6_fr [group = "fr"];
+    a6_clf [group = "clf"]; a6_tr [group = "tr"];
+
+    a7_usr [group = "usr"]; a7_fr [group = "fr"];
+    a7_clf [group = "clf"]; a7_loc [group = "loc"];
+
+    a8_usr [group = "usr"]; a8_fr [group = "fr"];
+    a8_clf [group = "clf"]; a8_loc [group = "loc"];
+
+    a9_usr [group = "usr"]; a9_fr [group = "fr"];
+    a9_clf [group = "clf"]; a9_loc [group = "loc"]; a9_tr [group = "tr"];
+
+    a10_usr [group = "usr"]; a10_fr [group = "fr"];
+    a10_clf [group = "clf"]; a10_loc [group = "loc"]; a10_tr [group = "tr"];
+
+    a11_usr [group = "usr"]; a11_fr [group = "fr"]; a11_be [group = "be"];
+    a11_clf [group = "clf"]; a11_loc [group = "loc"]; a11_tr [group = "tr"];
+
+    a12_usr [group = "usr"]; a12_fr [group = "fr"];
+    a12_clf [group = "clf"]; a12_loc [group = "loc"]; a12_tr [group = "tr"];
+
+    a13_usr [group = "usr"]; a13_fr [group = "fr"];
+    a13_clf [group = "clf"]; a13_loc [group = "loc"]; a13_tr [group = "tr"];
+
+    a14_usr [group = "usr"]; a14_fr [group = "fr"];
+    a14_clf [group = "clf"]; a14_loc [group = "loc"]; a14_tr [group = "tr"];
+
+    // ================= activation bars (busy cells) =================
+    node [shape = box, width = 0.14, height = 0.35, style = "filled",
+          fillcolor = "#CFE8F5", color = "black", margin = 0, label = ""];
+
+    b2_be  [group = "be"]; b3_be  [group = "be"]; b4_be  [group = "be"];
+    b5_be  [group = "be"]; b6_be  [group = "be"]; b7_be  [group = "be"];
+    b8_be  [group = "be"]; b9_be  [group = "be"]; b10_be [group = "be"];
+    b12_be [group = "be"]; b13_be [group = "be"]; b14_be [group = "be"];
+
+    b3_clf [group = "clf"]; b4_clf [group = "clf"];
+
+    b5_loc [group = "loc"]; b6_loc [group = "loc"];
+
+    b7_tr  [group = "tr"]; b8_tr  [group = "tr"];
+
+    // ================= per-row rank groups =================
+    { rank = same; a1_usr; a1_fr; a1_be; a1_clf; a1_loc; a1_tr; }
+    { rank = same; a2_usr; a2_fr; b2_be; a2_clf; a2_loc; a2_tr; }
+    { rank = same; a3_usr; a3_fr; b3_be; b3_clf; a3_loc; a3_tr; }
+    { rank = same; a4_usr; a4_fr; b4_be; b4_clf; a4_loc; a4_tr; }
+    { rank = same; a5_usr; a5_fr; b5_be; a5_clf; b5_loc; a5_tr; }
+    { rank = same; a6_usr; a6_fr; b6_be; a6_clf; b6_loc; a6_tr; }
+    { rank = same; a7_usr; a7_fr; b7_be; a7_clf; a7_loc; b7_tr; }
+    { rank = same; a8_usr; a8_fr; b8_be; a8_clf; a8_loc; b8_tr; }
+    { rank = same; a9_usr; a9_fr; b9_be; a9_clf; a9_loc; a9_tr; }
+    { rank = same; a10_usr; a10_fr; b10_be; a10_clf; a10_loc; a10_tr; }
+    { rank = same; a11_usr; a11_fr; a11_be; a11_clf; a11_loc; a11_tr; }
+    { rank = same; a12_usr; a12_fr; b12_be; a12_clf; a12_loc; a12_tr; }
+    { rank = same; a13_usr; a13_fr; b13_be; a13_clf; a13_loc; a13_tr; }
+    { rank = same; a14_usr; a14_fr; b14_be; a14_clf; a14_loc; a14_tr; }
+
+    // ================= lifelines (dotted chains, pinned by group) =================
+    edge [style = dotted, color = "#999999", arrowhead = none, weight = 10];
+
+    P_usr -> a1_usr -> a2_usr -> a3_usr -> a4_usr -> a5_usr -> a6_usr ->
+    a7_usr -> a8_usr -> a9_usr -> a10_usr -> a11_usr -> a12_usr -> a13_usr -> a14_usr;
+
+    P_fr  -> a1_fr  -> a2_fr  -> a3_fr  -> a4_fr  -> a5_fr  -> a6_fr  ->
+    a7_fr  -> a8_fr  -> a9_fr  -> a10_fr -> a11_fr -> a12_fr -> a13_fr -> a14_fr;
+
+    P_be  -> a1_be  -> b2_be  -> b3_be  -> b4_be  -> b5_be  -> b6_be  ->
+    b7_be  -> b8_be  -> b9_be  -> b10_be -> a11_be -> b12_be -> b13_be -> b14_be;
+
+    P_clf -> a1_clf -> a2_clf -> b3_clf -> b4_clf -> a5_clf -> a6_clf ->
+    a7_clf -> a8_clf -> a9_clf -> a10_clf -> a11_clf -> a12_clf -> a13_clf -> a14_clf;
+
+    P_loc -> a1_loc -> a2_loc -> a3_loc -> a4_loc -> b5_loc -> b6_loc ->
+    a7_loc -> a8_loc -> a9_loc -> a10_loc -> a11_loc -> a12_loc -> a13_loc -> a14_loc;
+
+    P_tr  -> a1_tr  -> a2_tr  -> a3_tr  -> a4_tr  -> a5_tr  -> a6_tr  ->
+    b7_tr  -> b8_tr  -> a9_tr  -> a10_tr -> a11_tr -> a12_tr -> a13_tr -> a14_tr;
+
+    // ================= participant ordering (left to right) =================
+    edge [style = invis, color = black, weight = 100];
+    P_usr -> P_fr -> P_be -> P_clf -> P_loc -> P_tr;
+
+    // ================= messages (do not affect layout) =================
+    edge [style = solid, color = "black", arrowsize = 0.8,
+          fontname = "Times-Roman", fontsize = 12, constraint = false];
+
+    a1_usr -> a1_fr [label = "upload / record;\nchoose language"];
+
+    a2_fr -> b2_be [label = "POST /api/analyze\n(audio, language)"];
+
+    b3_be -> b3_clf [label = "classify(audio)"];
+    b4_clf -> b4_be [label = "per-class results\n(5 heads)", style = dashed];
+
+    b5_be -> b5_loc [label = "localize(audio, 0.3)"];
+    b6_loc -> b6_be [label = "regions [start, end]", style = dashed];
+
+    b7_be -> b7_tr [label = "transcribe(audio)"];
+    b8_tr -> b8_be [label = "text + timestamps", style = dashed];
+
+    b9_be -> b9_be [label = "fuse regions x saliency;\ncompute severity"];
+
+    b10_be -> a10_fr [label = "200 JSON (results,\nseverity)"];
+
+    a11_usr -> a11_fr [label = "patient details;\nDownload PDF Report"];
+
+    a12_fr -> b12_be [label = "POST /api/report"];
+
+    b13_be -> b13_be [label = "generate PDF\n(Typst builder)"];
+
+    b14_be -> a14_fr [label = "application/pdf"];
+}

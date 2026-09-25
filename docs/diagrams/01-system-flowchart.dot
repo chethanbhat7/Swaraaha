@@ -1,0 +1,81 @@
+// Swaraaha — System Flowchart (essence, simplified for report legibility).
+// Vertical flowchart: only the essential runtime analysis blocks.
+digraph SwaraahaSystemFlowchart {
+
+    // ---- global style (shared across all four diagrams) ----
+    fontname = "Times New Roman";
+    fontsize = 16;
+    rankdir = TB;
+    splines = polyline;
+    nodesep = 0.6;
+    ranksep = 0.6;
+    bgcolor = "white";
+
+    node [
+        style = "filled",
+        fillcolor = "#83C5E5",
+        color = "black",
+        fontname = "Times New Roman",
+        fontsize = 16,
+        penwidth = 1.2,
+        margin = "0.22,0.12"
+    ];
+
+    edge [
+        color = "black",
+        fontname = "Times New Roman",
+        fontsize = 13,
+        arrowsize = 0.9
+    ];
+
+    // ---- nodes ----
+    start   [shape = ellipse,      label = "Start"];
+
+    input   [shape = parallelogram,
+             label = "Speech Recording\n(upload file or\nlive microphone)"];
+
+    preproc [shape = box,
+             label = "Audio Preprocessing\n16 kHz mono, language\n(En / Kn / Hi)"];
+
+    engine  [shape = box,
+             label = "ML Engine\nWav2Vec2 classifiers,\nWav2Vec2 localizer,\nWhisper transcriber"];
+
+    outputs [shape = parallelogram,
+             label = "Analysis Output\nlocalized regions,\ntranscript"];
+
+    // one block per dysfluency class
+    cls_prol   [shape = box, label = "Prolongation"];
+    cls_block  [shape = box, label = "Block"];
+    cls_srep   [shape = box, label = "Sound Rep"];
+    cls_wrep   [shape = box, label = "Word Rep"];
+    cls_interj [shape = box, label = "Interjection"];
+
+    report  [shape = box,
+             label = "Severity Scoring &\nClinical Report\n(stutter index, PDF)"];
+
+    stop    [shape = ellipse,      label = "Stop"];
+
+    // ---- classes share one horizontal rank ----
+    { rank = same; cls_prol; cls_block; cls_srep; cls_wrep; cls_interj; }
+
+    // ---- flow ----
+    start   -> input;
+    input   -> preproc;
+    preproc -> engine;
+    engine  -> outputs;
+    outputs -> cls_prol;
+    outputs -> cls_block;
+    outputs -> cls_srep;
+    outputs -> cls_wrep;
+    outputs -> cls_interj;
+    cls_prol   -> report;
+    cls_block  -> report;
+    cls_srep   -> report;
+    cls_wrep   -> report;
+    cls_interj -> report;
+    report  -> stop;
+
+    // keep the class blocks in reading order
+    edge [style = invis];
+    cls_prol -> cls_block -> cls_srep -> cls_wrep -> cls_interj;
+}
