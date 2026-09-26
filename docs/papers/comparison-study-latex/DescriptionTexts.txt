@@ -1,0 +1,4 @@
+1 (Fig. 1) - Bar chart of per-class F1 scores on the clip-level in-distribution test set.
+2 (Fig. 2) - Bar chart of per-class tuned F1 on the Project Boli speaker-independent cross-corpus held-out set, comparing the shared-backbone Wav2Vec2 (arm02) and CNN-LSTM (arm06) models.
+3 (Fig. 3) - Bar chart of per-class area under the ROC curve (AUROC) and precision-recall curve (AUPRC) on the clip-level test set.
+4 (Fig. 4) - Five confusion matrices, one per dysfluency type, for the binary Wav2Vec2 classifiers on the clip-level in-distribution test set.

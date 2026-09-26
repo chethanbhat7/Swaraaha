@@ -1,0 +1,477 @@
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026/Arch Linux) (preloaded format=pdflatex 2026.9.17)  20 SEP 2026 18:44
+entering extended mode
+ restricted \write18 enabled.
+ %&-line parsing enabled.
+**paper.tex
+(./paper.tex
+LaTeX2e <2025-11-01>
+L3 programming layer <2026-01-19>
+(./llncs.cls
+Document Class: llncs 2026/09/03 v2.25 
+ LaTeX document class for Lecture Notes in Computer Science
+(/usr/share/texmf-dist/tex/latex/base/article.cls
+Document Class: article 2025/01/22 v1.4n Standard LaTeX document class
+(/usr/share/texmf-dist/tex/latex/base/size10.clo
+File: size10.clo 2025/01/22 v1.4n Standard LaTeX file (size option)
+)
+\c@part=\count275
+\c@section=\count276
+\c@subsection=\count277
+\c@subsubsection=\count278
+\c@paragraph=\count279
+\c@subparagraph=\count280
+\c@figure=\count281
+\c@table=\count282
+\abovecaptionskip=\skip49
+\belowcaptionskip=\skip50
+\bibindent=\dimen148
+)
+(/usr/share/texmf-dist/tex/latex/tools/multicol.sty
+Package: multicol 2025/10/21 v2.0b multicolumn formatting (FMi)
+\c@tracingmulticols=\count283
+\mult@box=\box53
+\multicol@leftmargin=\dimen149
+\c@unbalance=\count284
+\c@collectmore=\count285
+\doublecol@number=\count286
+\multicoltolerance=\count287
+\multicolpretolerance=\count288
+\full@width=\dimen150
+\page@free=\dimen151
+\premulticols=\dimen152
+\postmulticols=\dimen153
+\multicolsep=\skip51
+\multicolbaselineskip=\skip52
+\partial@page=\box54
+\last@line=\box55
+\mc@boxedresult=\box56
+\maxbalancingoverflow=\dimen154
+\mult@rightbox=\box57
+\mult@grightbox=\box58
+\mult@firstbox=\box59
+\mult@gfirstbox=\box60
+\@tempa=\box61
+\@tempa=\box62
+\@tempa=\box63
+\@tempa=\box64
+\@tempa=\box65
+\@tempa=\box66
+\@tempa=\box67
+\@tempa=\box68
+\@tempa=\box69
+\@tempa=\box70
+\@tempa=\box71
+\@tempa=\box72
+\@tempa=\box73
+\@tempa=\box74
+\@tempa=\box75
+\@tempa=\box76
+\@tempa=\box77
+\@tempa=\box78
+\@tempa=\box79
+\@tempa=\box80
+\@tempa=\box81
+\@tempa=\box82
+\@tempa=\box83
+\@tempa=\box84
+\@tempa=\box85
+\@tempa=\box86
+\@tempa=\box87
+\@tempa=\box88
+\@tempa=\box89
+\@tempa=\box90
+\@tempa=\box91
+\@tempa=\box92
+\@tempa=\box93
+\@tempa=\box94
+\@tempa=\box95
+\@tempa=\box96
+\c@minrows=\count289
+\c@columnbadness=\count290
+\c@finalcolumnbadness=\count291
+\last@try=\dimen155
+\multicolovershoot=\dimen156
+\multicolundershoot=\dimen157
+\mult@nat@firstbox=\box97
+\colbreak@box=\box98
+\mc@col@check@num=\count292
+\g__mc_curr_col_int=\count293
+)
+(/usr/share/texmf-dist/tex/latex/oberdiek/aliascnt.sty
+Package: aliascnt 2018/09/07 v1.5 Alias counters (HO)
+)
+\c@chapter=\count294
+LaTeX Font Info:    Redeclaring math symbol \Gamma on input line 379.
+LaTeX Font Info:    Redeclaring math symbol \Delta on input line 380.
+LaTeX Font Info:    Redeclaring math symbol \Theta on input line 381.
+LaTeX Font Info:    Redeclaring math symbol \Lambda on input line 382.
+LaTeX Font Info:    Redeclaring math symbol \Xi on input line 383.
+LaTeX Font Info:    Redeclaring math symbol \Pi on input line 384.
+LaTeX Font Info:    Redeclaring math symbol \Sigma on input line 385.
+LaTeX Font Info:    Redeclaring math symbol \Upsilon on input line 386.
+LaTeX Font Info:    Redeclaring math symbol \Phi on input line 387.
+LaTeX Font Info:    Redeclaring math symbol \Psi on input line 388.
+LaTeX Font Info:    Redeclaring math symbol \Omega on input line 389.
+LaTeX Info: Redefining \vec on input line 394.
+\tocchpnum=\dimen158
+\tocsecnum=\dimen159
+\tocsectotal=\dimen160
+\tocsubsecnum=\dimen161
+\tocsubsectotal=\dimen162
+\tocsubsubsecnum=\dimen163
+\tocsubsubsectotal=\dimen164
+\tocparanum=\dimen165
+\tocparatotal=\dimen166
+\tocsubparanum=\dimen167
+\@tempcntc=\count295
+\fnindent=\dimen168
+\c@@inst=\count296
+\c@@auth=\count297
+\c@auco=\count298
+\instindent=\dimen169
+\authrun=\box99
+\authorrunning=\toks17
+\tocauthor=\toks18
+\titrun=\box100
+\titlerunning=\toks19
+\toctitle=\toks20
+\c@theorem=\count299
+\c@case=\count300
+\c@conjecture=\count301
+\c@corollary=\count302
+\c@definition=\count303
+\c@example=\count304
+\c@exercise=\count305
+\c@lemma=\count306
+\c@note=\count307
+\c@problem=\count308
+\c@property=\count309
+\c@proposition=\count310
+\c@question=\count311
+\c@solution=\count312
+\c@remark=\count313
+\headlineindent=\dimen170
+\DescriptionTexts=\write3
+\openout3 = `DescriptionTexts.txt'.
+
+\c@Dfigchecks=\count314
+)
+(/usr/share/texmf-dist/tex/latex/base/fontenc.sty
+Package: fontenc 2025/07/18 v2.1d Standard LaTeX package
+)
+(/usr/share/texmf-dist/tex/latex/graphics/graphicx.sty
+Package: graphicx 2024/12/31 v1.2e Enhanced LaTeX Graphics (DPC,SPQR)
+
+(/usr/share/texmf-dist/tex/latex/graphics/keyval.sty
+Package: keyval 2022/05/29 v1.15 key=value parser (DPC)
+\KV@toks@=\toks21
+)
+(/usr/share/texmf-dist/tex/latex/graphics/graphics.sty
+Package: graphics 2024/08/06 v1.4g Standard LaTeX Graphics (DPC,SPQR)
+
+(/usr/share/texmf-dist/tex/latex/graphics/trig.sty
+Package: trig 2023/12/02 v1.11 sin cos tan (DPC)
+)
+(/usr/share/texmf-dist/tex/latex/graphics-cfg/graphics.cfg
+File: graphics.cfg 2016/06/04 v1.11 sample graphics configuration
+)
+Package graphics Info: Driver file: pdftex.def on input line 106.
+
+(/usr/share/texmf-dist/tex/latex/graphics-def/pdftex.def
+File: pdftex.def 2025/09/29 v1.2d Graphics/color driver for pdftex
+))
+\Gin@req@height=\dimen171
+\Gin@req@width=\dimen172
+)
+(/usr/share/texmf-dist/tex/latex/tools/array.sty
+Package: array 2025/09/25 v2.6n Tabular extension package (FMi)
+\col@sep=\dimen173
+\ar@mcellbox=\box101
+\extrarowheight=\dimen174
+\NC@list=\toks22
+\extratabsurround=\skip53
+\backup@length=\skip54
+\ar@cellbox=\box102
+)
+(/usr/share/texmf-dist/tex/latex/url/url.sty
+\Urlmuskip=\muskip17
+Package: url 2013/09/16  ver 3.4  Verb mode for urls, etc.
+)
+(/usr/share/texmf-dist/tex/latex/amsmath/amsmath.sty
+Package: amsmath 2025/07/09 v2.17z AMS math features
+\@mathmargin=\skip55
+
+For additional information on amsmath, use the `?' option.
+(/usr/share/texmf-dist/tex/latex/amsmath/amstext.sty
+Package: amstext 2024/11/17 v2.01 AMS text
+
+(/usr/share/texmf-dist/tex/latex/amsmath/amsgen.sty
+File: amsgen.sty 1999/11/30 v2.0 generic functions
+\@emptytoks=\toks23
+\ex@=\dimen175
+))
+(/usr/share/texmf-dist/tex/latex/amsmath/amsbsy.sty
+Package: amsbsy 1999/11/29 v1.2d Bold Symbols
+\pmbraise@=\dimen176
+)
+(/usr/share/texmf-dist/tex/latex/amsmath/amsopn.sty
+Package: amsopn 2022/04/08 v2.04 operator names
+)
+\inf@bad=\count315
+LaTeX Info: Redefining \frac on input line 233.
+\uproot@=\count316
+\leftroot@=\count317
+LaTeX Info: Redefining \overline on input line 398.
+LaTeX Info: Redefining \colon on input line 409.
+\classnum@=\count318
+\DOTSCASE@=\count319
+LaTeX Info: Redefining \ldots on input line 495.
+LaTeX Info: Redefining \dots on input line 498.
+LaTeX Info: Redefining \cdots on input line 619.
+\Mathstrutbox@=\box103
+\strutbox@=\box104
+LaTeX Info: Redefining \big on input line 721.
+LaTeX Info: Redefining \Big on input line 722.
+LaTeX Info: Redefining \bigg on input line 723.
+LaTeX Info: Redefining \Bigg on input line 724.
+\big@size=\dimen177
+LaTeX Font Info:    Redeclaring font encoding OML on input line 742.
+LaTeX Font Info:    Redeclaring font encoding OMS on input line 743.
+
+
+Package amsmath Warning: Unable to redefine math accent \vec.
+
+\macc@depth=\count320
+LaTeX Info: Redefining \bmod on input line 904.
+LaTeX Info: Redefining \pmod on input line 909.
+LaTeX Info: Redefining \smash on input line 939.
+LaTeX Info: Redefining \relbar on input line 969.
+LaTeX Info: Redefining \Relbar on input line 970.
+\c@MaxMatrixCols=\count321
+\dotsspace@=\muskip18
+\c@parentequation=\count322
+\dspbrk@lvl=\count323
+\tag@help=\toks24
+\row@=\count324
+\column@=\count325
+\maxfields@=\count326
+\andhelp@=\toks25
+\eqnshift@=\dimen178
+\alignsep@=\dimen179
+\tagshift@=\dimen180
+\tagwidth@=\dimen181
+\totwidth@=\dimen182
+\lineht@=\dimen183
+\@envbody=\toks26
+\multlinegap=\skip56
+\multlinetaggap=\skip57
+\mathdisplay@stack=\toks27
+LaTeX Info: Redefining \[ on input line 2950.
+LaTeX Info: Redefining \] on input line 2951.
+)
+LaTeX Font Info:    Trying to load font information for T1+ptm on input line 38
+.
+ (/home/mckb/texmf/tex/latex/psnfss/t1ptm.fd
+File: t1ptm.fd 2001/06/04 font definitions for T1/ptm.
+)
+(/usr/share/texmf-dist/tex/latex/l3backend/l3backend-pdftex.def
+File: l3backend-pdftex.def 2025-10-09 L3 backend support: PDF output (pdfTeX)
+\l__color_backend_stack_int=\count327
+) (./paper.aux)
+\openout1 = `paper.aux'.
+
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 38.
+LaTeX Font Info:    ... okay on input line 38.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 38.
+LaTeX Font Info:    ... okay on input line 38.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 38.
+LaTeX Font Info:    ... okay on input line 38.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 38.
+LaTeX Font Info:    ... okay on input line 38.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 38.
+LaTeX Font Info:    ... okay on input line 38.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 38.
+LaTeX Font Info:    ... okay on input line 38.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 38.
+LaTeX Font Info:    ... okay on input line 38.
+
+(/usr/share/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
+[Loading MPS to PDF converter (version 2006.09.02).]
+\scratchcounter=\count328
+\scratchdimen=\dimen184
+\scratchbox=\box105
+\nofMPsegments=\count329
+\nofMParguments=\count330
+\everyMPshowfont=\toks28
+\MPscratchCnt=\count331
+\MPscratchDim=\dimen185
+\MPnumerator=\count332
+\makeMPintoPDFobject=\count333
+\everyMPtoPDFconversion=\toks29
+) (/usr/share/texmf-dist/tex/latex/epstopdf-pkg/epstopdf-base.sty
+Package: epstopdf-base 2020-01-24 v2.11 Base part for package epstopdf
+
+(/home/mckb/texmf/tex/latex/oberdiek/infwarerr.sty
+Package: infwarerr 2019/12/03 v1.5 Providing info/warning/error messages (HO)
+)
+(/usr/share/texmf-dist/tex/latex/grfext/grfext.sty
+Package: grfext 2019/12/03 v1.3 Manage graphics extensions (HO)
+
+(/usr/share/texmf-dist/tex/generic/kvdefinekeys/kvdefinekeys.sty
+Package: kvdefinekeys 2019-12-19 v1.6 Define keys (HO)
+))
+(/usr/share/texmf-dist/tex/latex/kvoptions/kvoptions.sty
+Package: kvoptions 2022-06-15 v3.15 Key value format for package options (HO)
+
+(/usr/share/texmf-dist/tex/generic/ltxcmds/ltxcmds.sty
+Package: ltxcmds 2023-12-04 v1.26 LaTeX kernel commands for general use (HO)
+)
+(/usr/share/texmf-dist/tex/latex/kvsetkeys/kvsetkeys.sty
+Package: kvsetkeys 2022-10-05 v1.19 Key value parser (HO)
+))
+(/usr/share/texmf-dist/tex/generic/pdftexcmds/pdftexcmds.sty
+Package: pdftexcmds 2020-06-27 v0.33 Utility functions of pdfTeX for LuaTeX (HO
+)
+
+(/usr/share/texmf-dist/tex/generic/iftex/iftex.sty
+Package: iftex 2024/12/12 v1.0g TeX engine tests
+)
+Package pdftexcmds Info: \pdf@primitive is available.
+Package pdftexcmds Info: \pdf@ifprimitive is available.
+Package pdftexcmds Info: \pdfdraftmode found.
+)
+Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 4
+85.
+Package grfext Info: Graphics extension search list:
+(grfext)             [.pdf,.png,.jpg,.mps,.jpeg,.jbig2,.jb2,.PDF,.PNG,.JPG,.JPE
+G,.JBIG2,.JB2,.eps]
+(grfext)             \AppendGraphicsExtensions on input line 504.
+
+(/usr/share/texmf-dist/tex/latex/latexconfig/epstopdf-sys.cfg
+File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Liv
+e
+))
+LaTeX Font Info:    Trying to load font information for TS1+ptm on input line 9
+8.
+
+(/home/mckb/texmf/tex/latex/psnfss/ts1ptm.fd
+File: ts1ptm.fd 2001/06/04 font definitions for TS1/ptm.
+) [1
+
+{/home/mckb/.texlive/texmf-var/fonts/map/pdftex/updmap/pdftex.map}{/usr/share/t
+exmf-dist/fonts/enc/dvips/base/8r.enc}] [2] [3] [4] [5]
+Overfull \hbox (2.0886pt too wide) in paragraph at lines 333--341
+\T1/ptm/m/n/10 lel per-class heads, each a small MLP (\T1/cmtt/m/n/10 Linear\T1
+/ptm/m/n/10 (768$\OMS/cmsy/m/n/10 !$\T1/ptm/m/n/10 768) $\OMS/cmsy/m/n/10 !$ \T
+1/ptm/m/n/10 Tanh $\OMS/cmsy/m/n/10 !$ \T1/cmtt/m/n/10 Linear\T1/ptm/m/n/10 (76
+8$\OMS/cmsy/m/n/10 !$\T1/ptm/m/n/10 2))
+ []
+
+[6] [7]
+<figures/classifier_test_f1.png, id=37, 578.16pt x 325.215pt>
+File: figures/classifier_test_f1.png Graphic file (type png)
+<use figures/classifier_test_f1.png>
+Package pdftex.def Info: figures/classifier_test_f1.png  used on input line 510
+.
+(pdftex.def)             Requested size: 295.05711pt x 165.96663pt.
+<figures/classifier_boli_f1.png, id=39, 578.16pt x 325.215pt>
+File: figures/classifier_boli_f1.png Graphic file (type png)
+<use figures/classifier_boli_f1.png>
+Package pdftex.def Info: figures/classifier_boli_f1.png  used on input line 520
+.
+(pdftex.def)             Requested size: 295.05711pt x 165.96663pt.
+ [8] [9] [10 <./figures/classifier_test_f1.png>]
+Underfull \hbox (badness 1087) in paragraph at lines 660--668
+[]\T1/ptm/m/it/10 Corpus-specificity / spectrogram-invariance hy-poth-e-sis (ra
+nk-ing): \T1/ptm/m/n/10 the higher-
+ []
+
+[11 <./figures/classifier_boli_f1.png>]
+<figures/classifier_test_auc.png, id=54, 578.16pt x 325.215pt>
+File: figures/classifier_test_auc.png Graphic file (type png)
+<use figures/classifier_test_auc.png>
+Package pdftex.def Info: figures/classifier_test_auc.png  used on input line 73
+2.
+(pdftex.def)             Requested size: 295.05711pt x 165.96663pt.
+ [12] [13 <./figures/classifier_test_auc.png>]
+<figures/prolongation_confusion_matrix.png, id=63, 495.2904pt x 426.393pt>
+File: figures/prolongation_confusion_matrix.png Graphic file (type png)
+<use figures/prolongation_confusion_matrix.png>
+Package pdftex.def Info: figures/prolongation_confusion_matrix.png  used on inp
+ut line 800.
+(pdftex.def)             Requested size: 107.60744pt x 92.63562pt.
+<figures/block_confusion_matrix.png, id=64, 495.2904pt x 426.393pt>
+File: figures/block_confusion_matrix.png Graphic file (type png)
+<use figures/block_confusion_matrix.png>
+Package pdftex.def Info: figures/block_confusion_matrix.png  used on input line
+ 802.
+(pdftex.def)             Requested size: 107.60744pt x 92.63562pt.
+<figures/soundrep_confusion_matrix.png, id=65, 495.2904pt x 426.393pt>
+File: figures/soundrep_confusion_matrix.png Graphic file (type png)
+<use figures/soundrep_confusion_matrix.png>
+Package pdftex.def Info: figures/soundrep_confusion_matrix.png  used on input l
+ine 804.
+(pdftex.def)             Requested size: 107.60744pt x 92.63562pt.
+<figures/wordrep_confusion_matrix.png, id=66, 495.2904pt x 426.393pt>
+File: figures/wordrep_confusion_matrix.png Graphic file (type png)
+<use figures/wordrep_confusion_matrix.png>
+Package pdftex.def Info: figures/wordrep_confusion_matrix.png  used on input li
+ne 805.
+(pdftex.def)             Requested size: 107.60744pt x 92.63562pt.
+<figures/interjection_confusion_matrix.png, id=67, 495.2904pt x 426.393pt>
+File: figures/interjection_confusion_matrix.png Graphic file (type png)
+<use figures/interjection_confusion_matrix.png>
+Package pdftex.def Info: figures/interjection_confusion_matrix.png  used on inp
+ut line 807.
+(pdftex.def)             Requested size: 107.60744pt x 92.63562pt.
+ [14 <./figures/prolongation_confusion_matrix.png> <./figures/block_confusion_m
+atrix.png> <./figures/soundrep_confusion_matrix.png> <./figures/wordrep_confusi
+on_matrix.png> <./figures/interjection_confusion_matrix.png>] [15]
+Overfull \hbox (4.33318pt too wide) in paragraph at lines 893--897
+[]\T1/ptm/m/it/10 Untested hy-pothe-ses: \T1/ptm/m/n/10 The corpus-specificity,
+ spectrogram-invariance, and operating-
+ []
+
+
+Underfull \hbox (badness 1048) in paragraph at lines 893--897
+\T1/ptm/m/n/10 i-ments (speaker-ID and source-corpus clas-si-fiers) and thresh-
+old re-cal-i-bra-tion
+ []
+
+[16] (./paper.bbl [17]
+Underfull \hbox (badness 2269) in paragraph at lines 82--85
+[]\T1/ptm/m/n/9 Su²ac, P., Bay-erl, S.P., Dºapo, H.: Stut-ter-ing clas-si-fi-ca
+-tion and seg-men-ta-tion with
+ []
+
+) [18] (./paper.aux)
+ ***********
+LaTeX2e <2025-11-01>
+L3 programming layer <2026-01-19>
+ ***********
+ ) 
+Here is how much of TeX's memory you used:
+ 3651 strings out of 469515
+ 55250 string characters out of 5470807
+ 469961 words of memory out of 5000000
+ 32253 multiletter control sequences out of 15000+600000
+ 657920 words of font info for 71 fonts, out of 8000000 for 9000
+ 14 hyphenation exceptions out of 8191
+ 59i,10n,67p,613b,341s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ </home/mckb/.texlive/texmf-var/fonts/pk/ljfour/jknappen/ec/ectt1000.600pk></
+usr/share/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></usr/share/texm
+f-dist/fonts/type1/public/amsfonts/cm/cmmi9.pfb></usr/share/texmf-dist/fonts/ty
+pe1/public/amsfonts/cm/cmr10.pfb></usr/share/texmf-dist/fonts/type1/public/amsf
+onts/cm/cmr7.pfb></usr/share/texmf-dist/fonts/type1/public/amsfonts/cm/cmr9.pfb
+></usr/share/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/share/t
+exmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb></usr/share/texmf-dist/fonts
+/type1/public/amsfonts/cm/cmsy9.pfb></home/mckb/texmf/fonts/type1/urw/times/utm
+b8a.pfb></home/mckb/texmf/fonts/type1/urw/times/utmr8a.pfb></home/mckb/texmf/fo
+nts/type1/urw/times/utmri8a.pfb>
+Output written on paper.pdf (18 pages, 461669 bytes).
+PDF statistics:
+ 190 PDF objects out of 1000 (max. 8388607)
+ 80 compressed objects within 1 object stream
+ 0 named destinations out of 1000 (max. 500000)
+ 41 words of extra memory for PDF output out of 10000 (max. 10000000)
+

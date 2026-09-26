@@ -1,0 +1,115 @@
+\relax 
+\citation{yairi2009childhood}
+\citation{yairi2009childhood}
+\citation{yairi2009childhood}
+\citation{sheikh2022review}
+\@writefile{toc}{\contentsline {title}{A Comparative Study of Self-Supervised and Spectrogram-Based Models for Cross-Corpus Speech Dysfluency Detection}{1}{}\protected@file@percent }
+\@writefile{toc}{\authcount {1}}
+\@writefile{toc}{\contentsline {author}{Anonymous}{1}{}\protected@file@percent }
+\citation{baevski2020wav2vec}
+\citation{lea2021sep28k}
+\citation{sheikh2022review}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{2}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {2}Related Work}{2}{}\protected@file@percent }
+\newlabel{sec:related}{{2}{2}{}{section.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Traditional Approaches}{2}{}\protected@file@percent }
+\citation{kourkounakis2020detecting}
+\citation{kourkounakis2020detecting,sheikh2021stutternet}
+\citation{baevski2020wav2vec}
+\citation{baevski2020wav2vec}
+\citation{conneau2021xlsr}
+\citation{hsu2021hubert}
+\citation{babu2022xlsr}
+\citation{chen2022wavlm}
+\citation{bayerl2022multi}
+\citation{susac2026stuttmil}
+\citation{lea2021sep28k}
+\citation{bernsteinratner2018fluencybank}
+\citation{howell2009uclass}
+\citation{boli2025}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Deep Learning Methods}{3}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Self-Supervised Speech Representation Models}{3}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.4}Wav2Vec2-Based Stutter Detection}{3}{}\protected@file@percent }
+\citation{lea2021sep28k}
+\citation{howell2009uclass}
+\citation{boli2025}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.5}Stuttering and Dysfluency Datasets}{4}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.6}Cross-Corpus and Speaker-Independent Evaluation}{4}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3}System Architecture}{4}{}\protected@file@percent }
+\newlabel{sec:arch}{{3}{4}{}{section.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Data Pipeline}{4}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Source corpora and their integration into the merged corpus.}}{5}{}\protected@file@percent }
+\newlabel{tab:datasets}{{1}{5}{}{table.1}{}}
+\@writefile{toc}{\contentsline {subsubsection}{Annotation harmonization.}{5}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{The 3-second window.}{5}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Classification Pipeline}{6}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{Five Independent Binary Classifiers.}{6}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{Shared-Backbone Multitask Classifier.}{6}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{CNN Spectrogram Models.}{6}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Model Registry}{6}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Experimental configurations, aggregator types, and parameter counts.}}{7}{}\protected@file@percent }
+\newlabel{tab:arms}{{2}{7}{}{table.2}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4}Experimental Setup}{7}{}\protected@file@percent }
+\newlabel{sec:setup}{{4}{7}{}{section.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Model Configurations}{7}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Training Protocol}{7}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Evaluation Metrics}{8}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Evaluation Protocol}{8}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{In-distribution, clip-level held-out (Test).}{8}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{Speaker-independent, cross-corpus held-out (Boli).}{8}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5}Results and Discussion}{8}{}\protected@file@percent }
+\newlabel{sec:results}{{5}{8}{}{section.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}In-Distribution and Cross-Corpus Macro F1}{8}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Macro F1 across all seven configurations plus deterministic baselines. Test = clip-level in-distribution held-out; Boli = speaker-independent cross-corpus held-out. ``0.5'' uses a fixed 0.5 threshold; ``tuned'' uses per-class validation-F1-optimal thresholds (Section~\ref {sec:setup}). ``All-positive'' always predicts the positive class (recall $=1$ per class); ``Random@rate'' predicts positive with probability equal to the class base rate. Neither baseline requires tuning.}}{9}{}\protected@file@percent }
+\newlabel{tab:macro}{{3}{9}{}{table.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Speaker-Independent Evaluation (Project Boli)}{9}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Per-class F1 scores (multitask Wav2Vec2) on the clip-level in-distribution test set.}}{10}{}\protected@file@percent }
+\newlabel{fig:testf1}{{1}{10}{}{figure.1}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Per-class tuned F1 on the Project Boli speaker-independent held-out set (PR = prolongation, BL = block, SR = sound repetition, WR = word repetition, IN = interjection). Class support on Boli is small (PR: 16, BL: 35, SR: 34, WR: 14, IN: 9). ``All-positive'' labels every clip as positive for every class.}}{10}{}\protected@file@percent }
+\newlabel{tab:boli_perclass}{{4}{10}{}{table.4}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Per-class tuned F1 on the Project Boli speaker-independent cross-corpus set for the shared-backbone Wav2Vec2 model (arm02) and the CNN-LSTM model (arm06), each using its per-class validation-F1-optimal thresholds.}}{11}{}\protected@file@percent }
+\newlabel{fig:bolif1}{{2}{11}{}{figure.2}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Threshold-free macro metrics and predicted-positive rate (PPR) on the Project Boli set (53 clips). AUPRC of a random classifier equals the average base rate (macro $0.408$), so the ``lift'' column reports AUPRC relative to that prior. PPR is the mean over classes of the fraction of clips predicted positive at the validation-tuned thresholds.}}{12}{}\protected@file@percent }
+\newlabel{tab:boli_thresholdfree}{{5}{12}{}{table.5}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces Per-class metrics for the multitask Wav2Vec2 (arm02) on the clip-level test set at tuned thresholds. Macro is the unweighted mean over classes.}}{12}{}\protected@file@percent }
+\newlabel{tab:perclass}{{6}{12}{}{table.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Per-Class Analysis}{12}{}\protected@file@percent }
+\citation{guo2017calibration}
+\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces Per-class validation-tuned thresholds (F1-optimal over the swept grid) for the multitask Wav2Vec2 (arm02).}}{13}{}\protected@file@percent }
+\newlabel{tab:thresholds}{{7}{13}{}{table.7}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Per-class AUROC and AUPRC (multitask Wav2Vec2) on the clip-level test set.}}{13}{}\protected@file@percent }
+\newlabel{fig:testauc}{{3}{13}{}{figure.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces Confusion matrices (TP, FP, TN, FN) for the five binary Wav2Vec2 classifiers (arm01) on the clip-level test set at tuned thresholds. Each row sums to the 3,715 scored clips.}}{14}{}\protected@file@percent }
+\newlabel{tab:confmat}{{8}{14}{}{table.8}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Confusion matrices for the five binary Wav2Vec2 classifiers (arm01) on the clip-level in-distribution test set. Top row: prolongation, block, and sound repetition; bottom row: word repetition and interjection.}}{14}{}\protected@file@percent }
+\newlabel{fig:confmat}{{4}{14}{}{figure.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.4}Computational Considerations}{14}{}\protected@file@percent }
+\citation{bayerl2022multi}
+\citation{susac2026stuttmil}
+\@writefile{lot}{\contentsline {table}{\numberline {9}{\ignorespaces Trade-off between parameter count, computed fp32 size, and evaluation performance (tuned F1, Table~\ref {tab:macro}). On Boli, an all-positive baseline reaches macro F1 $0.550$, above every configuration shown here (Section~\ref {sec:results}).}}{15}{}\protected@file@percent }
+\newlabel{tab:tradeoff}{{9}{15}{}{table.9}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.5}Comparison with Published Results}{15}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.6}Limitations}{15}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.7}Practical Implications}{16}{}\protected@file@percent }
+\bibstyle{splncs04}
+\bibdata{references}
+\bibcite{babu2022xlsr}{1}
+\bibcite{baevski2020wav2vec}{2}
+\@writefile{toc}{\contentsline {section}{\numberline {6}Conclusion}{17}{}\protected@file@percent }
+\newlabel{sec:conclusion}{{6}{17}{}{section.6}{}}
+\@writefile{toc}{\contentsline {subsubsection}{Disclosure of Interests.}{17}{}\protected@file@percent }
+\bibcite{boli2025}{3}
+\bibcite{bayerl2022multi}{4}
+\bibcite{bernsteinratner2018fluencybank}{5}
+\bibcite{chen2022wavlm}{6}
+\bibcite{conneau2021xlsr}{7}
+\bibcite{guo2017calibration}{8}
+\bibcite{howell2009uclass}{9}
+\bibcite{hsu2021hubert}{10}
+\bibcite{kourkounakis2020detecting}{11}
+\bibcite{lea2021sep28k}{12}
+\bibcite{sheikh2021stutternet}{13}
+\bibcite{sheikh2022review}{14}
+\bibcite{susac2026stuttmil}{15}
+\bibcite{yairi2009childhood}{16}
+\gdef \@abspage@last{18}
