@@ -1,0 +1,90 @@
+\begin{thebibliography}{10}
+\providecommand{\url}[1]{\texttt{#1}}
+\providecommand{\urlprefix}{URL }
+\providecommand{\doi}[1]{https://doi.org/#1}
+
+\bibitem{babu2022xlsr}
+Babu, A., Wang, C., Tjandra, A., Lakhotia, K., Xu, Q., Goyal, N., Singh, K.,
+  von Platen, P., Saraf, Y., Pino, J., Baevski, A., Conneau, A., Auli, M.:
+  {XLS-R}: Self-supervised cross-lingual speech representation learning at
+  scale. In: Proceedings of Interspeech. pp. 2278--2282 (2022)
+
+\bibitem{baevski2020wav2vec}
+Baevski, A., Zhou, H., Mohamed, A., Auli, M.: {wav2vec 2.0}: A framework for
+  self-supervised learning of speech representations. Advances in Neural
+  Information Processing Systems  \textbf{33},  12449--12460 (2020)
+
+\bibitem{boli2025}
+Batra, A., Narang, M., Sharma, N.K., Das, P.K.: Boli: A dataset for
+  understanding stuttering experience and analyzing stuttered speech. arXiv
+  preprint arXiv:2501.15877  (2025)
+
+\bibitem{bayerl2022multi}
+Bayerl, S., Wagner, D., Lohr, D., N{\"o}th, E., B{\"o}cker, S.: Multi-task
+  learning for stuttering detection. In: Proceedings of the IEEE International
+  Conference on Acoustics, Speech and Signal Processing (ICASSP). pp.
+  6867--6871. IEEE (2022)
+
+\bibitem{bernsteinratner2018fluencybank}
+Bernstein~Ratner, N., MacWhinney, B.: {Fluency Bank}: A new resource for
+  fluency research and practice. Journal of Fluency Disorders  \textbf{56},
+  69--80 (2018)
+
+\bibitem{chen2022wavlm}
+Chen, S., Wu, C., Hu, H., Liu, X., et~al.: {WavLM}: Large-scale self-supervised
+  pre-training for full stack speech processing. IEEE Journal of Selected
+  Topics in Signal Processing (JSTSP)  \textbf{16}(6),  1505--1518 (2022)
+
+\bibitem{conneau2021xlsr}
+Conneau, A., Baevski, A., Collobert, R., Mohamed, A., Auli, M.: Unsupervised
+  cross-lingual representation learning for speech recognition. In: Proceedings
+  of Interspeech. pp. 2426--2430 (2021)
+
+\bibitem{guo2017calibration}
+Guo, C., Pleiss, G., Sun, Y., Weinberger, K.Q.: On calibration of modern neural
+  networks. In: Proceedings of the International Conference on Machine Learning
+  (ICML). pp. 1321--1330 (2017)
+
+\bibitem{howell2009uclass}
+Howell, P., Davis, S., Bartrip, J.: The university college london archive of
+  stuttered speech ({UCLASS}). Journal of Speech, Language, and Hearing
+  Research  \textbf{52}(2),  556--569 (2009)
+
+\bibitem{hsu2021hubert}
+Hsu, W.N., Bolte, B., Tsai, Y.H.H., Lakhotia, K., Salakhutdinov, R., Mohamed,
+  A.: {HuBERT}: Self-supervised speech representation learning by masked
+  prediction of hidden units. IEEE/ACM Transactions on Audio, Speech, and
+  Language Processing  \textbf{29},  3451--3460 (2021)
+
+\bibitem{kourkounakis2020detecting}
+Kourkounakis, T., Hajavi, A., Etemad, A.: Detecting multiple speech
+  disfluencies using a deep residual network with bidirectional long short-term
+  memory. In: Proceedings of the IEEE International Conference on Acoustics,
+  Speech and Signal Processing (ICASSP). pp. 6089--6093. IEEE (2020)
+
+\bibitem{lea2021sep28k}
+Lea, C., Mitra, V., Joshi, A., Kajarekar, S., Bigham, J.P.: {SEP-28K}: A
+  dataset for stuttering event detection from podcasts with people who stutter.
+  In: Proceedings of the IEEE International Conference on Acoustics, Speech and
+  Signal Processing (ICASSP). pp. 679--683 (2021)
+
+\bibitem{sheikh2021stutternet}
+Sheikh, S.A., Sahidullah, M., Hirsch, F., Ouni, S.: {StutterNet}: Stuttering
+  detection using time delay neural network. arXiv preprint arXiv:2105.05599
+  (2021)
+
+\bibitem{sheikh2022review}
+Sheikh, S.A., Sahidullah, M., Hirsch, F., Ouni, S.: Machine learning for
+  stuttering identification: Review, challenges and future directions.
+  Neurocomputing  \textbf{514},  385--402 (2022)
+
+\bibitem{susac2026stuttmil}
+Su{\v{s}}ac, P., Bayerl, S.P., D{\v{z}}apo, H.: Stuttering classification and
+  segmentation with attention-based multiple instance learning. In: Proceedings
+  of Interspeech 2026 (2026), arXiv:2606.20338
+
+\bibitem{yairi2009childhood}
+Yairi, E., Seery, C.H.: Childhood Stuttering: Its Nature, Epidemiology,
+  Etiology, and Treatment. Psychology Press (2009)
+
+\end{thebibliography}
