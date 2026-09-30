@@ -66,12 +66,14 @@ classification system and compares seven experimental configurations spanning
 two representation families: self-supervised waveform-based models built on
 Wav2Vec~2.0 (five independent binary classifiers and a shared-backbone
 multitask variant) and compact mel-spectrogram CNN models (pooled,
-single-head, LSTM-augmented, and transformer-augmented). All models are
+single-head, LSTM-based, and transformer-based). All models are
 evaluated on a merged corpus of 37,087 clips drawn from SEP-28K, UCLASS, and
 Project Boli (36,674 usable after removing empty audio) under two protocols:
 an in-distribution clip-level held-out evaluation and a speaker-independent
-cross-corpus evaluation on Project Boli (unseen speakers, languages, and
-recording conditions). Under the clip-level protocol, the five-binary
+cross-corpus evaluation on Project Boli (unseen speakers and recording
+conditions; the ingested Boli clips are English-only, so this is a
+cross-corpus but not a cross-lingual evaluation). Under the clip-level
+protocol, the five-binary
 Wav2Vec 2.0 configuration achieves the highest measured macro F1 (0.5704 at
 validation-tuned thresholds), while the shared-backbone multitask variant
 follows closely (0.5557) using ${\approx}4.9\times$ fewer parameters than five
@@ -228,8 +230,8 @@ reveals this when speakers overlap across splits. Reporting a speaker-independen
 protocol (no speaker in more than one split) and a cross-corpus protocol (an
 entirely separate corpus) is therefore important for realistic performance
 estimates. We follow this reasoning and evaluate all seven configurations both
-in-distribution (clip-level) and cross-corpus on Boli, whose speakers, languages,
-and recordings are fully disjoint from training.
+in-distribution (clip-level) and cross-corpus on Boli, whose speakers and
+recordings are fully disjoint from training.
 
 % ── III. SYSTEM ARCHITECTURE ─────────────────────────────────────────
 \section{System Architecture}
@@ -248,8 +250,13 @@ re-annotation), with TSV-format labels.
 \item \emph{UCLASS}~\cite{howell2009uclass}: 4,712 clips in SEP-28K format, sourced
 from stuttering therapy sessions.
 \item \emph{Project Boli}~\cite{boli2025}: 54 clips with word-level dysfluency
-annotations and timestamps, recorded by speakers of five Indian languages (Hindi,
-Marathi, Telugu, Bengali, and Assamese).
+annotations and timestamps, drawn from the corpus's English task recordings.
+Boli is a multilingual, multi-accent corpus whose full release carries
+word-level annotations in five Indian languages, but our ingestion path
+resolves the English task codes only, so the 54 clips used here are all
+English. The cross-corpus evaluation reported below is therefore a
+change of speakers, recording pipeline, and annotation convention---not a
+change of language.
 \end{itemize}
 
 Table~\ref{tab:datasets} summarizes their key properties. The three datasets are
@@ -257,16 +264,28 @@ merged into a unified corpus of 37,087 clips with per-clip interval CSVs recordi
 dysfluency events as \texttt{(start\_sec, end\_sec, type)} tuples. Clips with
 missing or header-only (empty) audio files are removed, leaving 36,674 usable
 clips. An 80/10/10 random split (seed 42) assigns 29,296 training clips, 3,662
-validation clips, and 3,716 test clips, where the validation and test splits
-contain clips from SEP-28K and UCLASS plus the Boli clips described below.
-To guarantee an honest cross-corpus
+validation clips, and 3,716 test clips. To guarantee an honest cross-corpus
 evaluation, all Project Boli clips are pinned to the test split and never appear
 in the training or validation splits. Audio is resampled to 16~kHz mono,
 DC-removed, peak-normalized, silence-trimmed, and padded/truncated to a maximum of
 3 seconds.
 
+We note one departure between this split and the one the reported models were
+actually trained and tuned on. The prepared 3,662-clip validation split is not
+consumed by the training or evaluation code; both read the training directory
+and derive their own held-out portion from it. Training and threshold selection
+therefore operate on a 20\% stratified subsample of the 29,296 training clips
+(5,857 clips, seed 42), stratified by the first positive dysfluency class. The
+prepared validation directory is unused in every number reported here. We
+describe the operating point as \emph{validation-tuned} throughout, but the
+reader should understand it as tuned on a held-out subsample of the training
+pool rather than on the nominal validation split.
+
 \begin{table}[t]
-\caption{Source corpora and their integration into the merged corpus.}
+\caption{Source corpora and their integration into the merged corpus. The Boli
+clips used here are the English portion of a corpus that also contains Hindi,
+Marathi, Telugu, Bengali, and Assamese material; the non-English portions were
+not ingested.}
 \label{tab:datasets}
 \centering
 \small
@@ -277,7 +296,7 @@ Dataset & Clips & Language(s) & Annotation & Role\\
 \hline
 SEP-28K & 32,321 & English & clip-level TSV, majority vote & train/val/test\\
 UCLASS & 4,712 & English & clip-level TSV & train/val/test\\
-Boli & 54 & 5 Indian languages & word-level intervals & test only\\
+Boli & 54 & English & word-level intervals & test only\\
 \hline
 \end{tabular}
 \end{table}
@@ -289,8 +308,8 @@ repetition, interjection). SEP-28K labels are adopted as-is: a clip is positive
 for a dysfluency type if at least two annotators marked it
 (\texttt{SEP28K\_MIN\_VOTES} = 2). UCLASS provides one label set per clip in the
 same five classes; because each clip is a 3-s window centered on the stutter
-event, each present label is materialized as a weak interval centered at 1.5~s
-into the clip. Project Boli provides word-level tokens annotated with the labels
+event, each present label is materialized as a weak interval of half-width 0.25~s
+centered at 1.5~s into the clip, i.e.\ spanning 1.25--1.75~s. Project Boli provides word-level tokens annotated with the labels
 \emph{B} (block), \emph{PR} (prolongation), \emph{SR} (sound repetition), \emph{WR}
 (word repetition), and \emph{IN} (interjection); these are mapped through a fixed
 code table to the same five classes, and a clip is labeled positive for a class if
@@ -317,17 +336,23 @@ boundary. We return to this in the discussion of per-class results.
 Each dysfluency type is handled by a separate binary classifier built on
 \texttt{facebook/wav2vec2-base} (94,569,090 parameters per classifier, including a
 ${\approx}0.2$M-parameter classification head on top of the 94.37M-parameter
-backbone). The architecture follows a sequence-classification formulation: raw
-audio $\rightarrow$ Wav2Vec2 encoder $\rightarrow$ attention-mask-weighted mean
-pooling over time $\rightarrow$ the default
-\texttt{Wav2Vec2ForSequenceClassification} projection head
-(\texttt{Linear}(768$\rightarrow$256) $\rightarrow$ dropout $\rightarrow$
-\texttt{Linear}(256$\rightarrow$2)) $\rightarrow$ softmax.
+backbone). The architecture follows the sequence-classification formulation of
+\texttt{Wav2Vec2For\-Sequence\-Classification}: raw audio $\rightarrow$ Wav2Vec2
+encoder $\rightarrow$ a learned projection of the frame-level hidden states
+(\texttt{Linear}(768$\rightarrow$256)) $\rightarrow$ mean pooling over time
+$\rightarrow$ a linear classifier (\texttt{Linear}(256$\rightarrow$2)) $\rightarrow$
+softmax. Two details of the reference implementation are worth stating
+explicitly because they are easy to assume otherwise: the projection precedes
+the pooling rather than following it, and the head contains no dropout layer. No
+attention mask is passed by our pipeline, so the temporal reduction is an
+unmasked mean over frames; because all clips are zero-padded or truncated to a
+fixed 3~s, every clip presents the same number of frames.
 Each classifier is trained independently with focal loss ($\gamma = 2.0$) to
 handle class imbalance, the AdamW optimizer (lr $= 3\times10^{-5}$, weight decay
 $= 0.01$), a linear warmup (500 steps), and mixed-precision training on CUDA.
 Backbone freezing for the first 3 epochs prevents catastrophic forgetting of the
-pretrained representations.
+pretrained representations; once the backbone is unfrozen it is trained with a
+reduced learning rate of $3\times10^{-6}$ (one tenth of the head rate).
 
 \subsubsection{Shared-Backbone Multitask Classifier.}
 A single Wav2Vec2 encoder feeds five parallel per-class heads, each a small MLP
@@ -337,7 +362,8 @@ encoder's hidden states. The total parameter count is 97.3M, only
 ${\approx}2.8M$ more than a single independent classifier, since the backbone is
 shared. Training uses the
 summed focal loss across all five heads, allowing the shared backbone to learn
-representations useful for all dysfluency types.
+representations useful for all dysfluency types. The same 3-epoch freezing
+schedule and post-unfreeze learning-rate reduction as arm01 are used.
 
 \subsubsection{CNN Spectrogram Models.}
 The compact CNN models (arms04--07) share a common backbone but differ in their
@@ -346,7 +372,9 @@ with a 2048-point FFT and a hop length of 512 on the 16~kHz audio. The encoder i
 four convolutional blocks with 32, 64, 128, and 128 channels respectively, each
 using a $3\times3$ kernel with padding 1, batch normalization, ReLU activation, a
 $(2,1)$ max-pool (all but the last block), and 2-D dropout with rate
-$0.4$. The resulting $128 \times 94$-dimensional feature map is passed to one of
+$0.4$. The encoder output is a $128 \times 16 \times 94$ tensor (channels $\times$
+mel bins $\times$ frames), since the $(2,1)$ pool halves the frequency axis three
+times and leaves the temporal axis at 94 frames; this is passed to one of
 three aggregators: (i) \emph{pool}---global mean pooling over time and frequency
 followed by a \texttt{Linear}(128$\rightarrow$128) projection; (ii) \emph{LSTM}---a
 single-layer unidirectional LSTM with a hidden size of 128 operating over the
@@ -359,14 +387,26 @@ five per-class two-layer MLP heads
 \texttt{Linear}(128$\rightarrow$2)) produce the logits for each dysfluency type.
 arm04 uses the pool aggregator (342,030 parameters), arm06 the LSTM aggregator
 (457,614), and arm07 the transformer aggregator (540,302). arm05 is the
-single-head variant of the pool model (274,950 parameters): the five-head MLP is
-replaced by a single binary head (\texttt{Linear}(128$\rightarrow$2)), and one
+single-head variant of the pool model (274,950 parameters): the head block is
+built once per configured class rather than five times, so each arm05 model
+carries the same two-layer head
+(\texttt{Linear}(128$\rightarrow$128) $\rightarrow$ Tanh $\rightarrow$
+\texttt{Linear}(128$\rightarrow$2)) but only a single instance of it, and one
 such model is trained per dysfluency type (five models in total), mirroring the
 five-binary Wav2Vec2 design at a much smaller scale.
 
+The CNN arms are trained from scratch, so no backbone freezing or discriminative
+pre-training applies. Their loss differs from the Wav2Vec2 arms: instead of
+focal loss, they use binary cross-entropy on the positive logit with a per-class
+positive weight set to the negative-to-positive class ratio of the training
+pool, and the per-head losses are summed over the configured classes, mirroring
+the multitask Wav2Vec2 objective. The two families therefore differ in training
+objective as well as in representation, which we note as a confound when
+comparing them.
+
 \subsection{Model Registry}
-All classifiers used in this study are loaded through a unified registry API
-(\texttt{Classifier} and \texttt{Model\-Registry}) that decouples model
+All classifiers are loaded through a unified registry module
+(\texttt{Classifier}) that decouples model
 loading from training. The registry reads checkpoint paths and per-class
 thresholds from a JSON configuration file, enabling model swapping without code
 changes. Audio preprocessing (resampling, cleaning, normalization, padding) is
@@ -404,29 +444,35 @@ arm07 & CNN + Transformer, multitask & multitask & 540,302\\
 
 \subsection{Training Protocol}
 All models are trained on a single NVIDIA GPU with the following shared settings:
-seed $= 42$, 20 epochs with early stopping (patience $= 5$), gradient-norm
-clipping at 1.0, mixed precision in the classification pipelines, batch size $= 8$
-(binary classifiers), 16 (multitask and CNN classifiers), maximum audio length
-$= 3$ seconds, and sample rate $= 16$~kHz. Data augmentation includes Gaussian
-noise injection ($\sigma = 0.005$), time stretching (0.9--1.1$\times$), pitch
-shifting ($\pm1.0$ semitones), circular temporal shifting ($\pm0.1$~s), and
-amplitude scaling (0.8--1.2$\times$). Preprocessed audio is cached to disk for fast
+seed $= 42$, 20 epochs with early stopping (patience $= 5$), mixed precision in
+the classification pipelines, batch size $= 8$ (binary classifiers), 16
+(multitask and CNN classifiers), maximum audio length $= 3$ seconds, and sample
+rate $= 16$~kHz. No gradient clipping is applied; an earlier configuration that
+clipped the total gradient norm was abandoned because, on a 94.6M-parameter
+model with a randomly initialized head, the clip dominated the head's early
+gradient signal. Preprocessed audio is cached to disk for fast
 re-runs. We train each configuration once, from seed 42; every reported value is
 therefore a single-run point estimate.
 
-Thresholds for binary classification are tuned on the validation split by
+Thresholds for binary classification are tuned on the held-out 20\% subsample of
+the training pool described in Section~\ref{sec:arch} (the operating point is
+referred to as \emph{validation-tuned} throughout) by
 sweeping a fixed grid of 17 decision thresholds
 (\texttt{THRESHOLD\_SWEEP} = \texttt{np.arange(0.1, 0.91, 0.05)}: 0.10, 0.15,
-\ldots, 0.90) and selecting, per class, the value that maximizes validation
-F1---not Youden's J, which is computed and stored separately. For example, the
-multitask Wav2Vec2 model (arm02) uses validation-optimal thresholds of 0.55
+\ldots, 0.90) and selecting, per class, the value that maximizes F1 on that
+subsample---not Youden's J, which is computed and stored separately. For example, the
+multitask Wav2Vec2 model (arm02) uses thresholds of 0.55
 (prolongation), 0.35 (block), 0.40 (sound repetition), 0.35 (word repetition),
 and 0.45 (interjection). No test-set or
 cross-corpus threshold fitting is performed. We note that F1-optimal operating
-points selected on the in-distribution validation split can still be degenerate
+points selected on this in-distribution subsample can still be degenerate
 under distribution shift: Section~\ref{sec:results} reports large differences in
 predicted-positive rate when these thresholds are applied to the external Boli
-set.
+set. Because the subsample is drawn from the training pool rather than from a
+disjoint validation split, it is also the same data used for early-stopping
+model selection, so the tuned thresholds are mildly optimistic; we treat this as
+a limitation rather than a source of hidden test-set leakage, since the test
+split is never used for any selection.
 
 \subsection{Evaluation Metrics}
 For classification, we report precision, recall, F1 score, AUROC, and AUPRC per
@@ -457,12 +503,14 @@ in mind when comparing our macro values with single-corpus results.
 \subsubsection{Speaker-independent, cross-corpus held-out (Boli).}
 53 clips from the Project Boli dataset (one of the 54 pinned clips was discarded
 during prediction processing) are therefore
-entirely unseen during training. They were recorded by different speakers, in
-different languages (Hindi, Marathi, Telugu, Bengali, Assamese), and under
-different recording conditions than SEP-28K and UCLASS. This provides a
-\emph{speaker-independent} estimate of generalization to new speakers, accents,
-languages, and recording conditions. Per-class clip counts on Boli are limited
-(PR: 16, B: 35, SR: 34, WR: 14, IN: 9), so Boli results are noisy but honest.
+entirely unseen during training. They were recorded by different speakers and
+under different recording conditions than SEP-28K and UCLASS, and they carry
+word-level rather than clip-level annotations. This provides a
+\emph{speaker-independent} estimate of generalization to new speakers and
+recording conditions; it is not a cross-lingual evaluation, since all 54 Boli
+clips are English (Section~\ref{sec:arch}). Per-class clip counts on Boli are
+limited (PR: 16, B: 35, SR: 34, WR: 14, IN: 9), so Boli results are noisy but
+honest.
 
 % ── V. RESULTS AND DISCUSSION ────────────────────────────────────────
 \section{Results and Discussion}
@@ -554,7 +602,7 @@ clearly capture in-distribution signal, while the CNN configurations exceed thes
 trivial baselines only marginally (tuned macro F1 $0.25$--$0.27$).
 
 \subsection{Speaker-Independent Evaluation (Project Boli)}
-On the 53-clip Boli set---whose speakers, languages, and recording conditions are
+On the 53-clip Boli set---whose speakers and recording conditions are
 fully unseen during training---a naive \emph{all-positive} classifier, which
 predicts every clip as positive for every dysfluency type, achieves a macro F1 of
 $0.550$, \emph{higher than every configuration we evaluated} (best: arm06,
@@ -660,7 +708,7 @@ immune to this effect.
 \item \emph{Corpus-specificity / spectrogram-invariance hypothesis (ranking):}
 the higher-capacity Wav2Vec2 representations may encode corpus-specific
 characteristics of SEP-28K/UCLASS---speakers, accents, recording
-conditions---that transfer only weakly to unseen speakers and languages, while
+conditions---that transfer only weakly to unseen speakers, while
 the coarse spectral patterns preserved by mel-spectrogram CNNs transfer more
 evenly; this would explain why the two families differ in ranking quality the
 observed direction without resolving which family is preferable for a given
@@ -880,7 +928,24 @@ cross-corpus set, which is small (53 clips).
 Statistics such as mean $\pm$ standard deviation or confidence intervals require
 multi-seed runs and are not available; accordingly we do not claim statistically
 significant differences, especially between arm01 and arm02, whose measured
-difference (0.014) is small.
+difference (0.015) is small.
+\item \emph{Loss differs across representation families:} the Wav2Vec2
+configurations are trained with focal loss ($\gamma = 2.0$), whereas the CNN
+configurations are trained with positive-weighted binary cross-entropy
+(Section~\ref{sec:arch}). Family-level comparisons therefore confound
+representation with training objective; isolating the two would require training
+each family under both objectives.
+\item \emph{Threshold tuning reuses the training pool:} the prepared 3,662-clip
+validation split is unused; early-stopping model selection and threshold
+tuning both operate on the same 20\% stratified subsample of the training
+clips (5,857 clips, seed 42). The tuned operating points are therefore
+mildly optimistic, and the two selection steps are not statistically
+independent. The test split is never used for any selection, so this is a
+limitation of the tuning protocol rather than test-set leakage.
+\item \emph{English-only cross-corpus set:} all 54 ingested Boli clips are
+English, so our cross-corpus protocol tests speaker, recording-pipeline, and
+annotation-convention shift but not language shift. Cross-lingual robustness
+remains untested and should not be inferred from these results.
 \item \emph{Small external corpus:} Boli provides 53 scored clips, with per-class
 supports of at most 35; the cross-corpus conclusions are therefore noisy.
 \item \emph{Operating-point dependence:} All tuned-F1 results depend on

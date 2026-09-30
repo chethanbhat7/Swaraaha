@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026/Arch Linux) (preloaded format=pdflatex 2026.9.17)  20 SEP 2026 18:44
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.3.1)  30 SEP 2026 15:39
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -9,9 +9,13 @@ L3 programming layer <2026-01-19>
 (./llncs.cls
 Document Class: llncs 2026/09/03 v2.25 
  LaTeX document class for Lecture Notes in Computer Science
-(/usr/share/texmf-dist/tex/latex/base/article.cls
+
+(/Users/hegdesrinivasm/.local/texlive/2026basic/texmf-dist/tex/latex/base/artic
+le.cls
 Document Class: article 2025/01/22 v1.4n Standard LaTeX document class
-(/usr/share/texmf-dist/tex/latex/base/size10.clo
+
+(/Users/hegdesrinivasm/.local/texlive/2026basic/texmf-dist/tex/latex/base/size1
+0.clo
 File: size10.clo 2025/01/22 v1.4n Standard LaTeX file (size option)
 )
 \c@part=\count275
@@ -26,7 +30,8 @@ File: size10.clo 2025/01/22 v1.4n Standard LaTeX file (size option)
 \belowcaptionskip=\skip50
 \bibindent=\dimen148
 )
-(/usr/share/texmf-dist/tex/latex/tools/multicol.sty
+(/Users/hegdesrinivasm/.local/texlive/2026basic/texmf-dist/tex/latex/tools/mult
+icol.sty
 Package: multicol 2025/10/21 v2.0b multicolumn formatting (FMi)
 \c@tracingmulticols=\count283
 \mult@box=\box53
@@ -97,7 +102,8 @@ Package: multicol 2025/10/21 v2.0b multicolumn formatting (FMi)
 \mc@col@check@num=\count292
 \g__mc_curr_col_int=\count293
 )
-(/usr/share/texmf-dist/tex/latex/oberdiek/aliascnt.sty
+(/Users/hegdesrinivasm/.local/texlive/2026basic/texmf-dist/tex/latex/oberdiek/a
+liascnt.sty
 Package: aliascnt 2018/09/07 v1.5 Alias counters (HO)
 )
 \c@chapter=\count294
@@ -156,34 +162,42 @@ LaTeX Info: Redefining \vec on input line 394.
 
 \c@Dfigchecks=\count314
 )
-(/usr/share/texmf-dist/tex/latex/base/fontenc.sty
+(/Users/hegdesrinivasm/.local/texlive/2026basic/texmf-dist/tex/latex/base/fonte
+nc.sty
 Package: fontenc 2025/07/18 v2.1d Standard LaTeX package
 )
-(/usr/share/texmf-dist/tex/latex/graphics/graphicx.sty
+(/Users/hegdesrinivasm/.local/texlive/2026basic/texmf-dist/tex/latex/graphics/g
+raphicx.sty
 Package: graphicx 2024/12/31 v1.2e Enhanced LaTeX Graphics (DPC,SPQR)
 
-(/usr/share/texmf-dist/tex/latex/graphics/keyval.sty
+(/Users/hegdesrinivasm/.local/texlive/2026basic/texmf-dist/tex/latex/graphics/k
+eyval.sty
 Package: keyval 2022/05/29 v1.15 key=value parser (DPC)
 \KV@toks@=\toks21
 )
-(/usr/share/texmf-dist/tex/latex/graphics/graphics.sty
+(/Users/hegdesrinivasm/.local/texlive/2026basic/texmf-dist/tex/latex/graphics/g
+raphics.sty
 Package: graphics 2024/08/06 v1.4g Standard LaTeX Graphics (DPC,SPQR)
 
-(/usr/share/texmf-dist/tex/latex/graphics/trig.sty
+(/Users/hegdesrinivasm/.local/texlive/2026basic/texmf-dist/tex/latex/graphics/t
+rig.sty
 Package: trig 2023/12/02 v1.11 sin cos tan (DPC)
 )
-(/usr/share/texmf-dist/tex/latex/graphics-cfg/graphics.cfg
+(/Users/hegdesrinivasm/.local/texlive/2026basic/texmf-dist/tex/latex/graphics-c
+fg/graphics.cfg
 File: graphics.cfg 2016/06/04 v1.11 sample graphics configuration
 )
 Package graphics Info: Driver file: pdftex.def on input line 106.
 
-(/usr/share/texmf-dist/tex/latex/graphics-def/pdftex.def
+(/Users/hegdesrinivasm/.local/texlive/2026basic/texmf-dist/tex/latex/graphics-d
+ef/pdftex.def
 File: pdftex.def 2025/09/29 v1.2d Graphics/color driver for pdftex
 ))
 \Gin@req@height=\dimen171
 \Gin@req@width=\dimen172
 )
-(/usr/share/texmf-dist/tex/latex/tools/array.sty
+(/Users/hegdesrinivasm/.local/texlive/2026basic/texmf-dist/tex/latex/tools/arra
+y.sty
 Package: array 2025/09/25 v2.6n Tabular extension package (FMi)
 \col@sep=\dimen173
 \ar@mcellbox=\box101
@@ -193,28 +207,35 @@ Package: array 2025/09/25 v2.6n Tabular extension package (FMi)
 \backup@length=\skip54
 \ar@cellbox=\box102
 )
-(/usr/share/texmf-dist/tex/latex/url/url.sty
+(/Users/hegdesrinivasm/.local/texlive/2026basic/texmf-dist/tex/latex/url/url.st
+y
 \Urlmuskip=\muskip17
 Package: url 2013/09/16  ver 3.4  Verb mode for urls, etc.
 )
-(/usr/share/texmf-dist/tex/latex/amsmath/amsmath.sty
+(/Users/hegdesrinivasm/.local/texlive/2026basic/texmf-dist/tex/latex/amsmath/am
+smath.sty
 Package: amsmath 2025/07/09 v2.17z AMS math features
 \@mathmargin=\skip55
 
 For additional information on amsmath, use the `?' option.
-(/usr/share/texmf-dist/tex/latex/amsmath/amstext.sty
+
+(/Users/hegdesrinivasm/.local/texlive/2026basic/texmf-dist/tex/latex/amsmath/am
+stext.sty
 Package: amstext 2024/11/17 v2.01 AMS text
 
-(/usr/share/texmf-dist/tex/latex/amsmath/amsgen.sty
+(/Users/hegdesrinivasm/.local/texlive/2026basic/texmf-dist/tex/latex/amsmath/am
+sgen.sty
 File: amsgen.sty 1999/11/30 v2.0 generic functions
 \@emptytoks=\toks23
 \ex@=\dimen175
 ))
-(/usr/share/texmf-dist/tex/latex/amsmath/amsbsy.sty
+(/Users/hegdesrinivasm/.local/texlive/2026basic/texmf-dist/tex/latex/amsmath/am
+sbsy.sty
 Package: amsbsy 1999/11/29 v1.2d Bold Symbols
 \pmbraise@=\dimen176
 )
-(/usr/share/texmf-dist/tex/latex/amsmath/amsopn.sty
+(/Users/hegdesrinivasm/.local/texlive/2026basic/texmf-dist/tex/latex/amsmath/am
+sopn.sty
 Package: amsopn 2022/04/08 v2.04 operator names
 )
 \inf@bad=\count315
@@ -271,10 +292,13 @@ LaTeX Info: Redefining \] on input line 2951.
 )
 LaTeX Font Info:    Trying to load font information for T1+ptm on input line 38
 .
- (/home/mckb/texmf/tex/latex/psnfss/t1ptm.fd
+
+(/Users/hegdesrinivasm/.local/texlive/2026basic/texmf-dist/tex/latex/psnfss/t1p
+tm.fd
 File: t1ptm.fd 2001/06/04 font definitions for T1/ptm.
 )
-(/usr/share/texmf-dist/tex/latex/l3backend/l3backend-pdftex.def
+(/Users/hegdesrinivasm/.local/texlive/2026basic/texmf-dist/tex/latex/l3backend/
+l3backend-pdftex.def
 File: l3backend-pdftex.def 2025-10-09 L3 backend support: PDF output (pdfTeX)
 \l__color_backend_stack_int=\count327
 ) (./paper.aux)
@@ -295,7 +319,8 @@ LaTeX Font Info:    ... okay on input line 38.
 LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 38.
 LaTeX Font Info:    ... okay on input line 38.
 
-(/usr/share/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
+(/Users/hegdesrinivasm/.local/texlive/2026basic/texmf-dist/tex/context/base/mki
+i/supp-pdf.mkii
 [Loading MPS to PDF converter (version 2006.09.02).]
 \scratchcounter=\count328
 \scratchdimen=\dimen184
@@ -308,32 +333,42 @@ LaTeX Font Info:    ... okay on input line 38.
 \MPnumerator=\count332
 \makeMPintoPDFobject=\count333
 \everyMPtoPDFconversion=\toks29
-) (/usr/share/texmf-dist/tex/latex/epstopdf-pkg/epstopdf-base.sty
+)
+(/Users/hegdesrinivasm/.local/texlive/2026basic/texmf-dist/tex/latex/epstopdf-p
+kg/epstopdf-base.sty
 Package: epstopdf-base 2020-01-24 v2.11 Base part for package epstopdf
 
-(/home/mckb/texmf/tex/latex/oberdiek/infwarerr.sty
+(/Users/hegdesrinivasm/.local/texlive/2026basic/texmf-dist/tex/generic/infwarer
+r/infwarerr.sty
 Package: infwarerr 2019/12/03 v1.5 Providing info/warning/error messages (HO)
 )
-(/usr/share/texmf-dist/tex/latex/grfext/grfext.sty
+(/Users/hegdesrinivasm/.local/texlive/2026basic/texmf-dist/tex/latex/grfext/grf
+ext.sty
 Package: grfext 2019/12/03 v1.3 Manage graphics extensions (HO)
 
-(/usr/share/texmf-dist/tex/generic/kvdefinekeys/kvdefinekeys.sty
+(/Users/hegdesrinivasm/.local/texlive/2026basic/texmf-dist/tex/generic/kvdefine
+keys/kvdefinekeys.sty
 Package: kvdefinekeys 2019-12-19 v1.6 Define keys (HO)
 ))
-(/usr/share/texmf-dist/tex/latex/kvoptions/kvoptions.sty
+(/Users/hegdesrinivasm/.local/texlive/2026basic/texmf-dist/tex/latex/kvoptions/
+kvoptions.sty
 Package: kvoptions 2022-06-15 v3.15 Key value format for package options (HO)
 
-(/usr/share/texmf-dist/tex/generic/ltxcmds/ltxcmds.sty
+(/Users/hegdesrinivasm/.local/texlive/2026basic/texmf-dist/tex/generic/ltxcmds/
+ltxcmds.sty
 Package: ltxcmds 2023-12-04 v1.26 LaTeX kernel commands for general use (HO)
 )
-(/usr/share/texmf-dist/tex/latex/kvsetkeys/kvsetkeys.sty
+(/Users/hegdesrinivasm/.local/texlive/2026basic/texmf-dist/tex/latex/kvsetkeys/
+kvsetkeys.sty
 Package: kvsetkeys 2022-10-05 v1.19 Key value parser (HO)
 ))
-(/usr/share/texmf-dist/tex/generic/pdftexcmds/pdftexcmds.sty
+(/Users/hegdesrinivasm/.local/texlive/2026basic/texmf-dist/tex/generic/pdftexcm
+ds/pdftexcmds.sty
 Package: pdftexcmds 2020-06-27 v0.33 Utility functions of pdfTeX for LuaTeX (HO
 )
 
-(/usr/share/texmf-dist/tex/generic/iftex/iftex.sty
+(/Users/hegdesrinivasm/.local/texlive/2026basic/texmf-dist/tex/generic/iftex/if
+tex.sty
 Package: iftex 2024/12/12 v1.0g TeX engine tests
 )
 Package pdftexcmds Info: \pdf@primitive is available.
@@ -347,131 +382,142 @@ Package grfext Info: Graphics extension search list:
 G,.JBIG2,.JB2,.eps]
 (grfext)             \AppendGraphicsExtensions on input line 504.
 
-(/usr/share/texmf-dist/tex/latex/latexconfig/epstopdf-sys.cfg
+(/Users/hegdesrinivasm/.local/texlive/2026basic/texmf-dist/tex/latex/latexconfi
+g/epstopdf-sys.cfg
 File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Liv
 e
 ))
-LaTeX Font Info:    Trying to load font information for TS1+ptm on input line 9
-8.
+LaTeX Font Info:    Trying to load font information for TS1+ptm on input line 1
+00.
 
-(/home/mckb/texmf/tex/latex/psnfss/ts1ptm.fd
+(/Users/hegdesrinivasm/.local/texlive/2026basic/texmf-dist/tex/latex/psnfss/ts1
+ptm.fd
 File: ts1ptm.fd 2001/06/04 font definitions for TS1/ptm.
 ) [1
 
-{/home/mckb/.texlive/texmf-var/fonts/map/pdftex/updmap/pdftex.map}{/usr/share/t
-exmf-dist/fonts/enc/dvips/base/8r.enc}] [2] [3] [4] [5]
-Overfull \hbox (2.0886pt too wide) in paragraph at lines 333--341
+{/Users/hegdesrinivasm/.local/texlive/2026basic/texmf-var/fonts/map/pdftex/updm
+ap/pdftex.map}{/Users/hegdesrinivasm/.local/texlive/2026basic/texmf-dist/fonts/
+enc/dvips/base/8r.enc}] [2] [3] [4]
+Underfull \vbox (badness 5274) has occurred while \output is active []
+
+ [5]
+Overfull \hbox (2.0886pt too wide) in paragraph at lines 358--367
 \T1/ptm/m/n/10 lel per-class heads, each a small MLP (\T1/cmtt/m/n/10 Linear\T1
 /ptm/m/n/10 (768$\OMS/cmsy/m/n/10 !$\T1/ptm/m/n/10 768) $\OMS/cmsy/m/n/10 !$ \T
 1/ptm/m/n/10 Tanh $\OMS/cmsy/m/n/10 !$ \T1/cmtt/m/n/10 Linear\T1/ptm/m/n/10 (76
 8$\OMS/cmsy/m/n/10 !$\T1/ptm/m/n/10 2))
  []
 
-[6] [7]
-<figures/classifier_test_f1.png, id=37, 578.16pt x 325.215pt>
+[6] [7] [8]
+<figures/classifier_test_f1.png, id=40, 578.16pt x 325.215pt>
 File: figures/classifier_test_f1.png Graphic file (type png)
 <use figures/classifier_test_f1.png>
-Package pdftex.def Info: figures/classifier_test_f1.png  used on input line 510
+Package pdftex.def Info: figures/classifier_test_f1.png  used on input line 558
 .
 (pdftex.def)             Requested size: 295.05711pt x 165.96663pt.
-<figures/classifier_boli_f1.png, id=39, 578.16pt x 325.215pt>
+<figures/classifier_boli_f1.png, id=42, 578.16pt x 325.215pt>
 File: figures/classifier_boli_f1.png Graphic file (type png)
 <use figures/classifier_boli_f1.png>
-Package pdftex.def Info: figures/classifier_boli_f1.png  used on input line 520
+Package pdftex.def Info: figures/classifier_boli_f1.png  used on input line 568
 .
 (pdftex.def)             Requested size: 295.05711pt x 165.96663pt.
- [8] [9] [10 <./figures/classifier_test_f1.png>]
-Underfull \hbox (badness 1087) in paragraph at lines 660--668
+ [9] [10] [11 <./figures/classifier_test_f1.png>]
+Underfull \hbox (badness 1087) in paragraph at lines 708--716
 []\T1/ptm/m/it/10 Corpus-specificity / spectrogram-invariance hy-poth-e-sis (ra
 nk-ing): \T1/ptm/m/n/10 the higher-
  []
 
-[11 <./figures/classifier_boli_f1.png>]
-<figures/classifier_test_auc.png, id=54, 578.16pt x 325.215pt>
+[12 <./figures/classifier_boli_f1.png>]
+<figures/classifier_test_auc.png, id=57, 578.16pt x 325.215pt>
 File: figures/classifier_test_auc.png Graphic file (type png)
 <use figures/classifier_test_auc.png>
-Package pdftex.def Info: figures/classifier_test_auc.png  used on input line 73
-2.
+Package pdftex.def Info: figures/classifier_test_auc.png  used on input line 78
+0.
 (pdftex.def)             Requested size: 295.05711pt x 165.96663pt.
- [12] [13 <./figures/classifier_test_auc.png>]
-<figures/prolongation_confusion_matrix.png, id=63, 495.2904pt x 426.393pt>
+ [13] [14 <./figures/classifier_test_auc.png>]
+<figures/prolongation_confusion_matrix.png, id=66, 495.2904pt x 426.393pt>
 File: figures/prolongation_confusion_matrix.png Graphic file (type png)
 <use figures/prolongation_confusion_matrix.png>
 Package pdftex.def Info: figures/prolongation_confusion_matrix.png  used on inp
-ut line 800.
+ut line 848.
 (pdftex.def)             Requested size: 107.60744pt x 92.63562pt.
-<figures/block_confusion_matrix.png, id=64, 495.2904pt x 426.393pt>
+<figures/block_confusion_matrix.png, id=67, 495.2904pt x 426.393pt>
 File: figures/block_confusion_matrix.png Graphic file (type png)
 <use figures/block_confusion_matrix.png>
 Package pdftex.def Info: figures/block_confusion_matrix.png  used on input line
- 802.
+ 850.
 (pdftex.def)             Requested size: 107.60744pt x 92.63562pt.
-<figures/soundrep_confusion_matrix.png, id=65, 495.2904pt x 426.393pt>
+<figures/soundrep_confusion_matrix.png, id=68, 495.2904pt x 426.393pt>
 File: figures/soundrep_confusion_matrix.png Graphic file (type png)
 <use figures/soundrep_confusion_matrix.png>
 Package pdftex.def Info: figures/soundrep_confusion_matrix.png  used on input l
-ine 804.
+ine 852.
 (pdftex.def)             Requested size: 107.60744pt x 92.63562pt.
-<figures/wordrep_confusion_matrix.png, id=66, 495.2904pt x 426.393pt>
+<figures/wordrep_confusion_matrix.png, id=69, 495.2904pt x 426.393pt>
 File: figures/wordrep_confusion_matrix.png Graphic file (type png)
 <use figures/wordrep_confusion_matrix.png>
 Package pdftex.def Info: figures/wordrep_confusion_matrix.png  used on input li
-ne 805.
+ne 853.
 (pdftex.def)             Requested size: 107.60744pt x 92.63562pt.
-<figures/interjection_confusion_matrix.png, id=67, 495.2904pt x 426.393pt>
+<figures/interjection_confusion_matrix.png, id=70, 495.2904pt x 426.393pt>
 File: figures/interjection_confusion_matrix.png Graphic file (type png)
 <use figures/interjection_confusion_matrix.png>
 Package pdftex.def Info: figures/interjection_confusion_matrix.png  used on inp
-ut line 807.
+ut line 855.
 (pdftex.def)             Requested size: 107.60744pt x 92.63562pt.
- [14 <./figures/prolongation_confusion_matrix.png> <./figures/block_confusion_m
+ [15 <./figures/prolongation_confusion_matrix.png> <./figures/block_confusion_m
 atrix.png> <./figures/soundrep_confusion_matrix.png> <./figures/wordrep_confusi
-on_matrix.png> <./figures/interjection_confusion_matrix.png>] [15]
-Overfull \hbox (4.33318pt too wide) in paragraph at lines 893--897
+on_matrix.png> <./figures/interjection_confusion_matrix.png>] [16]
+Overfull \hbox (4.33318pt too wide) in paragraph at lines 958--962
 []\T1/ptm/m/it/10 Untested hy-pothe-ses: \T1/ptm/m/n/10 The corpus-specificity,
  spectrogram-invariance, and operating-
  []
 
 
-Underfull \hbox (badness 1048) in paragraph at lines 893--897
+Underfull \hbox (badness 1048) in paragraph at lines 958--962
 \T1/ptm/m/n/10 i-ments (speaker-ID and source-corpus clas-si-fiers) and thresh-
 old re-cal-i-bra-tion
  []
 
-[16] (./paper.bbl [17]
+[17] [18] (./paper.bbl
 Underfull \hbox (badness 2269) in paragraph at lines 82--85
 []\T1/ptm/m/n/9 Su²ac, P., Bay-erl, S.P., Dºapo, H.: Stut-ter-ing clas-si-fi-ca
 -tion and seg-men-ta-tion with
  []
 
-) [18] (./paper.aux)
+[19]) [20] (./paper.aux)
  ***********
 LaTeX2e <2025-11-01>
 L3 programming layer <2026-01-19>
  ***********
  ) 
 Here is how much of TeX's memory you used:
- 3651 strings out of 469515
- 55250 string characters out of 5470807
- 469961 words of memory out of 5000000
- 32253 multiletter control sequences out of 15000+600000
+ 3652 strings out of 469006
+ 58385 string characters out of 5454814
+ 471247 words of memory out of 5000000
+ 32296 multiletter control sequences out of 15000+600000
  657920 words of font info for 71 fonts, out of 8000000 for 9000
- 14 hyphenation exceptions out of 8191
- 59i,10n,67p,613b,341s stack positions out of 10000i,1000n,20000p,200000b,200000s
- </home/mckb/.texlive/texmf-var/fonts/pk/ljfour/jknappen/ec/ectt1000.600pk></
-usr/share/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></usr/share/texm
-f-dist/fonts/type1/public/amsfonts/cm/cmmi9.pfb></usr/share/texmf-dist/fonts/ty
-pe1/public/amsfonts/cm/cmr10.pfb></usr/share/texmf-dist/fonts/type1/public/amsf
-onts/cm/cmr7.pfb></usr/share/texmf-dist/fonts/type1/public/amsfonts/cm/cmr9.pfb
-></usr/share/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/share/t
-exmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb></usr/share/texmf-dist/fonts
-/type1/public/amsfonts/cm/cmsy9.pfb></home/mckb/texmf/fonts/type1/urw/times/utm
-b8a.pfb></home/mckb/texmf/fonts/type1/urw/times/utmr8a.pfb></home/mckb/texmf/fo
-nts/type1/urw/times/utmri8a.pfb>
-Output written on paper.pdf (18 pages, 461669 bytes).
+ 319 hyphenation exceptions out of 8191
+ 59i,10n,67p,614b,343s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ </Users/hegdesrinivasm/Library/texlive/2026basic/texmf-var/fonts/pk/ljfour/j
+knappen/ec/ectt1000.600pk></Users/hegdesrinivasm/.local/texlive/2026basic/texmf
+-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></Users/hegdesrinivasm/.local/t
+exlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi9.pfb></Users/he
+gdesrinivasm/.local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm
+/cmr10.pfb></Users/hegdesrinivasm/.local/texlive/2026basic/texmf-dist/fonts/typ
+e1/public/amsfonts/cm/cmr7.pfb></Users/hegdesrinivasm/.local/texlive/2026basic/
+texmf-dist/fonts/type1/public/amsfonts/cm/cmr9.pfb></Users/hegdesrinivasm/.loca
+l/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></User
+s/hegdesrinivasm/.local/texlive/2026basic/texmf-dist/fonts/type1/public/amsfont
+s/cm/cmsy7.pfb></Users/hegdesrinivasm/.local/texlive/2026basic/texmf-dist/fonts
+/type1/public/amsfonts/cm/cmsy9.pfb></Users/hegdesrinivasm/.local/texlive/2026b
+asic/texmf-dist/fonts/type1/urw/times/utmb8a.pfb></Users/hegdesrinivasm/.local/
+texlive/2026basic/texmf-dist/fonts/type1/urw/times/utmr8a.pfb></Users/hegdesrin
+ivasm/.local/texlive/2026basic/texmf-dist/fonts/type1/urw/times/utmri8a.pfb>
+Output written on paper.pdf (20 pages, 465506 bytes).
 PDF statistics:
- 190 PDF objects out of 1000 (max. 8388607)
- 80 compressed objects within 1 object stream
+ 197 PDF objects out of 1000 (max. 8388607)
+ 85 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
  41 words of extra memory for PDF output out of 10000 (max. 10000000)
 
