@@ -123,7 +123,8 @@ class Transcriber:
             audio: File path, raw bytes, or 1-D numpy array.
             language: "english", "kannada", or "hindi".
             localizations: List of (start_sec, end_sec, confidence) stutter regions.
-            passage_text: Optional reference passage for the fallback aligner.
+            passage_text: Accepted for API compatibility; unused (no text is
+                fabricated when Whisper produces no output).
             sample_rate: Sample rate of the input (numpy arrays).
 
         Returns:
@@ -158,15 +159,27 @@ class Transcriber:
         try:
             transcript_text, word_list = self._transcribe_with_whisper(audio_array, language)
         except Exception as exc:
-            logger.warning("Whisper transcription failed (%s); falling back", exc)
+            logger.warning(
+                "Whisper word-timestamp transcription failed (%s); "
+                "retrying without word timestamps", exc,
+            )
             transcript_text = None
             word_list = []
+            try:
+                transcript_text, _ = self._transcribe_with_whisper(
+                    audio_array, language, word_timestamps=False
+                )
+            except Exception as exc2:
+                logger.warning("Whisper transcription failed (%s); returning empty", exc2)
+                transcript_text = None
 
-        if not transcript_text and not word_list:
-            transcript_text, word_list = self._fallback_transcribe(
-                audio_array, duration_sec, passage_text
-            )
-            logger.info("Used fallback transcription (whisper returned no output)")
+        # Some fine-tuned models (e.g. whisper-kannada-tiny) cannot emit
+        # word-level timestamps. Align the transcribed text instead so the
+        # transcript stays in the correct language.
+        if transcript_text and not word_list:
+            word_list = self._align_text_to_audio(audio_array, transcript_text, duration_sec)
+            if word_list:
+                logger.info("Aligned %d words via SimpleForcedAligner", len(word_list))
 
         _flag_repetitions(word_list)
 
@@ -190,7 +203,7 @@ class Transcriber:
                     time.perf_counter() - _t_start, language, len(word_list), duration_sec)
 
         return {
-            "text": transcript_text,
+            "text": transcript_text or "",
             "words": word_list,
             "chunks": [
                 {"text": w["word"], "start": w["start_sec"], "end": w["end_sec"],
@@ -202,14 +215,23 @@ class Transcriber:
         }
 
     def _transcribe_with_whisper(
-        self, audio: np.ndarray, language: str
+        self, audio: np.ndarray, language: str, word_timestamps: bool = True
     ) -> Tuple[str, List[Dict[str, Any]]]:
-        """Run Whisper word-level transcription and de-duplicate hallucinated repeats."""
+        """Run Whisper transcription and de-duplicate hallucinated repeats.
+
+        When ``word_timestamps`` is False — e.g. fine-tuned models whose
+        generation config lacks ``alignment_heads`` — timestamps are not
+        requested and an empty word list is returned; callers align the
+        returned text separately.
+        """
         pipe = get_pipeline(language)
-        result = pipe(audio, return_timestamps="word")
+        result = pipe(
+            audio,
+            return_timestamps="word" if word_timestamps else False,
+        )
 
         text = result.get("text", "").strip()
-        chunks = result.get("chunks", [])
+        chunks = result.get("chunks", []) if word_timestamps else []
 
         word_list: List[Dict[str, Any]] = []
         prev_chunk_clean = None
@@ -243,30 +265,25 @@ class Transcriber:
 
         return " ".join(deduped_words), word_list
 
-    def _fallback_transcribe(
-        self, audio: np.ndarray, duration_sec: float, reference_text: Optional[str] = None
-    ) -> Tuple[str, List[Dict[str, Any]]]:
-        """Generate fallback transcription based on audio structure or passage text."""
-        default_passage = (
-            reference_text
-            or "When the sunlight strikes raindrops in the air, they act as a prism and form a rainbow."
-        )
-
+    @staticmethod
+    def _align_text_to_audio(
+        audio: np.ndarray, text: str, duration_sec: float
+    ) -> List[Dict[str, Any]]:
+        """Distribute word timestamps across the audio using the text length."""
+        if not text or not text.strip():
+            return []
         words_stamps = SimpleForcedAligner.align(
-            audio, default_passage, sr=SAMPLE_RATE, max_length_seconds=max(10.0, duration_sec)
+            audio, text, sr=SAMPLE_RATE,
+            max_length_seconds=max(10.0, duration_sec),
         )
-
-        word_list = []
-        full_words = []
-        for ws in words_stamps:
-            full_words.append(ws.word)
-            word_list.append({
+        return [
+            {
                 "word": ws.word,
                 "start_sec": ws.start_sec,
                 "end_sec": ws.end_sec,
                 "confidence": ws.confidence,
                 "stutter": False,
                 "stutter_type": None,
-            })
-
-        return " ".join(full_words), word_list
+            }
+            for ws in words_stamps
+        ]

@@ -1,5 +1,4 @@
 import numpy as np
-import pytest
 
 from model.transcription import Transcriber, _is_repeated_fragment
 
@@ -52,6 +51,57 @@ def test_transcribe_empty_audio():
     tr = Transcriber()
     result = tr.transcribe(np.array([], dtype=np.float32))
     assert result == {"text": "", "words": [], "duration_sec": 0.0}
+
+
+def _word_timestamp_unsupported_pipe(monkeypatch, text):
+    """Fake pipeline whose word-timestamp mode fails (no alignment_heads)."""
+    from model import transcription as mod
+
+    class _Pipe:
+        def __call__(self, audio, return_timestamps="word"):
+            if return_timestamps:
+                raise ValueError(
+                    "Model generation config has no alignment_heads, "
+                    "token-level timestamps not available"
+                )
+            return {"text": text, "chunks": []}
+
+    monkeypatch.setattr(mod, "get_pipeline", lambda language="english": _Pipe())
+
+
+def test_transcribe_retries_without_timestamps_and_aligns(monkeypatch):
+    """When word timestamps are unavailable the correct-language text must be
+    kept and aligned, with no fabricated fallback text."""
+    kannada = "ನಮಸ್ಕಾರ ಗೆಳೆಯರೇ"
+    _word_timestamp_unsupported_pipe(monkeypatch, kannada)
+
+    tr = Transcriber()
+    result = tr.transcribe(np.zeros(16000 * 2, dtype=np.float32), language="kannada")
+
+    assert result["text"] == kannada
+    assert [w["word"] for w in result["words"]] == kannada.split()
+    assert result["chunks"] == [
+        {"text": "ನಮಸ್ಕಾರ", "start": result["words"][0]["start_sec"],
+         "end": result["words"][0]["end_sec"], "language": "kannada"},
+        {"text": "ಗೆಳೆಯರೇ", "start": result["words"][1]["start_sec"],
+         "end": result["words"][1]["end_sec"], "language": "kannada"},
+    ]
+
+
+def test_transcribe_returns_empty_when_whisper_produces_nothing(monkeypatch):
+    """With no fallback, empty Whisper output must yield empty text, never
+    fabricated English."""
+    from model import transcription as mod
+
+    class _Pipe:
+        def __call__(self, audio, return_timestamps="word"):
+            return {"text": "", "chunks": []}
+
+    monkeypatch.setattr(mod, "get_pipeline", lambda language="kannada": _Pipe())
+
+    result = Transcriber().transcribe(np.zeros(16000, dtype=np.float32), language="kannada")
+    assert result["text"] == ""
+    assert result["words"] == []
 
 
 def test_transcribe_accepts_audio_bytes(monkeypatch):
