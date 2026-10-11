@@ -448,33 +448,29 @@ function WaveformView({ file, regions, transcription }: WaveformViewProps) {
                 Live Transcription
               </span>
             </div>
-            <p className="text-sm font-semibold text-text-primary italic min-h-[1.5rem] leading-relaxed">
-              {(() => {
-                if (!transcription.chunks || transcription.chunks.length === 0) {
-                  return "No transcription available.";
-                }
-
-                if (currentTime === 0) {
-                  return "Click Play to read transcription...";
-                }
-
-                // 1. Find exact active chunk
-                const activeChunk = transcription.chunks.find(
-                  chunk => currentTime >= chunk.start && currentTime <= chunk.end
-                );
-                if (activeChunk) {
-                  return `"${activeChunk.text}"`;
-                }
-
-                // 2. Persist the last spoken chunk during silences/gaps
-                const pastChunks = transcription.chunks.filter(chunk => currentTime >= chunk.start);
-                if (pastChunks.length > 0) {
-                  return `"${pastChunks[pastChunks.length - 1].text}"`;
-                }
-
-                // 3. Priming display (show first segment if playhead has started but not reached it yet)
-                return `"${transcription.chunks[0].text}"`;
-              })()}
+            <p className="text-sm font-semibold italic min-h-[1.5rem] leading-relaxed">
+              {!transcription.chunks || transcription.chunks.length === 0 ? (
+                <span className="text-text-primary">No transcription available.</span>
+              ) : (
+                transcription.chunks.map((chunk, i) => {
+                  const isActive = currentTime >= chunk.start && currentTime <= chunk.end;
+                  const isPast = currentTime > chunk.end;
+                  return (
+                    <span
+                      key={`${chunk.start}-${i}`}
+                      className={`transition-colors duration-150 ${
+                        isActive
+                          ? 'text-accent-teal'
+                          : isPast
+                            ? 'text-text-primary'
+                            : 'text-text-secondary/60'
+                      }`}
+                    >
+                      {chunk.text}{' '}
+                    </span>
+                  );
+                })
+              )}
             </p>
           </div>
         </div>
@@ -922,7 +918,7 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
             <div className="border-b border-border-color pb-3 flex items-center justify-between">
               <h3 className="text-sm font-bold">Dysfluency Localization</h3>
               <span className="text-[10px] font-semibold text-text-secondary">
-                {(combined ? combined.total_stutters : regions.length)} Events
+                {regions.length} Events
               </span>
             </div>
             
