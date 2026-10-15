@@ -1,154 +1,154 @@
 {
   "frame_level": {
-    "precision": 0.0,
-    "recall": 1.0,
-    "f1": 0.0,
-    "specificity": 0.0
+    "precision": 0.5268,
+    "recall": 0.8731,
+    "f1": 0.6571,
+    "specificity": 0.3298
   },
   "event_level": {
-    "detection_accuracy": 0.0,
-    "mean_iou": 0.0,
-    "num_true_events": 0,
-    "num_pred_events": 1,
-    "num_false_alarms": 1,
-    "false_alarm_rate_per_min": 234.375
+    "detection_accuracy": 0.1548,
+    "mean_iou": 0.6785,
+    "num_true_events": 995,
+    "num_pred_events": 4466,
+    "num_false_alarms": 4312,
+    "false_alarm_rate_per_min": 23.4012
   },
   "model_type": "cnn",
-  "model_path": "model/weights/localizer_best.pt",
-  "num_samples": 2,
+  "model_path": "/home/kshku/Git/Swaraaha/model/weights/cnnloc_e30_b8_lr0.001_n128_h512_ml3_d0.4_pa7_wd0.0001_vr0.2_s42_train_naug_best.pt",
+  "num_samples": 3715,
   "threshold": 0.5,
   "threshold_sweep": {
     "best_f1": {
-      "threshold": 0.6500000000000001,
-      "f1": 1.0
+      "threshold": 0.3500000000000001,
+      "f1": 0.6679
     },
     "best_youden": {
-      "threshold": 0.6500000000000001,
-      "youden": 1.0
+      "threshold": 0.5500000000000002,
+      "youden": 0.2037
     },
     "sweep": [
       {
         "threshold": 0.1,
-        "frame_f1": 0.0,
-        "precision": 0.0,
-        "recall": 1.0,
-        "specificity": 0.0
+        "frame_f1": 0.6556,
+        "precision": 0.4892,
+        "recall": 0.9935,
+        "specificity": 0.1135
       },
       {
         "threshold": 0.15000000000000002,
-        "frame_f1": 0.0,
-        "precision": 0.0,
-        "recall": 1.0,
-        "specificity": 0.0
+        "frame_f1": 0.6614,
+        "precision": 0.4973,
+        "recall": 0.9872,
+        "specificity": 0.1471
       },
       {
         "threshold": 0.20000000000000004,
-        "frame_f1": 0.0,
-        "precision": 0.0,
-        "recall": 1.0,
-        "specificity": 0.0
+        "frame_f1": 0.6649,
+        "precision": 0.5025,
+        "recall": 0.9821,
+        "specificity": 0.1692
       },
       {
         "threshold": 0.25000000000000006,
-        "frame_f1": 0.0,
-        "precision": 0.0,
-        "recall": 1.0,
-        "specificity": 0.0
+        "frame_f1": 0.6667,
+        "precision": 0.5057,
+        "recall": 0.9781,
+        "specificity": 0.1829
       },
       {
         "threshold": 0.30000000000000004,
-        "frame_f1": 0.0,
-        "precision": 0.0,
-        "recall": 1.0,
-        "specificity": 0.0
+        "frame_f1": 0.6676,
+        "precision": 0.5077,
+        "recall": 0.9743,
+        "specificity": 0.1928
       },
       {
         "threshold": 0.3500000000000001,
-        "frame_f1": 0.0,
-        "precision": 0.0,
-        "recall": 1.0,
-        "specificity": 0.0
+        "frame_f1": 0.6679,
+        "precision": 0.5099,
+        "recall": 0.9676,
+        "specificity": 0.2054
       },
       {
         "threshold": 0.40000000000000013,
-        "frame_f1": 0.0,
-        "precision": 0.0,
-        "recall": 1.0,
-        "specificity": 0.0
+        "frame_f1": 0.6672,
+        "precision": 0.5141,
+        "recall": 0.9502,
+        "specificity": 0.2324
       },
       {
         "threshold": 0.45000000000000007,
-        "frame_f1": 0.0,
-        "precision": 0.0,
-        "recall": 1.0,
-        "specificity": 0.0
+        "frame_f1": 0.6644,
+        "precision": 0.5198,
+        "recall": 0.9206,
+        "specificity": 0.2733
       },
       {
         "threshold": 0.5000000000000001,
-        "frame_f1": 0.0,
-        "precision": 0.0,
-        "recall": 1.0,
-        "specificity": 0.0
+        "frame_f1": 0.6571,
+        "precision": 0.5268,
+        "recall": 0.8731,
+        "specificity": 0.3298
       },
       {
         "threshold": 0.5500000000000002,
-        "frame_f1": 0.0,
-        "precision": 0.0,
-        "recall": 1.0,
-        "specificity": 0.0
+        "frame_f1": 0.6356,
+        "precision": 0.5363,
+        "recall": 0.7802,
+        "specificity": 0.4235
       },
       {
         "threshold": 0.6000000000000002,
-        "frame_f1": 0.0,
-        "precision": 0.0,
-        "recall": 1.0,
-        "specificity": 0.0
+        "frame_f1": 0.0451,
+        "precision": 0.6543,
+        "recall": 0.0234,
+        "specificity": 0.9895
       },
       {
         "threshold": 0.6500000000000001,
-        "frame_f1": 1.0,
-        "precision": 1.0,
-        "recall": 1.0,
-        "specificity": 1.0
+        "frame_f1": 0.0009,
+        "precision": 0.6017,
+        "recall": 0.0004,
+        "specificity": 0.9997
       },
       {
         "threshold": 0.7000000000000002,
-        "frame_f1": 1.0,
+        "frame_f1": 0.0,
         "precision": 1.0,
-        "recall": 1.0,
+        "recall": 0.0,
         "specificity": 1.0
       },
       {
         "threshold": 0.7500000000000002,
-        "frame_f1": 1.0,
+        "frame_f1": 0.0,
         "precision": 1.0,
-        "recall": 1.0,
+        "recall": 0.0,
         "specificity": 1.0
       },
       {
         "threshold": 0.8000000000000002,
-        "frame_f1": 1.0,
+        "frame_f1": 0.0,
         "precision": 1.0,
-        "recall": 1.0,
+        "recall": 0.0,
         "specificity": 1.0
       },
       {
         "threshold": 0.8500000000000002,
-        "frame_f1": 1.0,
+        "frame_f1": 0.0,
         "precision": 1.0,
-        "recall": 1.0,
+        "recall": 0.0,
         "specificity": 1.0
       },
       {
         "threshold": 0.9000000000000002,
-        "frame_f1": 1.0,
+        "frame_f1": 0.0,
         "precision": 1.0,
-        "recall": 1.0,
+        "recall": 0.0,
         "specificity": 1.0
       }
     ]
   },
   "model": {
-    "filename": "localizer_best.pt"
+    "filename": "cnnloc_e30_b8_lr0.001_n128_h512_ml3_d0.4_pa7_wd0.0001_vr0.2_s42_train_naug_best.pt"
   }
 }

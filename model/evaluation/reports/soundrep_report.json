@@ -1,45 +1,45 @@
 {
   "per_class": {
     "not_present": {
-      "precision": 0.7752,
-      "recall": 0.9993,
-      "f1": 0.8731,
-      "support": 4538
+      "precision": 0.9374,
+      "recall": 0.9537,
+      "f1": 0.9455,
+      "support": 3221
     },
     "present": {
-      "precision": 0.5,
-      "recall": 0.0023,
-      "f1": 0.0045,
-      "support": 1318
+      "precision": 0.6598,
+      "recall": 0.585,
+      "f1": 0.6202,
+      "support": 494
     }
   },
   "macro": {
-    "precision": 0.6376,
-    "recall": 0.5008,
-    "f1": 0.4388
+    "precision": 0.7986,
+    "recall": 0.7694,
+    "f1": 0.7828
   },
-  "accuracy": 0.7749,
+  "accuracy": 0.9047,
   "binary": {
-    "auroc": 0.4458,
-    "auprc": 0.2015,
+    "auroc": 0.8819,
+    "auprc": 0.6589,
     "threshold": 0.5,
-    "precision": 0.5,
-    "recall": 0.0023,
-    "f1": 0.0045,
-    "specificity": 0.9993,
-    "accuracy": 0.7749,
-    "support": 1318,
-    "tn": 4535,
-    "fp": 3,
-    "fn": 1315,
-    "tp": 3
+    "precision": 0.6598,
+    "recall": 0.585,
+    "f1": 0.6202,
+    "specificity": 0.9537,
+    "accuracy": 0.9047,
+    "support": 494,
+    "tn": 3072,
+    "fp": 149,
+    "fn": 205,
+    "tp": 289
   },
   "class_name": "soundrep",
-  "model_path": "/home/kshku/Git/Swaraaha/model/weights/soundrep_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml10_s42_train_w2v2base_best.pt",
-  "num_samples": 5856,
+  "model_path": "/home/kshku/Git/Swaraaha/model/weights/soundrep_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml3_s42_train_w2v2base_naug_best.pt",
+  "num_samples": 3715,
   "threshold": 0.5,
   "model": {
-    "fingerprint": "soundrep_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml10_s42_train_w2v2base",
+    "fingerprint": "soundrep_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml3_s42_train_w2v2base_naug",
     "class_name": "soundrep",
     "epochs": 20,
     "batch_size": 8,
@@ -50,23 +50,24 @@
     "gradient_accumulation_steps": 1,
     "warmup_steps": 500,
     "weight_decay": 0.01,
-    "max_length_seconds": 10.0,
+    "max_length_seconds": 3.0,
     "seed": 42,
     "data_short": "train",
-    "model_name": "facebook/wav2vec2-base"
+    "model_name": "facebook/wav2vec2-base",
+    "augmentation": false
   },
   "threshold_sweep": {
     "best_f1": {
-      "threshold": 0.05,
-      "f1": 0.3674379704488431
+      "threshold": 0.5000000000000001,
+      "f1": 0.6201716738197425
     },
     "best_specificity": {
-      "threshold": 0.55,
+      "threshold": 0.9000000000000002,
       "specificity": 1.0
     },
     "best_youden": {
-      "threshold": 0.5,
-      "youden": 0.0016150918462272124
+      "threshold": 0.25000000000000006,
+      "youden": 0.6319685967719433
     }
   }
 }

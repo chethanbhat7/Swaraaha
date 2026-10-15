@@ -35,14 +35,14 @@ Swaraaha/
 
 > **Localizer status.** The first localizer checkpoints were trained on a broken
 > label pipeline (SEP-28K timestamps are episode-relative *sample indices*, not
-> clip-relative seconds — see `debugging.md`), so they predict no events and
-> currently return empty `regions`. The label pipeline has been fixed and the
-> localizers are being retrained. Until new checkpoints land, `model.init()` /
-> `model.analyze()` may return empty results or `{"error": ...}`.
-> Do **not** hand-roll your own localization/preprocessing pipeline or work
-> around the registry API to "make it work" in the meantime — use the API and
-> handle empty/error results. When the retrained checkpoints land they will be
-> wired through `registry.json` automatically; no consumer changes needed.
+> clip-relative seconds — see `debugging.md`), so they predicted no events and
+> returned empty `regions`. The label pipeline has been fixed and both localizers
+> have been retrained on the corrected labels — the registered checkpoints now
+> produce real regions (wav2vec2 localizer: frame F1 0.773, event detection
+> accuracy 0.614 on the test set; see *Model Metrics* below). If a localizer is
+> missing from `registry.json`, `model.init()` / `model.analyze()` still return
+> `{"error": ...}` — always consume results through the registry API rather than
+> hand-rolling a workaround, so new checkpoints are picked up automatically.
 
 Both `frontend/` + `backend/` (web) and `app/` (desktop) load from the shared `model/` directory via the model registry.
 
@@ -208,71 +208,134 @@ See [`model/evaluation/README.md`](model/evaluation/README.md) for full document
 
 ## Model Metrics
 
-Evaluation on the held-out test set (3,715 clips). The currently deployed models are:
+Evaluation on the held-out test set (3,715 clips). This split is in-distribution (SEP-28K + UCLASS, which share speakers with train) **plus** 53 Project Boli clips. The Boli subset is the only **out-of-distribution (OOD)** hold-out — unseen corpus *and* unseen speakers; Boli never appears in train or val — and is reported separately at the end of this section. The currently deployed models (per `registry.json` defaults) are:
 
-- **Classification:** Wav2Vec2-base multitask classifier (5 shared heads, frozen 3 epochs)
-- **Localization:** Wav2Vec2-base temporal localizer
+- **Classification:** five independent Wav2Vec2-base binary classifiers (`single` mode — one per dysfluency type, focal loss, naug checkpoint)
+- **Localization:** Wav2Vec2-base temporal localizer (naug checkpoint, threshold 0.3)
 
-### Classification — Wav2Vec2 Multitask (ml3)
+A shared-head **multitask** classifier is also registered as an alternative; its numbers are listed below for comparison.
+
+### Classification — Five Independent Wav2Vec2 Binary Classifiers (single, default)
 
 **Per-class metrics at default threshold (0.5):**
 
 | Class | Accuracy | Precision | Recall | F1 | AUROC | Support |
 |---|---|---|---|---|---|---|
-| prolongation | 0.902 | 0.560 | 0.417 | 0.478 | 0.844 | 400 |
-| block | 0.861 | 0.638 | 0.150 | 0.243 | 0.735 | 553 |
-| soundrep | 0.882 | 0.564 | 0.490 | 0.524 | 0.860 | 494 |
-| wordrep | 0.912 | 0.581 | 0.383 | 0.461 | 0.830 | 366 |
-| interjection | 0.896 | 0.836 | 0.665 | 0.741 | 0.931 | 834 |
-| **Macro avg** | **0.891** | **0.636** | **0.421** | **0.490** | **0.860** | — |
+| prolongation | 0.896 | 0.516 | 0.562 | 0.538 | 0.871 | 400 |
+| block | 0.831 | 0.425 | 0.380 | 0.401 | 0.761 | 553 |
+| soundrep | 0.905 | 0.660 | 0.585 | 0.620 | 0.882 | 494 |
+| wordrep | 0.915 | 0.595 | 0.445 | 0.509 | 0.866 | 366 |
+| interjection | 0.908 | 0.793 | 0.801 | 0.797 | 0.945 | 834 |
+| **Macro avg** | **0.891** | **0.598** | **0.555** | **0.573** | **0.865** | — |
 
-**Per-class metrics at tuned thresholds (val-optimized):**
+**Per-class metrics at registry (val-optimized) thresholds:**
 
 | Class | Threshold | Accuracy | Precision | Recall | F1 |
 |---|---|---|---|---|---|
-| prolongation | 0.45 | 0.870 | 0.467 | 0.500 | 0.483 |
-| block | 0.40 | 0.822 | 0.387 | 0.380 | 0.383 |
-| soundrep | 0.40 | 0.824 | 0.460 | 0.658 | 0.541 |
-| wordrep | 0.40 | 0.835 | 0.413 | 0.492 | 0.449 |
-| interjection | 0.40 | 0.844 | 0.731 | 0.772 | 0.751 |
-| **Macro avg** | — | **0.839** | **0.492** | **0.560** | **0.522** |
+| prolongation | 0.55 | 0.906 | 0.576 | 0.472 | 0.519 |
+| block | 0.50 | 0.831 | 0.425 | 0.380 | 0.401 |
+| soundrep | 0.45 | 0.898 | 0.621 | 0.609 | 0.615 |
+| wordrep | 0.40 | 0.910 | 0.546 | 0.497 | 0.521 |
+| interjection | 0.50 | 0.908 | 0.793 | 0.801 | 0.797 |
+| **Macro avg** | — | **0.891** | **0.592** | **0.552** | **0.571** |
 
 **Best F1 per class (from threshold sweep):**
 
 | Class | Best Threshold | Best F1 | Best Youden's J |
 |---|---|---|---|
-| prolongation | 0.45 | 0.483 | 0.514 (t=0.35) |
-| block | 0.35 | 0.401 | 0.345 (t=0.35) |
-| soundrep | 0.45 | 0.551 | 0.571 (t=0.30) |
-| wordrep | 0.45 | 0.475 | 0.503 (t=0.30) |
-| interjection | 0.45 | 0.755 | 0.712 (t=0.30) |
+| prolongation | 0.50 | 0.538 | 0.574 (t=0.30) |
+| block | 0.40 | 0.423 | 0.370 (t=0.30) |
+| soundrep | 0.50 | 0.620 | 0.632 (t=0.25) |
+| wordrep | 0.35 | 0.522 | 0.573 (t=0.10) |
+| interjection | 0.50 | 0.797 | 0.762 (t=0.25) |
 
-### Localization — Wav2Vec2 Localizer (ml3)
+### Classification — Wav2Vec2 Multitask (alternative, registered)
+
+**Per-class metrics at default threshold (0.5):**
+
+| Class | Accuracy | Precision | Recall | F1 | AUROC | Support |
+|---|---|---|---|---|---|---|
+| prolongation | 0.903 | 0.566 | 0.440 | 0.495 | 0.845 | 400 |
+| block | 0.863 | 0.586 | 0.264 | 0.364 | 0.767 | 553 |
+| soundrep | 0.906 | 0.705 | 0.502 | 0.586 | 0.877 | 494 |
+| wordrep | 0.917 | 0.623 | 0.402 | 0.488 | 0.855 | 366 |
+| interjection | 0.904 | 0.810 | 0.747 | 0.777 | 0.935 | 834 |
+| **Macro avg** | **0.899** | **0.658** | **0.471** | **0.542** | **0.856** | — |
+
+**Per-class metrics at tuned thresholds (val-optimized, from `multitask_thresholds.json`):**
+
+| Class | Threshold | Accuracy | Precision | Recall | F1 |
+|---|---|---|---|---|---|
+| prolongation | 0.55 | 0.906 | 0.603 | 0.367 | 0.457 |
+| block | 0.35 | 0.772 | 0.342 | 0.570 | 0.427 |
+| soundrep | 0.40 | 0.899 | 0.617 | 0.630 | 0.623 |
+| wordrep | 0.35 | 0.891 | 0.455 | 0.552 | 0.499 |
+| interjection | 0.45 | 0.897 | 0.770 | 0.775 | 0.772 |
+| **Macro avg** | — | **0.873** | **0.557** | **0.579** | **0.556** |
+
+### Localization — Wav2Vec2 Localizer (default)
+
+At the registry's deployed threshold (0.3):
 
 | Metric | Value |
 |---|---|
-| Frame-level Precision | 0.676 |
-| Frame-level Recall | 0.065 |
-| Frame-level F1 | 0.119 |
-| Frame-level Specificity | 0.973 |
-| Event-level Detection Accuracy | 0.210 |
-| Event-level Mean IoU | 0.751 |
+| Frame-level Precision | 0.794 |
+| Frame-level Recall | 0.754 |
+| Frame-level F1 | 0.773 |
+| Frame-level Specificity | 0.833 |
+| Event-level Detection Accuracy | 0.614 |
+| Event-level Mean IoU | 0.780 |
 | True Events | 995 |
-| Predicted Events | 2,852 |
-| False Alarms | 2,643 |
-| False Alarm Rate | 8.95/min |
+| Predicted Events | 2,032 |
+| False Alarms | 1,421 |
+| False Alarm Rate | 4.81/min |
 
-> **Note:** The localizer has high precision (0.676) but low recall (0.065) — it
-> is conservative and misses many dysfluency events. When it does predict, the
-> regions are reasonably accurate (mean IoU = 0.751). The combiner compensates
-> by fusing localizer regions with the classifier's per-frame saliency.
+> **Note:** The retrained wav2vec2 localizer now balances precision and recall
+> reasonably well (frame F1 0.773) and detects a majority of true events
+> (event accuracy 0.614) — a large improvement over the pre-retrain checkpoint,
+> which produced essentially empty results. The CNN localizer is registered as a
+> lighter alternative but is much weaker at the event level (detection accuracy
+> 0.032 at threshold 0.3) due to over-prediction, so wav2vec2 remains the
+> default.
+
+### Out-of-Distribution (OOD) Test — Project Boli
+
+The 53-clip Project Boli subset is the only true **out-of-distribution (OOD)** hold-out: its corpus and speakers appear in neither train nor val, and no threshold was ever tuned on it. It is a generalization sanity check, not a headline claim (small sample; 9–35 positives per class).
+
+**Five single classifiers (default), at registry thresholds:**
+
+| Class | Precision | Recall | F1 | Support |
+|---|---|---|---|---|
+| prolongation | 1.000 | 0.250 | 0.400 | 16 |
+| block | 1.000 | 0.143 | 0.250 | 35 |
+| soundrep | 1.000 | 0.147 | 0.256 | 34 |
+| wordrep | 0.500 | 0.071 | 0.125 | 14 |
+| interjection | 0.600 | 0.333 | 0.429 | 9 |
+| **Macro avg** | **0.820** | **0.189** | **0.292** | — |
+
+**Wav2Vec2 multitask (alternative), at tuned thresholds:**
+
+| Class | Precision | Recall | F1 | Support |
+|---|---|---|---|---|
+| prolongation | 0.500 | 0.125 | 0.200 | 16 |
+| block | 0.750 | 0.086 | 0.154 | 35 |
+| soundrep | 1.000 | 0.147 | 0.256 | 34 |
+| wordrep | 0.250 | 0.143 | 0.182 | 14 |
+| interjection | 0.500 | 0.333 | 0.400 | 9 |
+| **Macro avg** | **0.600** | **0.167** | **0.238** | — |
+
+**Wav2Vec2 localizer (default), threshold 0.3:** frame F1 0.417 (P 0.327 / R 0.576 / Spec 0.834); event detection accuracy 0.125, mean IoU 0.638, 18 false alarms (4.27/min).
+
+> All models degrade sharply OOD (single macro F1 0.292 vs 0.573 in-distribution): recall collapses far more than precision, so the models conservatively under-detect dysfluencies from unseen speakers/corpus. This is the honest cross-corpus generalization number.
 
 ### Key Observations
 
-- **Interjection** is the strongest class (F1=0.741, AUROC=0.931) — the model detects filler words well.
-- **Block** is the weakest class (F1=0.243) — silent pauses are hard to distinguish from normal speech pauses.
-- **Accuracy is high across all classes (0.82–0.91)** due to class imbalance — most clips do not contain a given dysfluency type, so predicting "not present" is correct most of the time. F1 is the more meaningful metric for detection performance.
-- **Localization** needs improvement — the low recall means many dysfluencies are missed at the temporal level.
+- **Interjection** remains the strongest class across both architectures (F1 0.797 single / 0.777 multitask, AUROC >0.93) — filler words are the easiest to detect.
+- **Block** remains the weakest class (F1 0.401 single / 0.364 multitask) — silent pauses are hard to distinguish from normal speech pauses.
+- The **single-classifier** setup (five independent models) slightly edges out the **multitask** model on macro F1 (0.573 vs 0.542 at threshold 0.5), likely because each binary head can specialise without sharing capacity.
+- **Accuracy is high across all classes (0.83–0.92)** due to class imbalance — most clips do not contain a given dysfluency type, so predicting "not present" is correct most of the time. F1 is the more meaningful metric for detection performance.
+- **Localization** now works meaningfully (frame F1 0.773, event accuracy 0.614) after the label-pipeline fix and retraining — the combiner still helps by fusing localizer regions with the classifier's per-frame saliency, but the localizer is no longer a near-empty signal.
+- **Out-of-distribution generalization is weak** (single macro F1 0.292, multitask 0.238 on the unseen-speaker/corpus Boli set) — the in-distribution test numbers are optimistic because SEP-28K/UCLASS test clips share speakers with train. The single-classifier setup again edges out multitask (0.292 vs 0.238).
 
 ## Running the Web App
 

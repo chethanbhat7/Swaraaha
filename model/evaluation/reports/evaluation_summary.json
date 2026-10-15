@@ -1,7 +1,7 @@
 {
   "metadata": {
-    "timestamp": "2026-08-10T16:52:56.087263+00:00",
-    "data_dir": "data/train",
+    "timestamp": "2026-10-15T14:39:43.855317+00:00",
+    "data_dir": "data/test",
     "data_available": true,
     "threshold": 0.5,
     "flag_threshold": 0.7
@@ -9,16 +9,16 @@
   "classification": {
     "per_class": {
       "prolongation": {
-        "precision": 0.4864,
-        "recall": 0.5841,
-        "f1": 0.5308,
-        "support": 1563,
-        "auroc": 0.7486,
-        "auprc": 0.5429,
-        "specificity": 0.7754,
+        "precision": 0.5161,
+        "recall": 0.5625,
+        "f1": 0.5383,
+        "support": 400,
+        "auroc": 0.8706,
+        "auprc": 0.5126,
+        "specificity": 0.9363,
         "threshold": 0.5,
         "model": {
-          "fingerprint": "prolongation_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml10_s42_train_w2v2base",
+          "fingerprint": "prolongation_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml3_s42_train_w2v2base_naug",
           "class_name": "prolongation",
           "epochs": 20,
           "batch_size": 8,
@@ -29,23 +29,24 @@
           "gradient_accumulation_steps": 1,
           "warmup_steps": 500,
           "weight_decay": 0.01,
-          "max_length_seconds": 10.0,
+          "max_length_seconds": 3.0,
           "seed": 42,
           "data_short": "train",
-          "model_name": "facebook/wav2vec2-base"
+          "model_name": "facebook/wav2vec2-base",
+          "augmentation": false
         }
       },
       "block": {
-        "precision": 0.4064,
-        "recall": 0.9439,
-        "f1": 0.5682,
-        "support": 2371,
-        "auroc": 0.499,
-        "auprc": 0.3991,
-        "specificity": 0.062,
+        "precision": 0.4251,
+        "recall": 0.3797,
+        "f1": 0.4011,
+        "support": 553,
+        "auroc": 0.7608,
+        "auprc": 0.4398,
+        "specificity": 0.9102,
         "threshold": 0.5,
         "model": {
-          "fingerprint": "block_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml10_s42_train_w2v2base",
+          "fingerprint": "block_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml3_s42_train_w2v2base_naug",
           "class_name": "block",
           "epochs": 20,
           "batch_size": 8,
@@ -56,23 +57,24 @@
           "gradient_accumulation_steps": 1,
           "warmup_steps": 500,
           "weight_decay": 0.01,
-          "max_length_seconds": 10.0,
+          "max_length_seconds": 3.0,
           "seed": 42,
           "data_short": "train",
-          "model_name": "facebook/wav2vec2-base"
+          "model_name": "facebook/wav2vec2-base",
+          "augmentation": false
         }
       },
       "soundrep": {
-        "precision": 0.5,
-        "recall": 0.0023,
-        "f1": 0.0045,
-        "support": 1318,
-        "auroc": 0.4458,
-        "auprc": 0.2015,
-        "specificity": 0.9993,
+        "precision": 0.6598,
+        "recall": 0.585,
+        "f1": 0.6202,
+        "support": 494,
+        "auroc": 0.8819,
+        "auprc": 0.6589,
+        "specificity": 0.9537,
         "threshold": 0.5,
         "model": {
-          "fingerprint": "soundrep_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml10_s42_train_w2v2base",
+          "fingerprint": "soundrep_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml3_s42_train_w2v2base_naug",
           "class_name": "soundrep",
           "epochs": 20,
           "batch_size": 8,
@@ -83,23 +85,24 @@
           "gradient_accumulation_steps": 1,
           "warmup_steps": 500,
           "weight_decay": 0.01,
-          "max_length_seconds": 10.0,
+          "max_length_seconds": 3.0,
           "seed": 42,
           "data_short": "train",
-          "model_name": "facebook/wav2vec2-base"
+          "model_name": "facebook/wav2vec2-base",
+          "augmentation": false
         }
       },
       "wordrep": {
-        "precision": 0.1364,
-        "recall": 0.0032,
-        "f1": 0.0063,
-        "support": 937,
-        "auroc": 0.5352,
-        "auprc": 0.1742,
-        "specificity": 0.9961,
+        "precision": 0.5949,
+        "recall": 0.4454,
+        "f1": 0.5094,
+        "support": 366,
+        "auroc": 0.8656,
+        "auprc": 0.5552,
+        "specificity": 0.9669,
         "threshold": 0.5,
         "model": {
-          "fingerprint": "wordrep_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml10_s42_train_w2v2base",
+          "fingerprint": "wordrep_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml3_s42_train_w2v2base_naug",
           "class_name": "wordrep",
           "epochs": 20,
           "batch_size": 8,
@@ -110,23 +113,24 @@
           "gradient_accumulation_steps": 1,
           "warmup_steps": 500,
           "weight_decay": 0.01,
-          "max_length_seconds": 10.0,
+          "max_length_seconds": 3.0,
           "seed": 42,
           "data_short": "train",
-          "model_name": "facebook/wav2vec2-base"
+          "model_name": "facebook/wav2vec2-base",
+          "augmentation": false
         }
       },
       "interjection": {
-        "precision": 0.8249,
-        "recall": 0.5842,
-        "f1": 0.684,
-        "support": 1919,
-        "auroc": 0.8451,
-        "auprc": 0.7986,
-        "specificity": 0.9395,
+        "precision": 0.7933,
+        "recall": 0.801,
+        "f1": 0.7971,
+        "support": 834,
+        "auroc": 0.9448,
+        "auprc": 0.8583,
+        "specificity": 0.9396,
         "threshold": 0.5,
         "model": {
-          "fingerprint": "interjection_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml10_s42_train_w2v2base",
+          "fingerprint": "interjection_e20_b8_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml3_s42_train_w2v2base_naug",
           "class_name": "interjection",
           "epochs": 20,
           "batch_size": 8,
@@ -137,35 +141,32 @@
           "gradient_accumulation_steps": 1,
           "warmup_steps": 500,
           "weight_decay": 0.01,
-          "max_length_seconds": 10.0,
+          "max_length_seconds": 3.0,
           "seed": 42,
           "data_short": "train",
-          "model_name": "facebook/wav2vec2-base"
+          "model_name": "facebook/wav2vec2-base",
+          "augmentation": false
         }
       }
     },
-    "macro_f1": 0.3588,
+    "macro_f1": 0.5732,
     "flag_threshold": 0.7,
     "flagged": [
       {
-        "class": "soundrep",
-        "f1": 0.0045
+        "class": "block",
+        "f1": 0.4011
       },
       {
         "class": "wordrep",
-        "f1": 0.0063
+        "f1": 0.5094
       },
       {
         "class": "prolongation",
-        "f1": 0.5308
+        "f1": 0.5383
       },
       {
-        "class": "block",
-        "f1": 0.5682
-      },
-      {
-        "class": "interjection",
-        "f1": 0.684
+        "class": "soundrep",
+        "f1": 0.6202
       }
     ],
     "status": {
@@ -178,41 +179,41 @@
   },
   "localization": {
     "per_model": {
-      "cnn": {
-        "frame_level": {
-          "precision": 0.0,
-          "recall": 0.0,
-          "f1": 0.0,
-          "specificity": 1.0
-        },
-        "event_level": {
-          "detection_accuracy": 0.0,
-          "mean_iou": 0.0,
-          "num_true_events": 4368,
-          "num_pred_events": 0,
-          "num_false_alarms": 0,
-          "false_alarm_rate_per_min": 0.0
-        },
-        "threshold": 0.5,
-        "num_samples": 5859
-      },
       "wav2vec2": {
         "frame_level": {
-          "precision": 0.0,
-          "recall": 0.0,
-          "f1": 0.0,
-          "specificity": 1.0
+          "precision": 0.8046,
+          "recall": 0.7381,
+          "f1": 0.7699,
+          "specificity": 0.847
         },
         "event_level": {
-          "detection_accuracy": 0.0,
-          "mean_iou": 0.0,
-          "num_true_events": 4384,
-          "num_pred_events": 0,
-          "num_false_alarms": 0,
-          "false_alarm_rate_per_min": 0.0
+          "detection_accuracy": 0.5859,
+          "mean_iou": 0.7793,
+          "num_true_events": 995,
+          "num_pred_events": 1846,
+          "num_false_alarms": 1263,
+          "false_alarm_rate_per_min": 4.2782
         },
         "threshold": 0.5,
-        "num_samples": 5858
+        "num_samples": 3715
+      },
+      "cnn": {
+        "frame_level": {
+          "precision": 0.5268,
+          "recall": 0.8731,
+          "f1": 0.6571,
+          "specificity": 0.3298
+        },
+        "event_level": {
+          "detection_accuracy": 0.1548,
+          "mean_iou": 0.6785,
+          "num_true_events": 995,
+          "num_pred_events": 4466,
+          "num_false_alarms": 4312,
+          "false_alarm_rate_per_min": 23.4012
+        },
+        "threshold": 0.5,
+        "num_samples": 3715
       }
     }
   },

@@ -1,23 +1,154 @@
 {
   "frame_level": {
-    "precision": 0.6757,
-    "recall": 0.0651,
-    "f1": 0.1188,
-    "specificity": 0.9733
+    "precision": 0.8046,
+    "recall": 0.7381,
+    "f1": 0.7699,
+    "specificity": 0.847
   },
   "event_level": {
-    "detection_accuracy": 0.2101,
-    "mean_iou": 0.7509,
+    "detection_accuracy": 0.5859,
+    "mean_iou": 0.7793,
     "num_true_events": 995,
-    "num_pred_events": 2852,
-    "num_false_alarms": 2643,
-    "false_alarm_rate_per_min": 8.9527
+    "num_pred_events": 1846,
+    "num_false_alarms": 1263,
+    "false_alarm_rate_per_min": 4.2782
   },
   "model_type": "wav2vec2",
-  "model_path": "model/weights/w2v2loc_e20_b4_lr3e-5_frz5_wu500_hd256_d0.3_wd0.01_ml3_pa5_vr0.2_s42_train_w2v2base_best.pt",
+  "model_path": "/home/kshku/Git/Swaraaha/model/weights/w2v2loc_e20_b4_lr3e-5_frz5_wu500_hd256_d0.3_wd0.01_ml3_pa5_vr0.2_s42_train_w2v2base_naug_best.pt",
   "num_samples": 3715,
   "threshold": 0.5,
+  "threshold_sweep": {
+    "best_f1": {
+      "threshold": 0.1,
+      "f1": 0.7807
+    },
+    "best_youden": {
+      "threshold": 0.20000000000000004,
+      "youden": 0.5914000000000001
+    },
+    "sweep": [
+      {
+        "threshold": 0.1,
+        "frame_f1": 0.7807,
+        "precision": 0.7676,
+        "recall": 0.7944,
+        "specificity": 0.7947
+      },
+      {
+        "threshold": 0.15000000000000002,
+        "frame_f1": 0.7795,
+        "precision": 0.7791,
+        "recall": 0.78,
+        "specificity": 0.8113
+      },
+      {
+        "threshold": 0.20000000000000004,
+        "frame_f1": 0.7778,
+        "precision": 0.7872,
+        "recall": 0.7687,
+        "specificity": 0.8227
+      },
+      {
+        "threshold": 0.25000000000000006,
+        "frame_f1": 0.7756,
+        "precision": 0.7913,
+        "recall": 0.7606,
+        "specificity": 0.8288
+      },
+      {
+        "threshold": 0.30000000000000004,
+        "frame_f1": 0.7734,
+        "precision": 0.7937,
+        "recall": 0.7541,
+        "specificity": 0.8327
+      },
+      {
+        "threshold": 0.3500000000000001,
+        "frame_f1": 0.7726,
+        "precision": 0.7971,
+        "recall": 0.7496,
+        "specificity": 0.8372
+      },
+      {
+        "threshold": 0.40000000000000013,
+        "frame_f1": 0.7715,
+        "precision": 0.8001,
+        "recall": 0.7449,
+        "specificity": 0.8411
+      },
+      {
+        "threshold": 0.45000000000000007,
+        "frame_f1": 0.7708,
+        "precision": 0.8025,
+        "recall": 0.7414,
+        "specificity": 0.8443
+      },
+      {
+        "threshold": 0.5000000000000001,
+        "frame_f1": 0.7699,
+        "precision": 0.8046,
+        "recall": 0.7381,
+        "specificity": 0.847
+      },
+      {
+        "threshold": 0.5500000000000002,
+        "frame_f1": 0.7688,
+        "precision": 0.8069,
+        "recall": 0.7341,
+        "specificity": 0.8501
+      },
+      {
+        "threshold": 0.6000000000000002,
+        "frame_f1": 0.7679,
+        "precision": 0.8095,
+        "recall": 0.7304,
+        "specificity": 0.8533
+      },
+      {
+        "threshold": 0.6500000000000001,
+        "frame_f1": 0.7662,
+        "precision": 0.8112,
+        "recall": 0.7259,
+        "specificity": 0.8559
+      },
+      {
+        "threshold": 0.7000000000000002,
+        "frame_f1": 0.7631,
+        "precision": 0.813,
+        "recall": 0.719,
+        "specificity": 0.8588
+      },
+      {
+        "threshold": 0.7500000000000002,
+        "frame_f1": 0.7599,
+        "precision": 0.8152,
+        "recall": 0.7116,
+        "specificity": 0.8623
+      },
+      {
+        "threshold": 0.8000000000000002,
+        "frame_f1": 0.7559,
+        "precision": 0.8176,
+        "recall": 0.7028,
+        "specificity": 0.8662
+      },
+      {
+        "threshold": 0.8500000000000002,
+        "frame_f1": 0.7501,
+        "precision": 0.822,
+        "recall": 0.6898,
+        "specificity": 0.8725
+      },
+      {
+        "threshold": 0.9000000000000002,
+        "frame_f1": 0.7393,
+        "precision": 0.8282,
+        "recall": 0.6676,
+        "specificity": 0.8818
+      }
+    ]
+  },
   "model": {
-    "filename": "w2v2loc_e20_b4_lr3e-5_frz5_wu500_hd256_d0.3_wd0.01_ml3_pa5_vr0.2_s42_train_w2v2base_best.pt"
+    "filename": "w2v2loc_e20_b4_lr3e-5_frz5_wu500_hd256_d0.3_wd0.01_ml3_pa5_vr0.2_s42_train_w2v2base_naug_best.pt"
   }
 }

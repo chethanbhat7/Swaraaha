@@ -1,38 +1,38 @@
 {
-  "model_path": "model/weights/multi_e20_b16_lr3e-5_frz3_focal_g2_ga1_wu500_wd0.01_ml3_s42_train_w2v2base_best.pt",
+  "model_path": "model/weights/multi_e20_b16_lr3e-5_frz3_ltfocal_g2_ga1_wu500_wd0.01_ml3_s42_train_w2v2base_naug_best.pt",
   "source": "val_split (20%, seed 42)",
   "thresholds": {
     "prolongation": {
-      "f1_threshold": 0.45,
-      "youden_threshold": 0.35,
-      "f1_at_optimal": 0.4831,
-      "f1_at_0_5": 0.4785
+      "f1_threshold": 0.55,
+      "youden_threshold": 0.25,
+      "f1_at_optimal": 0.4576,
+      "f1_at_0_5": 0.4563
     },
     "block": {
       "f1_threshold": 0.35,
-      "youden_threshold": 0.35,
-      "f1_at_optimal": 0.401,
-      "f1_at_0_5": 0.243
+      "youden_threshold": 0.3,
+      "f1_at_optimal": 0.4469,
+      "f1_at_0_5": 0.3852
     },
     "soundrep": {
-      "f1_threshold": 0.45,
-      "youden_threshold": 0.3,
-      "f1_at_optimal": 0.5515,
-      "f1_at_0_5": 0.5244
+      "f1_threshold": 0.4,
+      "youden_threshold": 0.25,
+      "f1_at_optimal": 0.6095,
+      "f1_at_0_5": 0.5973
     },
     "wordrep": {
-      "f1_threshold": 0.45,
-      "youden_threshold": 0.3,
-      "f1_at_optimal": 0.4751,
-      "f1_at_0_5": 0.4613
+      "f1_threshold": 0.35,
+      "youden_threshold": 0.2,
+      "f1_at_optimal": 0.5116,
+      "f1_at_0_5": 0.483
     },
     "interjection": {
       "f1_threshold": 0.45,
       "youden_threshold": 0.3,
-      "f1_at_optimal": 0.7551,
-      "f1_at_0_5": 0.741
+      "f1_at_optimal": 0.79,
+      "f1_at_0_5": 0.7843
     }
   },
-  "macro_f1_at_0_5": 0.4896,
-  "macro_f1_at_optimal": 0.5332
+  "macro_f1_at_0_5": 0.5412,
+  "macro_f1_at_optimal": 0.5631
 }
