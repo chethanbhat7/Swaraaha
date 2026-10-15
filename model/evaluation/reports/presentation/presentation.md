@@ -10,13 +10,13 @@ Protocol: thresholds tuned on internal val only (seed 42); test = in-distributio
 
 | Class | Test F1@0.5 | Test F1@tuned | Test AUROC | Test AUPRC | Boli F1@0.5 | Boli F1@tuned |
 |---|---|---|---|---|---|---|
-| prolongation | 0.478 | 0.483 | 0.844 | 0.467 | 0.191 | 0.191 |
-| block | 0.243 | 0.383 | 0.735 | 0.395 | 0.000 | 0.000 |
-| soundrep | 0.524 | 0.541 | 0.860 | 0.552 | 0.205 | 0.250 |
-| wordrep | 0.461 | 0.449 | 0.830 | 0.477 | 0.000 | 0.191 |
-| interjection | 0.741 | 0.751 | 0.931 | 0.836 | 0.167 | 0.167 |
+| prolongation | 0.495 | 0.457 | 0.845 | 0.491 | 0.200 | 0.200 |
+| block | 0.364 | 0.428 | 0.767 | 0.444 | 0.000 | 0.154 |
+| soundrep | 0.586 | 0.621 | 0.877 | 0.624 | 0.210 | 0.256 |
+| wordrep | 0.486 | 0.499 | 0.855 | 0.550 | 0.000 | 0.182 |
+| interjection | 0.776 | 0.773 | 0.935 | 0.848 | 0.400 | 0.400 |
 
-**Macro F1:** test @0.5 = 0.4896, test @tuned = 0.5215, Boli @0.5 = 0.1125, Boli @tuned = 0.1595
+**Macro F1:** test @0.5 = 0.5415, test @tuned = 0.5557, Boli @0.5 = 0.1621, Boli @tuned = 0.2384
 
 ![Test F1 by class](classifier_test_f1.png)
 
@@ -28,12 +28,12 @@ Protocol: thresholds tuned on internal val only (seed 42); test = in-distributio
 
 | Metric | Test | Boli |
 |---|---|---|
-| Frame F1 | 0.119 | 0.040 |
-| Frame precision | 0.676 | 0.177 |
-| Frame recall | 0.065 | 0.023 |
-| Detection accuracy | 0.210 | 0.000 |
-| Mean IoU | 0.751 | 0.000 |
-| False alarms/min | 8.95 | 11.16 |
+| Frame F1 | 0.770 | 0.414 |
+| Frame precision | 0.804 | 0.328 |
+| Frame recall | 0.738 | 0.564 |
+| Detection accuracy | 0.586 | 0.125 |
+| Mean IoU | 0.779 | 0.638 |
+| False alarms/min | 4.28 | 1.90 |
 
 ![Localizer metrics](localizer_metrics.png)
 

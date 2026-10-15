@@ -18,10 +18,10 @@ import matplotlib.pyplot as plt
 
 from model.classification import DYSFLUENCY_CLASSES
 
-ARM02_TEST = "model/evaluation/reports/arms/arm02_mt_w2v2_frz3/test/multitask_report.json"
-ARM02_BOLI = "model/evaluation/reports/arms/arm02_mt_w2v2_frz3/boli/multitask_report.json"
-ARML2_TEST = "model/evaluation/reports/arms/armL2_w2v2_loc/test/wav2vec2_localizer_report.json"
-ARML2_BOLI = "model/evaluation/reports/arms/armL2_w2v2_loc/boli/wav2vec2_localizer_report.json"
+ARM02_TEST = "model/evaluation/reports/arms_noaug/arm02_mt_w2v2_frz3/test/multitask_report.json"
+ARM02_BOLI = "model/evaluation/reports/arms_noaug/arm02_mt_w2v2_frz3/boli/multitask_report.json"
+ARML2_TEST = "model/evaluation/reports/arms_noaug/armL2_w2v2_loc/test/wav2vec2_localizer_report.json"
+ARML2_BOLI = "model/evaluation/reports/arms_noaug/armL2_w2v2_loc/boli/wav2vec2_localizer_report.json"
 
 
 def _load(path):
@@ -44,7 +44,7 @@ def _bar_chart(labels, series, path, title, ylabel, colors):
     ax.set_ylim(0, 1.0)
     ax.legend()
     fig.tight_layout()
-    fig.savefig(path, dpi=150)
+    fig.savefig(path, dpi=200)
     plt.close(fig)
 
 
