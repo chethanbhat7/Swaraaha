@@ -277,17 +277,7 @@ function AboutPage() {
         <p>
           The system leverages deep neural networks trained on clinical speech libraries to detect prolongations, blocks, sound repetitions, word repetitions, and interjections.
         </p>
-        <div className="pt-4 border-t border-border-color grid grid-cols-2 gap-4 text-[10px] font-mono">
-          <div>
-            <span className="block text-text-primary font-bold">System Version</span>
-            <span>0.1.0 (Beta)</span>
-          </div>
-          <div>
-            <span className="block text-text-primary font-bold">Model Engine</span>
-            <span>Wav2Vec 2.0 Classifiers</span>
-          </div>
         </div>
-      </div>
     </div>
   )
 }
@@ -374,13 +364,13 @@ function MainAppShell() {
             <span>How it Works</span>
           </button>
 
-          {/* Help Button */}
+          {/* FAQ Button */}
           <button 
             onClick={() => setShowHelpModal(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold text-text-secondary hover:text-text-primary hover:bg-hover-color border border-border-color rounded-lg cursor-pointer transition"
           >
             <HelpCircle size={14} />
-            <span>Help</span>
+            <span>FAQ</span>
           </button>
 
           {/* Theme Toggle Button */}
