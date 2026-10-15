@@ -15,7 +15,10 @@
   size: 12pt,
 )
 
+#show raw: set text(font: "Times New Roman")
+
 #set par(
+    leading: 1.5em,
     justify: true,
     justification-limits: (spacing: (min: 100%, max: 150%)),
 )
@@ -23,6 +26,7 @@
 #set list(
   indent: 3em,
   spacing: 1.5em,
+  marker: ([•], [•], [•], [•]),
 )
 
 #show heading: it => {
@@ -82,7 +86,7 @@
 
 #set par(
   justify: true,
-  leading: 18pt,
+  leading: 1.5em,
   spacing: 18.32pt,
   justification-limits: (spacing: (min: 100%, max: 150%)),
 )
@@ -91,6 +95,7 @@
   indent: 18pt,
   body-indent: 13pt,
   spacing: 18.32pt,
+  marker: ([•], [•], [•], [•]),
 )
 
 // --- Chapters ---

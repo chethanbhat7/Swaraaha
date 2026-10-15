@@ -1,7 +1,10 @@
 #let lit_survey_counter = counter("literature counter")
 
-#let non_outlined_heading(level: 1, body) = {
-  align(center)[#heading(level: level, outlined: false)[#body]]
+#let non_outlined_heading(level: 1, label: none, body) = {
+  align(center)[
+    #heading(level: level, outlined: false)[#body]
+    #label
+  ]
   v(0.5em)
 }
 
@@ -42,6 +45,11 @@
         numbering("1.1", chap, num)
       }
     )
+
+    show table.cell: it => {
+      set par(justify: true)
+      align(start, it)
+    }
 
     figure(
       tb,

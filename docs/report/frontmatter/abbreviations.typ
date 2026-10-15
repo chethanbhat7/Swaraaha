@@ -1,7 +1,7 @@
 // --- Abbreviations ---
 #import "../lib.typ": *
 
-#non_outlined_heading[LIST OF ABBREVIATIONS]
+#non_outlined_heading(label: <loa>)[LIST OF ABBREVIATIONS]
 #table(
   columns: (1fr, 3fr),
   stroke: none,
