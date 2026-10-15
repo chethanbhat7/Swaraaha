@@ -120,6 +120,22 @@ export interface ReportData {
   };
 }
 
+export interface CorrectionResult {
+  id: string;
+  audio_label: string;
+  text_label: string;
+  created_at: string;
+}
+
+export async function submitCorrection(file: File, comment: string, language?: string): Promise<CorrectionResult> {
+  const form = new FormData()
+  form.append('file', file)
+  form.append('comment', comment)
+  if (language) form.append('language', language)
+  const res = await fetch(`${API_BASE}/corrections`, { method: 'POST', body: form })
+  return parseOrThrow(res)
+}
+
 export async function downloadReport(data: ReportData): Promise<Blob> {
   const res = await fetch(`${API_BASE}/report`, {
     method: 'POST',

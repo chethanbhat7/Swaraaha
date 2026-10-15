@@ -5,9 +5,13 @@ import {
   Activity,
   Play,
   Pause,
-  Download
+  Download,
+  Flag,
+  Send,
+  CheckCircle2,
+  X
 } from 'lucide-react'
-import { ClassificationResults, TranscriptionData, RegionType, LocalizationRegion, CombinedResults, analyzeAudio, downloadReport } from '../api/client'
+import { ClassificationResults, TranscriptionData, RegionType, LocalizationRegion, CombinedResults, CorrectionResult, analyzeAudio, downloadReport, submitCorrection } from '../api/client'
 import { storeAudioFile } from '../utils/db'
 
 interface AnalysisResults {
@@ -491,6 +495,14 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
   const [reportDate, setReportDate] = useState('')
   const showReport = true
 
+  // Anonymous correction submission
+  const [showCorrection, setShowCorrection] = useState(false)
+  const [correctionText, setCorrectionText] = useState('')
+  const [showCorrectionConfirm, setShowCorrectionConfirm] = useState(false)
+  const [isSubmittingCorrection, setIsSubmittingCorrection] = useState(false)
+  const [correctionError, setCorrectionError] = useState<string | null>(null)
+  const [correctionSaved, setCorrectionSaved] = useState<CorrectionResult | null>(null)
+
   // Loading and background processing states
   const [isLoading, setIsLoading] = useState(false)
   const [loadingStep, setLoadingStep] = useState("Initializing analysis...")
@@ -707,6 +719,29 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
     setShowPrintModal(true)
   }
 
+  const handleSubmitCorrection = async () => {
+    setShowCorrectionConfirm(false)
+    if (!analyzedFile) {
+      setCorrectionError('The audio for this result is not available, so it cannot be submitted.')
+      return
+    }
+    const comment = correctionText.trim()
+    if (!comment) return
+
+    setIsSubmittingCorrection(true)
+    setCorrectionError(null)
+    try {
+      const language = sessionStorage.getItem('transcription_language') || undefined
+      const saved = await submitCorrection(analyzedFile, comment, language)
+      setCorrectionSaved(saved)
+      setCorrectionText('')
+    } catch {
+      setCorrectionError('Failed to submit the correction. Please try again.')
+    } finally {
+      setIsSubmittingCorrection(false)
+    }
+  }
+
   const handleDownload = async () => {
     if (!results) return
     setIsDownloading(true)
@@ -751,6 +786,17 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
         </button>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              setShowCorrection(v => !v)
+              setCorrectionError(null)
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-bg-card border border-border-color hover:bg-hover-color text-text-primary text-xs font-semibold rounded-lg shadow-xs transition cursor-pointer"
+          >
+            <Flag size={14} />
+            <span>Report Correction</span>
+          </button>
+
           {showReport && (
             <button
               onClick={handlePrint}
@@ -762,6 +808,73 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
           )}
         </div>
       </div>
+
+      {/* CORRECTION SUBMISSION CARD (Hidden in Print) */}
+      {showCorrection && (
+        <div className="p-5 bg-bg-card border border-border-color rounded-xl space-y-3 shadow-xs print:hidden" style={{ borderRadius: '16px' }}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Flag size={14} className="text-accent-teal" />
+              <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Report a Correction</span>
+            </div>
+            <button
+              onClick={() => setShowCorrection(false)}
+              className="p-1 rounded-lg text-text-secondary hover:text-text-primary hover:bg-hover-color transition cursor-pointer"
+              aria-label="Close correction form"
+            >
+              <X size={14} />
+            </button>
+          </div>
+
+          {correctionSaved ? (
+            <div className="flex items-start gap-2 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+              <CheckCircle2 className="text-emerald-500 shrink-0 mt-0.5" size={16} />
+              <div className="text-xs text-text-secondary space-y-1">
+                <p className="font-semibold text-text-primary">Thank you — your correction was saved anonymously.</p>
+                <p>Saved as audio <span className="font-mono text-text-primary">{correctionSaved.audio_label}</span> with text <span className="font-mono text-text-primary">{correctionSaved.text_label}</span>.</p>
+                <button
+                  onClick={() => setCorrectionSaved(null)}
+                  className="text-[10px] font-bold text-accent-teal hover:underline cursor-pointer"
+                >
+                  Report another correction
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <textarea
+                value={correctionText}
+                onChange={(e) => setCorrectionText(e.target.value)}
+                maxLength={2000}
+                rows={4}
+                placeholder="Describe what the analysis got wrong, or write the correct transcript/label for this audio..."
+                className="w-full px-3 py-2 text-xs bg-bg-sidebar border border-border-color rounded-lg focus:outline-none focus:border-accent-teal focus:ring-1 focus:ring-accent-teal resize-y"
+                style={{ borderRadius: '8px' }}
+              />
+              {correctionError && (
+                <p className="text-[10px] text-red-500 font-semibold">{correctionError}</p>
+              )}
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[10px] text-text-secondary">
+                  {analyzedFile
+                    ? 'Stored anonymously with the audio — no patient details are included.'
+                    : 'Audio is not available for this result, so it cannot be submitted.'}
+                </p>
+                <button
+                  onClick={() => setShowCorrectionConfirm(true)}
+                  disabled={!correctionText.trim() || isSubmittingCorrection || !analyzedFile}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-accent-teal hover:bg-teal-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold rounded-lg shadow-xs transition cursor-pointer shrink-0"
+                  style={{ borderRadius: '8px' }}
+                >
+                  <Send size={12} />
+                  <span>{isSubmittingCorrection ? 'Submitting...' : 'Submit Correction'}</span>
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
 
       {/* INTERACTIVE WAVEFORM CARD (Hidden in Print) */}
       {results && (
@@ -950,6 +1063,42 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
               {isDownloading ? 'Generating...' : 'Download PDF'}
             </button>
           </div>
+          </div>
+        </div>
+      )}
+
+      {/* ANONYMOUS SUBMISSION CONFIRMATION (Hidden in Print) */}
+      {showCorrectionConfirm && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 animate-fade-in print:hidden">
+          <div className="bg-bg-card border border-border-color rounded-2xl p-6 w-full max-w-sm shadow-xl space-y-4 m-4" style={{ borderRadius: '16px' }}>
+            <div className="flex items-start gap-3">
+              <Flag className="text-accent-teal shrink-0 mt-0.5" size={18} />
+              <div className="space-y-2">
+                <h3 className="text-sm font-bold text-text-primary">Submit as anonymous audio?</h3>
+                <p className="text-xs text-text-secondary leading-relaxed">
+                  This recording and your note will be saved as anonymous audio for corrections
+                  and improvement. No patient details are attached, and the pair is stored under
+                  a unique label so it can be used for further corrections.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                onClick={() => setShowCorrectionConfirm(false)}
+                className="flex-1 py-2 bg-hover-color/50 hover:bg-hover-color text-text-primary text-xs font-semibold rounded-lg border border-border-color transition cursor-pointer"
+                style={{ borderRadius: '8px' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmitCorrection}
+                className="flex-1 py-2 bg-accent-teal hover:bg-teal-600 text-white text-xs font-bold rounded-lg shadow-sm transition cursor-pointer"
+                style={{ borderRadius: '8px' }}
+              >
+                Save Anonymously
+              </button>
+            </div>
           </div>
         </div>
       )}

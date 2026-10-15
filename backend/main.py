@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
 
-from backend.routes import classification, localization, report
+from backend.routes import classification, corrections, localization, report
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +43,7 @@ app.add_middleware(
 app.include_router(classification.router, prefix="/api")
 app.include_router(localization.router, prefix="/api")
 app.include_router(report.router, prefix="/api")
+app.include_router(corrections.router, prefix="/api")
 
 
 @app.get("/health")
