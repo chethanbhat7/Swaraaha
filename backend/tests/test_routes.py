@@ -58,7 +58,7 @@ def test_analyze_route_includes_combined(monkeypatch):
         )
 
     result = asyncio.run(_call())
-    assert set(result.keys()) == {"classification", "localization", "transcription", "combined", "severity"}
+    assert set(result.keys()) == {"classification", "localization", "transcription", "combined"}
     assert result["combined"]["total_stutters"] == 1
 
 

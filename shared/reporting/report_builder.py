@@ -1,7 +1,6 @@
 """Shared Typst-based clinical report builder used by both the desktop and web apps."""
 
 from datetime import date
-from typing import Optional
 
 import typst
 
@@ -34,30 +33,6 @@ def _escape(text: object) -> str:
 
 def _display_name(name: str) -> str:
     return DISPLAY_NAMES.get(name, name)
-
-
-def severity_for(data: dict) -> Optional[str]:
-    """Stutter-index severity derived from the ``combined`` output.
-
-    Returns None when ``combined`` is missing, errored, or has no duration, in
-    which case callers render "N/A".
-    """
-    combined = data.get("combined")
-    if not isinstance(combined, dict) or "error" in combined:
-        return None
-    regions = combined.get("regions") or []
-    audio_duration = combined.get("audio_duration") or 0.0
-    if audio_duration <= 0:
-        return None
-    coverage = sum(max(0.0, r.get("end", 0.0) - r.get("start", 0.0)) for r in regions)
-    index = coverage / audio_duration * 100
-    if index >= 15:
-        return "Severe"
-    if index >= 5:
-        return "Moderate"
-    if index >= 2:
-        return "Mild"
-    return "Fluent"
 
 
 def _class_rows(classification: dict) -> str:
@@ -112,9 +87,6 @@ def build_report_source(data: dict) -> str:
     transcript = (transcription.get("text") or "").strip()
     if not transcript:
         transcript = "No transcription available."
-
-    severity = severity_for(data)
-    severity_text = severity if severity else "N/A"
 
     total = combined.get("total_stutters") if combined else None
     total_text = _escape(str(total)) if total is not None else "—"
@@ -189,7 +161,6 @@ def build_report_source(data: dict) -> str:
 
 #text(size: 13pt, weight: "bold")[Summary]
 Total stuttering events: {total_text}
-Overall severity: {severity_text}
 
 #v(1.5em)
 

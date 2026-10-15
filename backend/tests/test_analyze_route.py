@@ -7,7 +7,7 @@ from backend.main import app
 client = TestClient(app)
 
 
-def test_analyze_returns_localizer_regions_and_severity():
+def test_analyze_returns_localizer_regions():
     fake_results = {
         "classification": {"prolongation": {"label": 0, "confidence": 0.9}},
         "localization": {"regions": [{"start": 1.0, "end": 2.5, "confidence": 0.8}], "duration_sec": 10.0},
@@ -24,11 +24,10 @@ def test_analyze_returns_localizer_regions_and_severity():
     assert response.status_code == 200
     body = response.json()
     assert body["localization"]["regions"] == [{"start": 1.0, "end": 2.5, "confidence": 0.8}]
-    assert body["severity"]["index_pct"] == 15.0
-    assert body["severity"]["severity"] == "severe"
+    assert "severity" not in body
 
 
-def test_analyze_with_no_localizer_regions_reports_fluent():
+def test_analyze_with_no_localizer_regions():
     fake_results = {
         "classification": {"prolongation": {"label": 0, "confidence": 0.9}},
         "localization": {"regions": [], "error": "no model", "duration_sec": 10.0},
@@ -45,5 +44,4 @@ def test_analyze_with_no_localizer_regions_reports_fluent():
     assert response.status_code == 200
     body = response.json()
     assert body["localization"]["regions"] == []
-    assert body["severity"]["severity"] == "fluent"
-    assert body["severity"]["index_pct"] == 0.0
+    assert "severity" not in body

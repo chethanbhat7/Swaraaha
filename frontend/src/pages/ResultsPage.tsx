@@ -2,13 +2,12 @@ import { useNavigate } from 'react-router-dom'
 import { useEffect, useState, useRef } from 'react'
 import { 
   ArrowLeft, 
-  Volume2, 
   Activity,
   Play,
   Pause,
   Download
 } from 'lucide-react'
-import { ClassificationResults, SeverityResult, TranscriptionData, RegionType, LocalizationRegion, CombinedResults, analyzeAudio, downloadReport } from '../api/client'
+import { ClassificationResults, TranscriptionData, RegionType, LocalizationRegion, CombinedResults, analyzeAudio, downloadReport } from '../api/client'
 import { storeAudioFile } from '../utils/db'
 
 interface AnalysisResults {
@@ -18,7 +17,6 @@ interface AnalysisResults {
     duration_sec?: number
   }
   transcription?: TranscriptionData
-  severity?: SeverityResult
   combined?: CombinedResults
 }
 
@@ -704,51 +702,6 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
     }
   })
 
-  // Helper to parse duration string (MM:SS or HH:MM:SS) to seconds
-  const getDurationInSeconds = (durStr: string) => {
-    const parts = durStr.split(':').map(Number)
-    if (parts.every(n => Number.isFinite(n))) {
-      return parts.reduce((total, p) => total * 60 + p, 0)
-    }
-    return 0
-  }
-
-  const durationSec = getDurationInSeconds(duration)
-  const finalDuration = combined?.audio_duration 
-    || results.localization?.duration_sec 
-    || durationSec 
-    || 1.0;
-
-  const localizationCoverage = regions.reduce(
-    (sum, r) => sum + Math.max(0, r.end - r.start),
-    0
-  )
-
-  // Stutter index: backend-computed when available, else derived from regions
-  const stutterIndexValue = results.severity?.index_pct ??
-    (finalDuration > 0 ? (localizationCoverage / finalDuration) * 100 : 0)
-
-  const SEVERITY_COLORS: Record<string, string> = {
-    Fluent: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20",
-    Mild: "text-teal-500 bg-teal-500/10 border-teal-500/20",
-    Moderate: "text-warning-amber bg-warning-amber/10 border-warning-amber/20",
-    Severe: "text-error-red bg-error-red/10 border-error-red/20",
-  }
-
-  const computedSeverity = (() => {
-    if (results.severity?.label) {
-      return {
-        label: results.severity.label,
-        color: SEVERITY_COLORS[results.severity.label] ?? SEVERITY_COLORS.Fluent,
-      }
-    }
-    let label = 'Fluent'
-    if (stutterIndexValue >= 15) label = 'Severe'
-    else if (stutterIndexValue >= 5) label = 'Moderate'
-    else if (stutterIndexValue >= 2) label = 'Mild'
-    return { label, color: SEVERITY_COLORS[label] }
-  })()
-
   // Print clinical report
   const handlePrint = () => {
     setShowPrintModal(true)
@@ -764,12 +717,7 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
         audio: { filename, size: filesize, duration },
         date: reportDate,
         classification: alignedClassification,
-        severity: results.severity ?? {
-          index_pct: stutterIndexValue,
-          severity: computedSeverity.label.toLowerCase() as SeverityResult['severity'],
-          label: computedSeverity.label,
-        },
-        combined: combined ?? undefined,
+      combined: combined ?? undefined,
         transcription: results.transcription,
         localization: results.localization,
       })
@@ -823,26 +771,7 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
       )}
 
       {/* CLINICAL SUMMARY CARDS (Adaptive Grid Layout) */}
-      <div className="grid gap-6 md:grid-cols-2 print:hidden">
-        
-        {/* Severity Card */}
-        <div className="p-5 bg-bg-card border border-border-color rounded-xl flex flex-col justify-between shadow-xs" style={{ borderRadius: '16px' }}>
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Diagnostic Severity</span>
-            <Volume2 className="text-text-secondary" size={16} />
-          </div>
-          <div className="mt-4 space-y-2">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className={`inline-block px-3 py-1 text-xs font-bold border rounded-full ${computedSeverity.color}`}>
-                {computedSeverity.label} Dysfluency
-              </span>
-            </div>
-            <p className="text-xs text-text-secondary">
-              Based on detected speech dysfluencies. The stuttering index represents the percentage of dysfluent speech duration.
-            </p>
-          </div>
-        </div>
-
+      <div className="grid gap-6 md:grid-cols-1 print:hidden">
         {/* Metadata Details Card */}
         <div className="p-5 bg-bg-card border border-border-color rounded-xl space-y-3 shadow-xs" style={{ borderRadius: '16px' }}>
           <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Recording Metadata</span>

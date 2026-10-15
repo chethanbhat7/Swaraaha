@@ -31,12 +31,6 @@ export interface ClassificationResults {
   };
 }
 
-export interface SeverityResult {
-  index_pct: number;
-  severity: 'fluent' | 'mild' | 'moderate' | 'severe';
-  label: string;
-}
-
 export type RegionType =
   | 'prolongation'
   | 'block'
@@ -81,7 +75,6 @@ export interface AnalyzeResults {
     duration_sec?: number;
   };
   transcription: TranscriptionData;
-  severity?: SeverityResult;
   combined?: CombinedResults;
 }
 
@@ -120,7 +113,6 @@ export interface ReportData {
   };
   date: string;
   classification: ClassificationResults;
-  severity?: SeverityResult;
   combined?: CombinedResults;
   transcription?: TranscriptionData;
   localization?: {

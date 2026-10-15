@@ -1,11 +1,8 @@
 """Tests for the shared Typst report builder used by the desktop and web apps."""
 
-import pytest
-
 from shared.reporting.report_builder import (
     build_report_source,
     generate_report_pdf,
-    severity_for,
 )
 
 SAMPLE_DATA = {
@@ -45,30 +42,6 @@ SAMPLE_DATA = {
 }
 
 
-def test_severity_for_thresholds():
-    assert severity_for(
-        {"combined": {"regions": [], "audio_duration": 10.0, "total_stutters": 0}}
-    ) == "Fluent"
-
-    assert severity_for(
-        {"combined": {"regions": [{"start": 0, "end": 0.2}], "audio_duration": 10.0, "total_stutters": 1}}
-    ) == "Mild"
-
-    assert severity_for(
-        {"combined": {"regions": [{"start": 0, "end": 0.5}], "audio_duration": 10.0, "total_stutters": 1}}
-    ) == "Moderate"
-
-    assert severity_for(
-        {"combined": {"regions": [{"start": 0, "end": 1.6}], "audio_duration": 10.0, "total_stutters": 1}}
-    ) == "Severe"
-
-
-def test_severity_for_missing_combined_returns_none():
-    assert severity_for({}) is None
-    assert severity_for({"combined": {"error": "boom"}}) is None
-    assert severity_for({"combined": {"regions": [], "audio_duration": 0.0, "total_stutters": 0}}) is None
-
-
 def test_build_report_source_contains_sections():
     src = build_report_source(SAMPLE_DATA)
     for section in (
@@ -85,6 +58,7 @@ def test_build_report_source_contains_sections():
     assert "Aarav Sharma" in src
     assert "Block" in src
     assert "Total stuttering events: 2" in src
+    assert "Overall severity" not in src
 
 
 def test_build_report_source_escapes_patient_name():
