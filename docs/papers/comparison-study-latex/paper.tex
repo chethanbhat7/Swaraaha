@@ -8,24 +8,20 @@
 %   pdflatex paper
 %   pdflatex paper
 % ──────────────────────────────────────────────────────────────────────
-\documentclass[runningheads,a4paper,orivec]{llncs}
+\documentclass[a4paper,orivec]{llncs}
 %
 \usepackage[T1]{fontenc}
 % T1 fonts will be used to generate the final print and online PDFs,
 % so please use T1 fonts in your manuscript whenever possible.
 %
-\usepackage{amsmath}   % must be loaded before newtxmath
+\usepackage{amsmath}
 %
-% Springer's official LaTeX template is Computer Modern based; Times via the
-% newtx family is a supported LNCS variant. Fall back to a Times (ptm) text
-% face where newtx is unavailable, so the manuscript remains compilable on
-% any TeX installation.
-\IfFileExists{newtxtext.sty}{%
-  \usepackage{newtxtext}       % selects Times Roman as basic font
-  \usepackage[varvw]{newtxmath}
-}{%
-  \renewcommand{\rmdefault}{ptm}% Times Roman text fallback
-}
+% Springer's official LaTeX template is Computer Modern based, and the author
+% instructions ask that the font match the template used (CMR for LaTeX).
+% Loading newtx/Times here made the output depend on which optional packages a
+% given machine happened to have installed, so the text face is left at the
+% class default throughout.
+%
 \usepackage{graphicx}
 \usepackage{array}
 \usepackage{url}

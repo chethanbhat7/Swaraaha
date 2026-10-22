@@ -1,51 +1,50 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026/Arch Linux) (preloaded format=pdflatex 2026.9.17)  22 OCT 2026 17:41
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.10.21)  22 OCT 2026 23:39
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
 **paper.tex
 (./paper.tex
-LaTeX2e <2025-11-01>
-L3 programming layer <2026-01-19>
+LaTeX2e <2026-06-01>
+L3 programming layer <2026-09-09>
 (./llncs.cls
 Document Class: llncs 2026/09/03 v2.25 
  LaTeX document class for Lecture Notes in Computer Science
-(/usr/share/texmf-dist/tex/latex/base/article.cls
+(/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/tex/latex/base/article.cls
 Document Class: article 2025/01/22 v1.4n Standard LaTeX document class
-(/usr/share/texmf-dist/tex/latex/base/size10.clo
+(/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/tex/latex/base/size10.clo
 File: size10.clo 2025/01/22 v1.4n Standard LaTeX file (size option)
 )
-\c@part=\count275
-\c@section=\count276
-\c@subsection=\count277
-\c@subsubsection=\count278
-\c@paragraph=\count279
-\c@subparagraph=\count280
-\c@figure=\count281
-\c@table=\count282
+\c@part=\count276
+\c@section=\count277
+\c@subsection=\count278
+\c@subsubsection=\count279
+\c@paragraph=\count280
+\c@subparagraph=\count281
+\c@figure=\count282
+\c@table=\count283
 \abovecaptionskip=\skip49
 \belowcaptionskip=\skip50
-\bibindent=\dimen148
-)
-(/usr/share/texmf-dist/tex/latex/tools/multicol.sty
+\bibindent=\dimen150
+) (/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/tex/latex/tools/multicol.sty
 Package: multicol 2025/10/21 v2.0b multicolumn formatting (FMi)
-\c@tracingmulticols=\count283
+\c@tracingmulticols=\count284
 \mult@box=\box53
-\multicol@leftmargin=\dimen149
-\c@unbalance=\count284
-\c@collectmore=\count285
-\doublecol@number=\count286
-\multicoltolerance=\count287
-\multicolpretolerance=\count288
-\full@width=\dimen150
-\page@free=\dimen151
-\premulticols=\dimen152
-\postmulticols=\dimen153
+\multicol@leftmargin=\dimen151
+\c@unbalance=\count285
+\c@collectmore=\count286
+\doublecol@number=\count287
+\multicoltolerance=\count288
+\multicolpretolerance=\count289
+\full@width=\dimen152
+\page@free=\dimen153
+\premulticols=\dimen154
+\postmulticols=\dimen155
 \multicolsep=\skip51
 \multicolbaselineskip=\skip52
 \partial@page=\box54
 \last@line=\box55
 \mc@boxedresult=\box56
-\maxbalancingoverflow=\dimen154
+\maxbalancingoverflow=\dimen156
 \mult@rightbox=\box57
 \mult@grightbox=\box58
 \mult@firstbox=\box59
@@ -86,21 +85,24 @@ Package: multicol 2025/10/21 v2.0b multicolumn formatting (FMi)
 \@tempa=\box94
 \@tempa=\box95
 \@tempa=\box96
-\c@minrows=\count289
-\c@columnbadness=\count290
-\c@finalcolumnbadness=\count291
-\last@try=\dimen155
-\multicolovershoot=\dimen156
-\multicolundershoot=\dimen157
+\c@minrows=\count290
+\c@columnbadness=\count291
+\c@finalcolumnbadness=\count292
+\last@try=\dimen157
+\multicolovershoot=\dimen158
+\multicolundershoot=\dimen159
 \mult@nat@firstbox=\box97
 \colbreak@box=\box98
-\mc@col@check@num=\count292
-\g__mc_curr_col_int=\count293
+\mc@col@check@num=\count293
+\g__mc_curr_col_int=\count294
+) (/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/tex/latex/aliascnt/aliascnt.sty
+Package: aliascnt 2026-03-08 v1.7 Alias counters (HO)
+
+
+Package aliascnt Warning: The package is obsolete. Check the documentation. on input line 62.
+
 )
-(/usr/share/texmf-dist/tex/latex/oberdiek/aliascnt.sty
-Package: aliascnt 2018/09/07 v1.5 Alias counters (HO)
-)
-\c@chapter=\count294
+\c@chapter=\count295
 LaTeX Font Info:    Redeclaring math symbol \Gamma on input line 379.
 LaTeX Font Info:    Redeclaring math symbol \Delta on input line 380.
 LaTeX Font Info:    Redeclaring math symbol \Theta on input line 381.
@@ -112,80 +114,75 @@ LaTeX Font Info:    Redeclaring math symbol \Upsilon on input line 386.
 LaTeX Font Info:    Redeclaring math symbol \Phi on input line 387.
 LaTeX Font Info:    Redeclaring math symbol \Psi on input line 388.
 LaTeX Font Info:    Redeclaring math symbol \Omega on input line 389.
-\tocchpnum=\dimen158
-\tocsecnum=\dimen159
-\tocsectotal=\dimen160
-\tocsubsecnum=\dimen161
-\tocsubsectotal=\dimen162
-\tocsubsubsecnum=\dimen163
-\tocsubsubsectotal=\dimen164
-\tocparanum=\dimen165
-\tocparatotal=\dimen166
-\tocsubparanum=\dimen167
-\@tempcntc=\count295
-\fnindent=\dimen168
-\c@@inst=\count296
-\c@@auth=\count297
-\c@auco=\count298
-\instindent=\dimen169
+\tocchpnum=\dimen160
+\tocsecnum=\dimen161
+\tocsectotal=\dimen162
+\tocsubsecnum=\dimen163
+\tocsubsectotal=\dimen164
+\tocsubsubsecnum=\dimen165
+\tocsubsubsectotal=\dimen166
+\tocparanum=\dimen167
+\tocparatotal=\dimen168
+\tocsubparanum=\dimen169
+\@tempcntc=\count296
+\fnindent=\dimen170
+\c@@inst=\count297
+\c@@auth=\count298
+\c@auco=\count299
+\instindent=\dimen171
 \authrun=\box99
 \authorrunning=\toks17
 \tocauthor=\toks18
 \titrun=\box100
 \titlerunning=\toks19
 \toctitle=\toks20
-\c@theorem=\count299
-\c@case=\count300
-\c@conjecture=\count301
-\c@corollary=\count302
-\c@definition=\count303
-\c@example=\count304
-\c@exercise=\count305
-\c@lemma=\count306
-\c@note=\count307
-\c@problem=\count308
-\c@property=\count309
-\c@proposition=\count310
-\c@question=\count311
-\c@solution=\count312
-\c@remark=\count313
-\headlineindent=\dimen170
+\c@theorem=\count300
+\c@case=\count301
+\c@conjecture=\count302
+\c@corollary=\count303
+\c@definition=\count304
+\c@example=\count305
+\c@exercise=\count306
+\c@lemma=\count307
+\c@note=\count308
+\c@problem=\count309
+\c@property=\count310
+\c@proposition=\count311
+\c@question=\count312
+\c@solution=\count313
+\c@remark=\count314
+\headlineindent=\dimen172
 \DescriptionTexts=\write3
 \openout3 = `DescriptionTexts.txt'.
 
-\c@Dfigchecks=\count314
-)
-(/usr/share/texmf-dist/tex/latex/base/fontenc.sty
+\c@Dfigchecks=\count315
+) (/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/tex/latex/base/fontenc.sty
 Package: fontenc 2025/07/18 v2.1d Standard LaTeX package
-)
-(/usr/share/texmf-dist/tex/latex/amsmath/amsmath.sty
-Package: amsmath 2025/07/09 v2.17z AMS math features
+) (/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/tex/latex/amsmath/amsmath.sty
+Package: amsmath 2026/05/19 v2.18d AMS math features
 \@mathmargin=\skip53
 
 For additional information on amsmath, use the `?' option.
-(/usr/share/texmf-dist/tex/latex/amsmath/amstext.sty
+(/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/tex/latex/amsmath/amstext.sty
 Package: amstext 2024/11/17 v2.01 AMS text
-
-(/usr/share/texmf-dist/tex/latex/amsmath/amsgen.sty
+ (/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/tex/latex/amsmath/amsgen.sty
 File: amsgen.sty 1999/11/30 v2.0 generic functions
 \@emptytoks=\toks21
-\ex@=\dimen171
-))
-(/usr/share/texmf-dist/tex/latex/amsmath/amsbsy.sty
+\ex@=\dimen173
+)) (/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/tex/latex/amsmath/amsbsy.sty
 Package: amsbsy 1999/11/29 v1.2d Bold Symbols
-\pmbraise@=\dimen172
-)
-(/usr/share/texmf-dist/tex/latex/amsmath/amsopn.sty
+\pmbraise@=\dimen174
+) (/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/tex/latex/amsmath/amsopn.sty
 Package: amsopn 2022/04/08 v2.04 operator names
 )
-\inf@bad=\count315
+\inf@bad=\count316
 LaTeX Info: Redefining \frac on input line 233.
-\uproot@=\count316
-\leftroot@=\count317
+\uproot@=\count317
+\leftroot@=\count318
 LaTeX Info: Redefining \overline on input line 398.
 LaTeX Info: Redefining \colon on input line 409.
-\classnum@=\count318
-\DOTSCASE@=\count319
+\classnum@=\count319
+\DOTSCASE@=\count320
 LaTeX Info: Redefining \ldots on input line 495.
 LaTeX Info: Redefining \dots on input line 498.
 LaTeX Info: Redefining \cdots on input line 619.
@@ -195,329 +192,248 @@ LaTeX Info: Redefining \big on input line 721.
 LaTeX Info: Redefining \Big on input line 722.
 LaTeX Info: Redefining \bigg on input line 723.
 LaTeX Info: Redefining \Bigg on input line 724.
-\big@size=\dimen173
+\big@size=\dimen175
 LaTeX Font Info:    Redeclaring font encoding OML on input line 742.
 LaTeX Font Info:    Redeclaring font encoding OMS on input line 743.
-\macc@depth=\count320
+\macc@depth=\count321
 LaTeX Info: Redefining \bmod on input line 904.
 LaTeX Info: Redefining \pmod on input line 909.
 LaTeX Info: Redefining \smash on input line 939.
 LaTeX Info: Redefining \relbar on input line 969.
 LaTeX Info: Redefining \Relbar on input line 970.
-\c@MaxMatrixCols=\count321
+\c@MaxMatrixCols=\count322
 \dotsspace@=\muskip17
-\c@parentequation=\count322
-\dspbrk@lvl=\count323
+\c@parentequation=\count323
+\dspbrk@lvl=\count324
 \tag@help=\toks22
-\row@=\count324
-\column@=\count325
-\maxfields@=\count326
+\row@=\count325
+\column@=\count326
+\maxfields@=\count327
 \andhelp@=\toks23
-\eqnshift@=\dimen174
-\alignsep@=\dimen175
-\tagshift@=\dimen176
-\tagwidth@=\dimen177
-\totwidth@=\dimen178
-\lineht@=\dimen179
+\eqnshift@=\dimen176
+\alignsep@=\dimen177
+\tagshift@=\dimen178
+\tagwidth@=\dimen179
+\totwidth@=\dimen180
+\lineht@=\dimen181
 \@envbody=\toks24
 \multlinegap=\skip54
 \multlinetaggap=\skip55
 \mathdisplay@stack=\toks25
-LaTeX Info: Redefining \[ on input line 2950.
-LaTeX Info: Redefining \] on input line 2951.
-)
-(/usr/share/texmf-dist/tex/latex/graphics/graphicx.sty
-Package: graphicx 2024/12/31 v1.2e Enhanced LaTeX Graphics (DPC,SPQR)
-
-(/usr/share/texmf-dist/tex/latex/graphics/keyval.sty
-Package: keyval 2022/05/29 v1.15 key=value parser (DPC)
+LaTeX Info: Redefining \[ on input line 2965.
+LaTeX Info: Redefining \] on input line 2966.
+) (/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/tex/latex/graphics/graphicx.sty
+Package: graphicx 2026-05-17 v1.2e Enhanced LaTeX Graphics (DPC,SPQR)
+ (/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/tex/latex/graphics/keyval.sty
+Package: keyval 2026-05-17 v1.15 key=value parser (DPC)
 \KV@toks@=\toks26
-)
-(/usr/share/texmf-dist/tex/latex/graphics/graphics.sty
-Package: graphics 2024/08/06 v1.4g Standard LaTeX Graphics (DPC,SPQR)
-
-(/usr/share/texmf-dist/tex/latex/graphics/trig.sty
+) (/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/tex/latex/graphics/graphics.sty
+Package: graphics 2026-05-17 v1.4h Standard LaTeX Graphics (DPC,SPQR)
+ (/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/tex/latex/graphics/trig.sty
 Package: trig 2023/12/02 v1.11 sin cos tan (DPC)
-)
-(/usr/share/texmf-dist/tex/latex/graphics-cfg/graphics.cfg
+) (/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/tex/latex/graphics-cfg/graphics.cfg
 File: graphics.cfg 2016/06/04 v1.11 sample graphics configuration
 )
 Package graphics Info: Driver file: pdftex.def on input line 106.
-
-(/usr/share/texmf-dist/tex/latex/graphics-def/pdftex.def
+ (/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/tex/latex/graphics-def/pdftex.def
 File: pdftex.def 2025/09/29 v1.2d Graphics/color driver for pdftex
 ))
-\Gin@req@height=\dimen180
-\Gin@req@width=\dimen181
-)
-(/usr/share/texmf-dist/tex/latex/tools/array.sty
-Package: array 2025/09/25 v2.6n Tabular extension package (FMi)
-\col@sep=\dimen182
+\Gin@req@height=\dimen182
+\Gin@req@width=\dimen183
+) (/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/tex/latex/tools/array.sty
+Package: array 2026/02/24 v2.7b Tabular extension package (FMi)
+\col@sep=\dimen184
 \ar@mcellbox=\box103
-\extrarowheight=\dimen183
+\extrarowheight=\dimen185
 \NC@list=\toks27
 \extratabsurround=\skip56
 \backup@length=\skip57
 \ar@cellbox=\box104
-)
-(/usr/share/texmf-dist/tex/latex/url/url.sty
+) (/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/tex/latex/url/url.sty
 \Urlmuskip=\muskip18
 Package: url 2013/09/16  ver 3.4  Verb mode for urls, etc.
-)
-(/usr/share/texmf-dist/tex/latex/hyperref/hyperref.sty
-Package: hyperref 2026-01-29 v7.01p Hypertext links for LaTeX
-
-(/usr/share/texmf-dist/tex/generic/iftex/iftex.sty
+) (/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/tex/latex/hyperref/hyperref.sty
+Package: hyperref 2026-10-09 v7.01s Hypertext links for LaTeX
+ (/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/tex/generic/iftex/iftex.sty
 Package: iftex 2024/12/12 v1.0g TeX engine tests
-)
-(/usr/share/texmf-dist/tex/latex/kvsetkeys/kvsetkeys.sty
+) (/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/tex/latex/kvsetkeys/kvsetkeys.sty
 Package: kvsetkeys 2022-10-05 v1.19 Key value parser (HO)
-)
-(/usr/share/texmf-dist/tex/generic/kvdefinekeys/kvdefinekeys.sty
+) (/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/tex/generic/kvdefinekeys/kvdefinekeys.sty
 Package: kvdefinekeys 2019-12-19 v1.6 Define keys (HO)
-)
-(/usr/share/texmf-dist/tex/generic/pdfescape/pdfescape.sty
+) (/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/tex/generic/pdfescape/pdfescape.sty
 Package: pdfescape 2019/12/09 v1.15 Implements pdfTeX's escape features (HO)
-
-(/usr/share/texmf-dist/tex/generic/ltxcmds/ltxcmds.sty
+ (/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/tex/generic/ltxcmds/ltxcmds.sty
 Package: ltxcmds 2023-12-04 v1.26 LaTeX kernel commands for general use (HO)
-)
-(/usr/share/texmf-dist/tex/generic/pdftexcmds/pdftexcmds.sty
-Package: pdftexcmds 2020-06-27 v0.33 Utility functions of pdfTeX for LuaTeX (HO
-)
-
-(/home/mckb/texmf/tex/latex/oberdiek/infwarerr.sty
+) (/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/tex/generic/pdftexcmds/pdftexcmds.sty
+Package: pdftexcmds 2020-06-27 v0.33 Utility functions of pdfTeX for LuaTeX (HO)
+ (/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/tex/generic/infwarerr/infwarerr.sty
 Package: infwarerr 2019/12/03 v1.5 Providing info/warning/error messages (HO)
 )
 Package pdftexcmds Info: \pdf@primitive is available.
 Package pdftexcmds Info: \pdf@ifprimitive is available.
 Package pdftexcmds Info: \pdfdraftmode found.
-))
-(/usr/share/texmf-dist/tex/latex/hycolor/hycolor.sty
+)) (/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/tex/latex/hycolor/hycolor.sty
 Package: hycolor 2020-01-27 v1.10 Color options for hyperref/bookmark (HO)
-)
-(/usr/share/texmf-dist/tex/latex/hyperref/nameref.sty
+) (/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/tex/latex/hyperref/nameref.sty
 Package: nameref 2026-01-29 v2.58 Cross-referencing by name of section
-
-(/usr/share/texmf-dist/tex/latex/refcount/refcount.sty
+ (/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/tex/latex/refcount/refcount.sty
 Package: refcount 2019/12/15 v3.6 Data extraction from label references (HO)
-)
-(/usr/share/texmf-dist/tex/generic/gettitlestring/gettitlestring.sty
+) (/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/tex/generic/gettitlestring/gettitlestring.sty
 Package: gettitlestring 2019/12/15 v1.6 Cleanup title references (HO)
-
-(/usr/share/texmf-dist/tex/latex/kvoptions/kvoptions.sty
+ (/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/tex/latex/kvoptions/kvoptions.sty
 Package: kvoptions 2022-06-15 v3.15 Key value format for package options (HO)
 ))
-\c@section@level=\count327
-)
-(/usr/share/texmf-dist/tex/latex/etoolbox/etoolbox.sty
+\c@section@level=\count328
+) (/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/tex/latex/etoolbox/etoolbox.sty
 Package: etoolbox 2025/10/02 v2.5m e-TeX tools for LaTeX (JAW)
-\etb@tempcnta=\count328
+\etb@tempcnta=\count329
+) (/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/tex/generic/stringenc/stringenc.sty
+Package: stringenc 2019/11/29 v1.12 Convert strings between diff. encodings (HO)
 )
-(/usr/share/texmf-dist/tex/generic/stringenc/stringenc.sty
-Package: stringenc 2019/11/29 v1.12 Convert strings between diff. encodings (HO
-)
-)
-\@linkdim=\dimen184
-\Hy@linkcounter=\count329
-\Hy@pagecounter=\count330
-
-(/usr/share/texmf-dist/tex/latex/hyperref/pd1enc.def
-File: pd1enc.def 2026-01-29 v7.01p Hyperref: PDFDocEncoding definition (HO)
+\@linkdim=\dimen186
+\Hy@linkcounter=\count330
+\Hy@pagecounter=\count331
+ (/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/tex/latex/hyperref/pd1enc.def
+File: pd1enc.def 2026-10-09 v7.01s Hyperref: PDFDocEncoding definition (HO)
 Now handling font encoding PD1 ...
 ... no UTF-8 mapping file for font encoding PD1
-)
-(/usr/share/texmf-dist/tex/generic/intcalc/intcalc.sty
+) (/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/tex/generic/intcalc/intcalc.sty
 Package: intcalc 2019/12/15 v1.3 Expandable calculations with integers (HO)
 )
-\Hy@SavedSpaceFactor=\count331
-
-(/usr/share/texmf-dist/tex/latex/hyperref/puenc.def
-File: puenc.def 2026-01-29 v7.01p Hyperref: PDF Unicode definition (HO)
+\Hy@SavedSpaceFactor=\count332
+ (/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/tex/latex/hyperref/puenc.def
+File: puenc.def 2026-10-09 v7.01s Hyperref: PDF Unicode definition (HO)
 Now handling font encoding PU ...
 ... no UTF-8 mapping file for font encoding PU
 )
-Package hyperref Info: Option `breaklinks' set `true' on input line 4072.
-Package hyperref Info: Hyper figures OFF on input line 4201.
-Package hyperref Info: Link nesting OFF on input line 4206.
-Package hyperref Info: Hyper index ON on input line 4209.
-Package hyperref Info: Plain pages OFF on input line 4216.
-Package hyperref Info: Backreferencing OFF on input line 4221.
+Package hyperref Info: Option `breaklinks' set `true' on input line 4070.
+Package hyperref Info: Hyper figures OFF on input line 4199.
+Package hyperref Info: Link nesting OFF on input line 4204.
+Package hyperref Info: Hyper index ON on input line 4207.
+Package hyperref Info: Plain pages OFF on input line 4214.
+Package hyperref Info: Backreferencing OFF on input line 4219.
 Package hyperref Info: Implicit mode ON; LaTeX internals redefined.
-Package hyperref Info: Bookmarks ON on input line 4468.
-\c@Hy@tempcnt=\count332
-LaTeX Info: Redefining \url on input line 4807.
-\XeTeXLinkMargin=\dimen185
-
-(/usr/share/texmf-dist/tex/generic/bitset/bitset.sty
+Package hyperref Info: Bookmarks ON on input line 4466.
+\c@Hy@tempcnt=\count333
+LaTeX Info: Redefining \url on input line 4805.
+\XeTeXLinkMargin=\dimen187
+ (/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/tex/generic/bitset/bitset.sty
 Package: bitset 2019/12/09 v1.3 Handle bit-vector datatype (HO)
-
-(/usr/share/texmf-dist/tex/generic/bigintcalc/bigintcalc.sty
-Package: bigintcalc 2019/12/15 v1.5 Expandable calculations on big integers (HO
-)
+ (/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/tex/generic/bigintcalc/bigintcalc.sty
+Package: bigintcalc 2019/12/15 v1.5 Expandable calculations on big integers (HO)
 ))
-\Fld@menulength=\count333
-\Field@Width=\dimen186
-\Fld@charsize=\dimen187
-Package hyperref Info: Hyper figures OFF on input line 6084.
-Package hyperref Info: Link nesting OFF on input line 6089.
-Package hyperref Info: Hyper index ON on input line 6092.
-Package hyperref Info: backreferencing OFF on input line 6099.
-Package hyperref Info: Link coloring OFF on input line 6104.
-Package hyperref Info: Link coloring with OCG OFF on input line 6109.
-Package hyperref Info: PDF/A mode OFF on input line 6114.
-\Hy@abspage=\count334
-\c@Item=\count335
-\c@Hfootnote=\count336
+\Fld@menulength=\count334
+\Field@Width=\dimen188
+\Fld@charsize=\dimen189
+Package hyperref Info: Hyper figures OFF on input line 6091.
+Package hyperref Info: Link nesting OFF on input line 6096.
+Package hyperref Info: Hyper index ON on input line 6099.
+Package hyperref Info: backreferencing OFF on input line 6106.
+Package hyperref Info: Link coloring OFF on input line 6111.
+Package hyperref Info: Link coloring with OCG OFF on input line 6116.
+Package hyperref Info: PDF/A mode OFF on input line 6121.
+\Hy@abspage=\count335
+\c@Item=\count336
+\c@Hfootnote=\count337
 )
 Package hyperref Info: Driver (autodetected): hpdftex.
-
-(/usr/share/texmf-dist/tex/latex/hyperref/hpdftex.def
-File: hpdftex.def 2026-01-29 v7.01p Hyperref driver for pdfTeX
-\Fld@listcount=\count337
-\c@bookmark@seq@number=\count338
-
-(/usr/share/texmf-dist/tex/latex/rerunfilecheck/rerunfilecheck.sty
+ (/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/tex/latex/hyperref/hpdftex.def
+File: hpdftex.def 2026-10-09 v7.01s Hyperref driver for pdfTeX
+\Fld@listcount=\count338
+\c@bookmark@seq@number=\count339
+ (/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/tex/latex/rerunfilecheck/rerunfilecheck.sty
 Package: rerunfilecheck 2025-06-21 v1.11 Rerun checks for auxiliary files (HO)
-
-(/usr/share/texmf-dist/tex/generic/uniquecounter/uniquecounter.sty
+ (/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/tex/generic/uniquecounter/uniquecounter.sty
 Package: uniquecounter 2019/12/15 v1.4 Provide unlimited unique counter (HO)
 )
-Package uniquecounter Info: New unique counter `rerunfilecheck' on input line 2
-84.
+Package uniquecounter Info: New unique counter `rerunfilecheck' on input line 284.
 )
 \Hy@SectionHShift=\skip58
-)
-LaTeX Font Info:    Trying to load font information for T1+ptm on input line 72
-.
-
-(/home/mckb/texmf/tex/latex/psnfss/t1ptm.fd
-File: t1ptm.fd 2001/06/04 font definitions for T1/ptm.
-)
-(/usr/share/texmf-dist/tex/latex/l3backend/l3backend-pdftex.def
-File: l3backend-pdftex.def 2025-10-09 L3 backend support: PDF output (pdfTeX)
-\l__color_backend_stack_int=\count339
+) (/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/tex/latex/l3kernel/l3backend-pdftex.def
+File: l3backend-pdftex.def 2026-09-09 L3 backend support: PDF output (pdfTeX)
+\l__color_backend_stack_int=\count340
 ) (./paper.aux)
 \openout1 = `paper.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 72.
-LaTeX Font Info:    ... okay on input line 72.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 72.
-LaTeX Font Info:    ... okay on input line 72.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 72.
-LaTeX Font Info:    ... okay on input line 72.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 72.
-LaTeX Font Info:    ... okay on input line 72.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 72.
-LaTeX Font Info:    ... okay on input line 72.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 72.
-LaTeX Font Info:    ... okay on input line 72.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 72.
-LaTeX Font Info:    ... okay on input line 72.
-LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 72.
-LaTeX Font Info:    ... okay on input line 72.
-LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 72.
-LaTeX Font Info:    ... okay on input line 72.
-
-(/usr/share/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
-[Loading MPS to PDF converter (version 2006.09.02).]
-\scratchcounter=\count340
-\scratchdimen=\dimen188
-\scratchbox=\box105
-\nofMPsegments=\count341
-\nofMParguments=\count342
-\everyMPshowfont=\toks28
-\MPscratchCnt=\count343
-\MPscratchDim=\dimen189
-\MPnumerator=\count344
-\makeMPintoPDFobject=\count345
-\everyMPtoPDFconversion=\toks29
-) (/usr/share/texmf-dist/tex/latex/epstopdf-pkg/epstopdf-base.sty
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 68.
+LaTeX Font Info:    ... okay on input line 68.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 68.
+LaTeX Font Info:    ... okay on input line 68.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 68.
+LaTeX Font Info:    ... okay on input line 68.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 68.
+LaTeX Font Info:    ... okay on input line 68.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 68.
+LaTeX Font Info:    ... okay on input line 68.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 68.
+LaTeX Font Info:    ... okay on input line 68.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 68.
+LaTeX Font Info:    ... okay on input line 68.
+LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 68.
+LaTeX Font Info:    ... okay on input line 68.
+LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 68.
+LaTeX Font Info:    ... okay on input line 68.
+ (/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/tex/latex/epstopdf-pkg/epstopdf-base.sty
 Package: epstopdf-base 2020-01-24 v2.11 Base part for package epstopdf
-Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 4
-85.
-
-(/usr/share/texmf-dist/tex/latex/latexconfig/epstopdf-sys.cfg
-File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Liv
-e
+Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 485.
+ (/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/tex/latex/latexconfig/epstopdf-sys.cfg
+File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Live
 ))
-Package hyperref Info: Link coloring OFF on input line 72.
- (./paper.out)
-(./paper.out)
+Package hyperref Info: Link coloring OFF on input line 68.
+ (./paper.out) (./paper.out)
 \@outlinefile=\write4
 \openout4 = `paper.out'.
 
-LaTeX Font Info:    Trying to load font information for TS1+ptm on input line 1
-25.
- (/home/mckb/texmf/tex/latex/psnfss/ts1ptm.fd
-File: ts1ptm.fd 2001/06/04 font definitions for TS1/ptm.
-) [1
+ [1
 
-{/home/mckb/.texlive/texmf-var/fonts/map/pdftex/updmap/pdftex.map}{/usr/share/t
-exmf-dist/fonts/enc/dvips/base/8r.enc}]
-Underfull \hbox (badness 2269) in paragraph at lines 163--166
-[]\T1/ptm/b/n/10 RQ1\T1/ptm/m/n/10 : Un-der con-ven-tional clip-level in-distri
-bution eval-u-a-tion, how do the
+{/Users/hegdesrinivasm/Library/TinyTeX/texmf-var/fonts/map/pdftex/updmap/pdftex.map}{/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/fonts/enc/dvips/cm-super/cm-super-t1.enc}{/Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/fonts/enc/dvips/cm-super/cm-super-ts1.enc}] [2] [3] [4]
+Underfull \vbox (badness 2726) has occurred while \output is active []
+
+ [5]
+Underfull \hbox (badness 1097) in paragraph at lines 356--379
+\T1/cmr/m/n/10 rate bi-nary clas-si-fier on \T1/cmtt/m/n/10 facebook/wav2vec2-base\T1/cmr/m/n/10 , 94,569,090 pa-ram-e-ters
  []
 
+[6] [7] [8]
+Overfull \hbox (3.9825pt too wide) in paragraph at lines 522--538
+ [][] 
+ []
 
-Underfull \vbox (badness 6016) has occurred while \output is active []
-
- [2]
-[3] [4] [5] [6] [7] [8] [9] [10]
-<figures/ppr_drift.pdf, id=166, 200.1879pt x 125.82007pt>
+[9] [10] [11]
+<figures/ppr_drift.pdf, id=177, 200.1879pt x 125.82007pt>
 File: figures/ppr_drift.pdf Graphic file (type pdf)
 <use figures/ppr_drift.pdf>
-Package pdftex.def Info: figures/ppr_drift.pdf  used on input line 705.
+Package pdftex.def Info: figures/ppr_drift.pdf  used on input line 701.
 (pdftex.def)             Requested size: 130.17133pt x 81.81854pt.
-<figures/metric_disagreement.pdf, id=167, 199.60573pt x 126.70337pt>
+<figures/metric_disagreement.pdf, id=178, 199.60573pt x 126.70337pt>
 File: figures/metric_disagreement.pdf Graphic file (type pdf)
 <use figures/metric_disagreement.pdf>
-Package pdftex.def Info: figures/metric_disagreement.pdf  used on input line 70
-6.
+Package pdftex.def Info: figures/metric_disagreement.pdf  used on input line 702.
 (pdftex.def)             Requested size: 130.17133pt x 82.63268pt.
 
-Underfull \vbox (badness 1648) has occurred while \output is active []
+Underfull \vbox (badness 1845) has occurred while \output is active []
 
- [11]
-[12 <./figures/ppr_drift.pdf> <./figures/metric_disagreement.pdf>] [13]
-[14] (./paper.bbl [15]
-Underfull \hbox (badness 2269) in paragraph at lines 83--86
-[]\T1/ptm/m/n/9 Su²ac, P., Bay-erl, S.P., Dºapo, H.: Stut-ter-ing clas-si-fi-ca
--tion and seg-men-ta-tion with
- []
-
-) [16] (./paper.aux)
+ [12 <./figures/ppr_drift.pdf> <./figures/metric_disagreement.pdf>] [13] [14] [15] (./paper.bbl [16]) [17] (./paper.aux)
  ***********
-LaTeX2e <2025-11-01>
-L3 programming layer <2026-01-19>
+LaTeX2e <2026-06-01>
+L3 programming layer <2026-09-09>
  ***********
 Package rerunfilecheck Info: File `paper.out' has not changed.
 (rerunfilecheck)             Checksum: F7A3F2F213182E00FB8AADCE3B1D38DF;595.
  ) 
 Here is how much of TeX's memory you used:
- 10070 strings out of 469515
- 150155 string characters out of 5470807
- 584593 words of memory out of 5000000
- 38531 multiletter control sequences out of 15000+600000
- 663192 words of font info for 76 fonts, out of 8000000 for 9000
+ 9759 strings out of 469040
+ 150706 string characters out of 5456349
+ 587026 words of memory out of 5000000
+ 38702 multiletter control sequences out of 15000+600000
+ 641343 words of font info for 65 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
- 75i,12n,79p,771b,596s stack positions out of 10000i,1000n,20000p,200000b,200000s
- </home/mckb/.texlive/texmf-var/fonts/pk/ljfour/jknappen/ec/ectt0900.600pk> <
-/home/mckb/.texlive/texmf-var/fonts/pk/ljfour/jknappen/ec/ectt1000.600pk></usr/
-share/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></usr/share/texmf-di
-st/fonts/type1/public/amsfonts/cm/cmmi9.pfb></usr/share/texmf-dist/fonts/type1/
-public/amsfonts/cm/cmr10.pfb></usr/share/texmf-dist/fonts/type1/public/amsfonts
-/cm/cmr7.pfb></usr/share/texmf-dist/fonts/type1/public/amsfonts/cm/cmr9.pfb></u
-sr/share/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/share/texmf
--dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb></usr/share/texmf-dist/fonts/typ
-e1/public/amsfonts/cm/cmsy9.pfb></home/mckb/texmf/fonts/type1/urw/times/utmb8a.
-pfb></home/mckb/texmf/fonts/type1/urw/times/utmr8a.pfb></home/mckb/texmf/fonts/
-type1/urw/times/utmri8a.pfb>
-Output written on paper.pdf (16 pages, 206775 bytes).
+ 74i,11n,79p,771b,596s stack positions out of 10000i,1000n,20000p,200000b,200000s
+</Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi9.pfb></Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb></Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmr9.pfb></Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb></Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy9.pfb></Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/fonts/type1/public/cm-super/sfbx0700.pfb></Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/fonts/type1/public/cm-super/sfbx0900.pfb></Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/fonts/type1/public/cm-super/sfbx1000.pfb></Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/fonts/type1/public/cm-super/sfbx1200.pfb></Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/fonts/type1/public/cm-super/sfbx1440.pfb></Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/fonts/type1/public/cm-super/sfrm0500.pfb></Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/fonts/type1/public/cm-super/sfrm0700.pfb></Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/fonts/type1/public/cm-super/sfrm0900.pfb></Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/fonts/type1/public/cm-super/sfrm1000.pfb></Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/fonts/type1/public/cm-super/sfti1000.pfb></Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/fonts/type1/public/cm-super/sftt0900.pfb></Users/hegdesrinivasm/Library/TinyTeX/texmf-dist/fonts/type1/public/cm-super/sftt1000.pfb>
+Output written on paper.pdf (17 pages, 428441 bytes).
 PDF statistics:
- 405 PDF objects out of 1000 (max. 8388607)
- 261 compressed objects within 3 object streams
- 75 named destinations out of 1000 (max. 500000)
+ 398 PDF objects out of 1000 (max. 8388607)
+ 300 compressed objects within 3 object streams
+ 76 named destinations out of 1000 (max. 500000)
  19 words of extra memory for PDF output out of 10000 (max. 10000000)
 
