@@ -831,7 +831,6 @@ export default function ResultsPage({ analyzedFile }: { analyzedFile: File | nul
               <CheckCircle2 className="text-emerald-500 shrink-0 mt-0.5" size={16} />
               <div className="text-xs text-text-secondary space-y-1">
                 <p className="font-semibold text-text-primary">Thank you — your correction was saved anonymously.</p>
-                <p>Saved as audio <span className="font-mono text-text-primary">{correctionSaved.audio_label}</span> with text <span className="font-mono text-text-primary">{correctionSaved.text_label}</span>.</p>
                 <button
                   onClick={() => setCorrectionSaved(null)}
                   className="text-[10px] font-bold text-accent-teal hover:underline cursor-pointer"
