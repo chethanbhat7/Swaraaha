@@ -1,4 +1,1 @@
-1 (Fig. 1) - Bar chart of per-class F1 scores on the clip-level in-distribution test set.
-2 (Fig. 2) - Bar chart of per-class tuned F1 on the Project Boli speaker-independent cross-corpus held-out set, comparing the shared-backbone Wav2Vec2 (arm02) and CNN-LSTM (arm06) models.
-3 (Fig. 3) - Bar chart of per-class area under the ROC curve (AUROC) and precision-recall curve (AUPRC) on the clip-level test set.
-4 (Fig. 4) - Five confusion matrices, one per dysfluency type, for the binary Wav2Vec2 classifiers on the clip-level in-distribution test set.
+1 (Fig. 1) - Two bar charts. Panel (a): horizontal bars of the macro predicted-positive rate of the seven configurations on the 53-clip cross-corpus set, with a dashed line at the 0.408 macro base rate; the three Wav2Vec2 configurations fall below it (0.079 to 0.204) and the four CNN configurations above it (0.438 to 0.879). Panel (b): grouped bars of cross-corpus macro F1 against macro AUROC per configuration, with the all-positive F1 line at 0.550 and the chance AUROC line at 0.500; the CNNs obtain the higher F1 at chance AUROC, while arm01 and arm02 obtain the lowest F1 at the highest AUROC.

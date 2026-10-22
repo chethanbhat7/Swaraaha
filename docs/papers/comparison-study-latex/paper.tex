@@ -8,15 +8,18 @@
 %   pdflatex paper
 %   pdflatex paper
 % ──────────────────────────────────────────────────────────────────────
-\documentclass[runningheads]{llncs}
+\documentclass[runningheads,a4paper,orivec]{llncs}
 %
 \usepackage[T1]{fontenc}
 % T1 fonts will be used to generate the final print and online PDFs,
 % so please use T1 fonts in your manuscript whenever possible.
 %
-% The reference LNCS template selects Times Roman via the newtx fonts.
-% Fall back to a Times (ptm) text face where newtx is unavailable,
-% so the manuscript remains compilable on any TeX installation.
+\usepackage{amsmath}   % must be loaded before newtxmath
+%
+% Springer's official LaTeX template is Computer Modern based; Times via the
+% newtx family is a supported LNCS variant. Fall back to a Times (ptm) text
+% face where newtx is unavailable, so the manuscript remains compilable on
+% any TeX installation.
 \IfFileExists{newtxtext.sty}{%
   \usepackage{newtxtext}       % selects Times Roman as basic font
   \usepackage[varvw]{newtxmath}
@@ -26,8 +29,39 @@
 \usepackage{graphicx}
 \usepackage{array}
 \usepackage{url}
-\usepackage{amsmath}
 \emergencystretch=1.5em       % avoid ugly overfull lines in justified text
+% Compact rendering of a 95% confidence interval inside result tables.
+\newcommand{\ci}[1]{{\scriptsize\,(#1)}}
+% Tighten float and display spacing to keep the paper within the page limit
+% without changing the LNCS text block, font sizes, or margins.
+\setlength{\textfloatsep}{12pt plus 2pt minus 2pt}
+\setlength{\floatsep}{8pt plus 2pt minus 2pt}
+\setlength{\intextsep}{10pt plus 2pt minus 2pt}
+\setlength{\abovecaptionskip}{6pt}
+\setlength{\belowcaptionskip}{0pt}
+\setlength{\abovedisplayskip}{7pt plus 2pt minus 3pt}
+\setlength{\belowdisplayskip}{7pt plus 2pt minus 3pt}
+\setlength{\abovedisplayshortskip}{4pt plus 1pt minus 2pt}
+\setlength{\belowdisplayshortskip}{5pt plus 2pt minus 3pt}
+% Let floats occupy more of a page and text wrap around them, which removes the
+% large vertical gaps that otherwise appear when a table cannot fit in the
+% remaining space. Margins, font sizes, and the LNCS text block are unchanged.
+\renewcommand{\topfraction}{0.92}
+\renewcommand{\bottomfraction}{0.75}
+\renewcommand{\textfraction}{0.06}
+\renewcommand{\floatpagefraction}{0.80}
+\renewcommand{\dbltopfraction}{0.92}
+\renewcommand{\dblfloatpagefraction}{0.80}
+% Clickable cross-references, citation links, and reference links. hidelinks
+% keeps the printed appearance unchanged (no coloured boxes), so the manuscript
+% still meets LNCS style rules while the PDF becomes navigable.
+\usepackage[hidelinks,breaklinks=true]{hyperref}
+\hypersetup{pdftitle={A Comparative Study of Wav2Vec~2.0 and Compact CNN Models
+for Cross-Corpus Speech Dysfluency Detection},
+pdfsubject={Cross-corpus speech dysfluency detection: Wav2Vec~2.0 compared
+with compact spectrogram CNNs},
+pdfkeywords={speech dysfluency detection, Wav2Vec~2.0, spectrogram CNN,
+cross-corpus evaluation, distribution shift}}
 %
 % If you use the hyperref package, please uncomment the following two lines
 % to display URLs in blue roman font according to Springer's eBook style:
@@ -37,1013 +71,863 @@
 %
 \begin{document}
 %
-\title{A Comparative Study of Self-Supervised and Spectrogram-Based
-Models for Cross-Corpus Speech Dysfluency Detection}
+\title{A Comparative Study of {Wav2Vec}~2.0 and Compact {CNN} Models for
+Cross-Corpus Speech Dysfluency Detection}
 %
-\titlerunning{A Comparative Study}
+\titlerunning{Wav2Vec~2.0 vs. Compact CNNs}
 % If the paper title is too long for the running head, you can set
 % an abbreviated paper title here.
 %
-\author{Anonymous}
+\author{}
 %
-\authorrunning{Anonymous}
-% Anonymous submission: author details, affiliations, and contact
-% information are withheld for double-blind review.
+\authorrunning{}
+% Double-blind submission: author names, affiliations, and contact details
+% are deliberately omitted for anonymous review. Restore the real \author{}
+% and \institute{} blocks when producing the camera-ready version.
 %
-\institute{}           % suppressed for double-blind review
+\institute{}
 %
 \maketitle              % typeset the header of the contribution
 %
 \begin{abstract}
-Stuttering is a speech disorder that manifests as involuntary repetitions,
-prolongations, and blocks, impacting communication and quality of life, and it
-affects roughly 1\% of the adult population and up to 5\% of
-children~\cite{yairi2009childhood}. Automated detection of dysfluency events is
-challenging due to the subtle acoustic signatures and strong class imbalance
-across dysfluency types (prolongation, block, sound repetition, word
-repetition, interjection). This paper presents an end-to-end speech dysfluency
-classification system and compares seven experimental configurations spanning
-two representation families: self-supervised waveform-based models built on
-Wav2Vec~2.0 (five independent binary classifiers and a shared-backbone
-multitask variant) and compact mel-spectrogram CNN models (pooled,
-single-head, LSTM-based, and transformer-based). All models are
-evaluated on a merged corpus of 37,087 clips drawn from SEP-28K, UCLASS, and
-Project Boli (36,674 usable after removing empty audio) under two protocols:
-an in-distribution clip-level held-out evaluation and a speaker-independent
-cross-corpus evaluation on Project Boli (unseen speakers and recording
-conditions; the ingested Boli clips are English-only, so this is a
-cross-corpus but not a cross-lingual evaluation). Under the clip-level
-protocol, the five-binary
-Wav2Vec 2.0 configuration achieves the highest measured macro F1 (0.5704 at
-validation-tuned thresholds), while the shared-backbone multitask variant
-follows closely (0.5557) using ${\approx}4.9\times$ fewer parameters than five
-separate classifiers; however, this protocol shares
-speakers between training and test, so these results are not
-speaker-independent. On the 53-clip speaker-independent Boli set, no
-configuration exceeds a trivial all-positive baseline (macro F1 $=0.55$):
-apparent cross-corpus F1 differences are dominated by class base rates and by
-threshold/operating-point drift on the distribution-shifted set rather than by
-ranking quality. Under the threshold-free metrics the ordering is reversed,
-with the two task-adapted Wav2Vec2 configurations ranking Boli clips best
-(macro AUROC ${\approx}0.62$) while the CNN configurations sit around chance
-(${\approx}0.47$--$0.52$). These results demonstrate
-that tuned-F1 comparisons on a small imbalanced external corpus do not
-reliably measure cross-corpus generalization; we therefore treat ranking-based
-metrics and per-class analysis as the primary evidence, discuss the trade-offs
-between representation capacity and generalization, and frame the observed
-generalization gap as an open hypothesis. We report per-class precision,
-recall, F1, AUROC, and AUPRC across all five dysfluency types. All results are
-single-seed point estimates and should be interpreted accordingly.
-
-\keywords{Speech dysfluency detection \and stuttering classification \and
-Wav2Vec 2.0 \and multitask learning \and cross-corpus evaluation \and
-speaker-independent evaluation.}
+We compare two model families for cross-corpus speech dysfluency detection:
+self-supervised Wav2Vec~2.0 and compact mel-spectrogram CNNs. F1, the standard
+metric here, depends on the decision threshold as well as the model,
+and thresholds calibrated on one corpus need not transfer. Seven
+configurations are compared: five independent binary Wav2Vec2 classifiers
+(arm01); two shared-backbone multitask variants frozen for 3
+and 20 epochs (arm02, arm03); and four compact mel-spectrogram CNNs with
+different sequence aggregators (arm04--arm07). All are trained on 29{,}296
+clips from SEP-28K and UCLASS, then evaluated under a
+clip-level in-distribution split that shares speakers and a speaker-independent
+cross-corpus split on 53 English Project Boli recordings. In-distribution, arm01 attains
+the highest measured macro F1 (0.570, 95\% CI 0.554--0.587, validation-tuned
+thresholds), with arm02 close behind (0.556, 0.540--0.572) at
+${\approx}4.9\times$ fewer parameters; the intervals overlap. Cross-corpus, the
+ordering inverts: an all-positive classifier attains macro F1 $0.550$
+(0.490--0.604), which nothing exceeds, because the CNNs reach their F1
+by labelling nearly every external clip positive (macro predicted-positive rate
+0.879, 95\% CI 0.849--0.909, against a base rate of 0.408) while the Wav2Vec2
+configurations collapse toward all-negative (0.079--0.102). Threshold-free
+metrics reverse the ranking again: the task-adapted Wav2Vec2 configurations
+rank external clips best (macro AUROC 0.620--0.621, AUPRC 0.546--0.557) and
+the CNNs lie near chance. The predicted-positive rate shows the CNN operating
+points already sat far above the in-distribution base rate, so the CNN advantage
+under thresholded F1 is consistent with operating-point drift and does not
+imply superior ranking. Thresholded F1 alone therefore cannot support
+cross-corpus claims for this task. Each configuration was trained once;
+intervals reflect clip-level resampling, and the external analysis is
+exploratory.
 \end{abstract}
 %
-%
-%
+\keywords{Speech dysfluency detection \and Wav2Vec 2.0 \and spectrogram CNNs
+\and cross-corpus evaluation \and distribution shift \and speaker-independent
+evaluation.}
 \section{Introduction}
+\label{sec:intro}
 Stuttering affects approximately 1\% of the global adult population and up to
-5\% of children~\cite{yairi2009childhood}. Characterized by involuntary
-repetitions of sounds, syllables, or words (sound repetitions and word
-repetitions), abnormal prolongations of speech sounds (prolongations), and
-involuntary pauses or stops in speech flow (blocks), it impacts the
-psychosocial well-being of affected individuals~\cite{yairi2009childhood}.
-Traditional assessment by speech-language pathologists (SLPs) relies on
-subjective auditory perception and visual inspection of waveforms, a process
-that is time-consuming, prone to inter-rater variability, and unscalable for
-large populations; this has motivated a large body of work on automatic
-stuttering identification~\cite{sheikh2022review}.
+5\% of children~\cite{yairi2009childhood}. It is characterized by involuntary
+repetitions of sounds and words, abnormal prolongations, and pauses in speech
+flow (blocks), and it affects the psychosocial well-being of those who stutter.
+Clinical assessment by speech-language pathologists relies on subjective listening
+and waveform inspection, which is time-consuming, subject to inter-rater
+variability, and does not scale; this has motivated substantial work on automatic
+stuttering identification~\cite{sheikh2022review}. Self-supervised speech
+representation learning, and Wav2Vec~2.0 in particular~\cite{baevski2020wav2vec},
+has since produced strong downstream results from raw audio. Applied to dysfluency
+detection, however, this line of work is dominated by a single evaluation style:
+models are trained and tested on a common corpus, and performance is summarized
+with per-class and macro F1 at a threshold tuned on held-out data from that same
+corpus. F1 at such a threshold measures two things at once: the quality of the
+model's ranking of clips, and the suitability of a threshold calibrated on data
+resembling the test data. Only the first should transfer to new speakers and
+corpora. The two can move in opposite directions under shift: a threshold that
+maximizes validation F1 in-distribution may fall in a degenerate region of the ROC
+curve once the score distribution changes, leaving F1 dominated by class base
+rates rather than discrimination. The external corpora available for this task are
+small enough that a single operating point can dominate the reported result.
 
-Recent advances in self-supervised speech representation learning, particularly
-Wav2Vec 2.0~\cite{baevski2020wav2vec}, have achieved strong performance on
-downstream speech classification tasks by learning contextualized representations
-from raw audio. Applying such models to stuttering detection presents challenges:
-the five dysfluency types have different acoustic signatures, and severe class
-imbalance exists (most speech segments are fluent)~\cite{lea2021sep28k}.
-
-This paper makes the following contributions:
+Cross-corpus and speaker-independent evaluation is not new in principle. Bayerl
+et al.~\cite{bayerl2023crosscorpus} studied cross-corpus stuttering detection as
+a multi-label problem, and Bayerl et al.~\cite{bayerl2022partitioning} showed that
+the choice of dataset partitioning materially changes reported results. The
+interaction between the two metric families under shift is less well
+characterized: how much of a cross-corpus F1 difference is attributable to
+ranking quality, and how much to operating-point drift. Without that separation,
+comparisons between representation families risk being read as statements about
+generalization when they concern threshold placement. We address this with a
+controlled comparison of seven configurations, Wav2Vec~2.0 models and compact
+spectrogram CNNs, under matched protocols, reporting thresholded and
+threshold-free views side by side. Our research questions are as follows.
 \begin{itemize}
-\item We present a modular system for speech dysfluency
-classification, supporting five dysfluency types: prolongation, block, sound
-repetition, word repetition, and interjection.
-\item We conduct a systematic comparative study of seven experimental
-configurations across two representation families---self-supervised waveform
-models (Wav2Vec 2.0) and mel-spectrogram CNN models---on a merged multi-corpus
-dataset.
-\item We evaluate under two complementary protocols: a clip-level in-distribution
-held-out split and a speaker-independent cross-corpus held-out set (Project
-Boli), and we report both macro and per-class metrics including AUPRC.
-\item We analyze per-class performance across all five dysfluency types, showing
-that interjection achieves the highest F1 among the evaluated classes while block
-is the most challenging. We further demonstrate that tuned-F1 results on the
-small external Boli set are dominated by class base rates and operating-point
-drift---no configuration beats a trivial all-positive baseline there---so
-cross-corpus claims must be evaluated with threshold-free metrics, and we
-articulate the open hypotheses that surround the observed
-in-distribution/cross-corpus generalization gap.
+\item \textbf{RQ1}: Under conventional clip-level in-distribution
+evaluation, how do the Wav2Vec2-based and compact spectrogram CNNs compare in
+macro and per-class F1?
+\item \textbf{RQ2}: On a speaker-independent external corpus, how do their
+measured F1 scores and their ordering change?
+\item \textbf{RQ3}: How much of the cross-corpus F1 behaviour is explained by
+operating-point drift (a mismatch between predicted-positive rate and class
+base rate) rather than by a change in ranking quality?
+\item \textbf{RQ4}: Do threshold-free metrics (AUROC, AUPRC) give a
+materially different account of cross-corpus behaviour than thresholded F1?
 \end{itemize}
 
-The remainder of this paper is organized as follows: Section~\ref{sec:related}
-reviews related work, Section~\ref{sec:arch} describes the system architecture,
-Section~\ref{sec:setup} details the experimental setup, Section~\ref{sec:results}
-presents results and discussion, and Section~\ref{sec:conclusion} concludes.
+No configuration generalizes across corpora reliably
+(Section~\ref{sec:results}). Our contributions
+are: (i) a matched comparison of Wav2Vec~2.0 and compact spectrogram CNN
+configurations under in-distribution and speaker-independent cross-corpus
+protocols; (ii) an explicit separation of ranking quality from operating-point
+placement, using the predicted-positive rate measured on both splits under
+identical thresholds, which shows the two metric families yielding opposite
+orderings on the external set; (iii) the observation that no configuration
+exceeds an all-positive baseline on external F1, a negative result; and (iv) a
+per-class analysis identifying interjection as
+easiest and block as hardest.
 
 % ── II. RELATED WORK ─────────────────────────────────────────────────
 \section{Related Work}
 \label{sec:related}
 
-\subsection{Traditional Approaches}
-Early stutter detection systems relied on handcrafted acoustic features,
-including jitter, shimmer, spectral flux, and formant trajectories, combined with
-classical classifiers such as Support Vector Machines (SVMs), Hidden Markov
-Models (HMMs), and Gaussian Mixture Models (GMMs)~\cite{sheikh2022review}.
-These methods achieved reasonable accuracy on controlled datasets but generalized
-poorly across speakers, accents, and recording conditions due to the limited
-representational capacity of handcrafted features.
+\subsection{Detection Approaches}
+Early systems used handcrafted features (jitter, shimmer, spectral flux, formant
+trajectories) with SVMs, HMMs, or GMMs~\cite{sheikh2022review} and generalized
+poorly across speakers, accents, and conditions. End-to-end deep learning removed
+the manual feature-engineering step: CNNs on mel-spectrograms with recurrent
+layers showed early promise for multi-type dysfluency
+detection~\cite{kourkounakis2020detecting}, as did RNNs and time-delay networks
+for temporal dependencies~\cite{sheikh2021stutternet}. These remain attractive
+where labelled data and compute are scarce, and define the compact end of the
+capacity range compared against here. Self-supervised pre-training has since
+become dominant: Wav2Vec~2.0 contrasts quantized latent speech units against
+masked waveform spans and generalizes across languages when pre-trained
+multilingually (XLSR-53~\cite{conneau2021xlsr}), HuBERT~\cite{hsu2021hubert}
+predicts masked hidden units from offline clustering, XLS-R~\cite{babu2022xlsr}
+scales the objective to 128 languages, and WavLM~\cite{chen2022wavlm} adds
+denoising objectives. Bayerl et al.~\cite{bayerl2022multi} applied Wav2Vec2 to
+multi-task stuttering detection on FluencyBank, reporting macro F1 of 0.56--0.63
+across five types, and to UCLASS therapy sessions~\cite{bayerl2022therapy}; on
+the standardized SEP-28k-E partition per-class F1 varies widely by type
+(interjection 0.78, prolongation 0.53, block 0.30)~\cite{susac2026stuttmil}.
+Common to these models is that their embeddings encode linguistic content together
+with paralinguistic attributes such as speaker identity and recording condition;
+how much corpus-specific information a representation carries is the trade-off
+our comparison probes.
 
-\subsection{Deep Learning Methods}
-The introduction of end-to-end deep learning approaches removed the need for
-manual feature engineering. Convolutional Neural Networks (CNNs) operating on
-mel-spectrograms, combined with recurrent layers, showed early promise for
-multi-type dysfluency
-detection~\cite{kourkounakis2020detecting}. Recurrent Neural Networks (RNNs),
-Long Short-Term Memory (LSTM) networks, and time-delay neural networks were
-applied to capture temporal dependencies in speech
-signals~\cite{kourkounakis2020detecting,sheikh2021stutternet}. More recently,
-transformer-based architectures, particularly Wav2Vec
-2.0~\cite{baevski2020wav2vec}, have achieved strong results on speech processing
-tasks by learning contextualized representations from raw audio through
-self-supervised pre-training on large unlabeled corpora.
+\subsection{Corpora and Metrics Under Shift}
+The three corpora used here (Section~\ref{sec:arch}) differ in speakers,
+recording conditions, label definitions, and annotation granularity,
+so generalization to unseen conditions is difficult to assess. Language is not
+among the differences that our evaluation actually exercises, because the
+ingested Boli portion is English-only (Section~\ref{sec:arch}). Bayerl et
+al.~\cite{bayerl2023crosscorpus} framed cross-corpus detection as a
+multi-label problem, motivated by dysfluent events co-occurring rather than
+appearing in isolation, and showed that the partitioning scheme changes reported
+results substantially~\cite{bayerl2022partitioning}; most of this literature
+still reports F1 at a threshold chosen on in-distribution data, the practice
+whose adequacy we examine. Our study is methodological: we
+hold the model set fixed, vary the evaluation protocol, and report thresholded
+and threshold-free metrics for the same predictions.
 
-\subsection{Self-Supervised Speech Representation Models}
-Self-supervised pre-training has become the dominant paradigm for speech
-representation learning. Wav2Vec 2.0~\cite{baevski2020wav2vec} learns
-contextualized speech representations by contrasting quantized latent speech
-units and masking spans of the input waveform, and it generalizes across
-languages when pre-trained on multilingual data
-(XLSR-53~\cite{conneau2021xlsr}). HuBERT~\cite{hsu2021hubert} instead predicts
-masked hidden units obtained from an offline clustering step and has been shown
-to capture strong segmental and suprasegmental characteristics of speech.
-XLS-R~\cite{babu2022xlsr} scales the Wav2Vec 2.0 objective to 128 languages and
-436K hours of speech. WavLM~\cite{chen2022wavlm} augments masked prediction with
-denoising objectives to improve robustness on full-stack speech-processing
-downstream tasks. A consistent property of these models is that their embeddings
-encode both linguistic content and paralinguistic attributes such as speaker
-identity and recording condition; the amount of such non-lexical information
-carried in the representation is a design trade-off that is central to our
-analysis of cross-corpus generalization.
+F1 is the harmonic mean of precision and recall at a chosen operating point, so
+its value depends on the threshold as well as on the score ranking. AUROC
+summarizes ranking over all thresholds but can look optimistic when positives
+are rare, because a large negative class inflates the area; AUPRC weights
+precision by the positive class, is the more informative of the two under
+imbalance, and has the positive-class prevalence rather than 0.5 as its chance
+level. Predictive calibration is a separate property that we do not
+measure~\cite{guo2017calibration}. We report, for each configuration and
+protocol, thresholded F1, threshold-free AUROC and AUPRC, the AUPRC lift over the
+prevalence prior, and the predicted-positive rate (PPR): at a fixed threshold, a
+PPR far from the base rate indicates displaced operating-point placement rather
+than lost discriminative ability. Because the same thresholds are applied to both
+evaluation sets, the difference in PPR between them measures drift directly
+rather than by inference.
 
-\subsection{Wav2Vec2-Based Stutter Detection}
-Bayerl et al.~\cite{bayerl2022multi} applied Wav2Vec2 to multi-task stuttering
-detection on FluencyBank, achieving macro F1 scores in the range of 0.56--0.63
-across five dysfluency types. On the standardized SEP-28k-E partition, published
-state-of-the-art results reach per-class F1 values that vary significantly by
-dysfluency type (e.g., interjection: 0.78, prolongation: 0.53, block: 0.30,
-as reported by Su\v{s}ac et al.~\cite{susac2026stuttmil} for the leading
-baselines). These works established Wav2Vec2 as a strong backbone for stutter
-detection but focused on classification within a single corpus without systematic
-architectural comparison or cross-corpus evaluation.
-
-\subsection{Stuttering and Dysfluency Datasets}
-Several stuttering corpora have become available in recent years. SEP-28K
-was introduced by Lea et al.~\cite{lea2021sep28k} from publicly available
-podcasts of people who stutter, with clip-level majority-vote labels for five
-dysfluency types. The same authors released a compatible re-annotation of the
-adults-who-stutter portion of FluencyBank, a corpus of transcribed monologue
-and dialogue speech~\cite{bernsteinratner2018fluencybank}; together these two
-sources provide the 32,321 SEP-28K-format clips used here. UCLASS,
-a corpus of stuttered speech from therapy sessions~\cite{howell2009uclass},
-provides 4,712 additional clips in SEP-28K format. Project Boli~\cite{boli2025}
-is a recent multilingual, multi-accent corpus with word-level dysfluency
-annotations in five Indian languages. These datasets differ
-in speakers, languages, recording conditions, and annotation granularity
-(clip-level versus word-level), which makes cross-corpus generalization difficult
-to assess and rarely tested.
-
-\subsection{Cross-Corpus and Speaker-Independent Evaluation}
-Prior work has largely evaluated on a single dataset (either SEP-28K or
-FluencyBank), making it difficult to assess cross-corpus generalization. A system
-trained on one corpus may overfit its speakers, accents, and recording
-conditions; evaluating on held-out speakers from the same corpus only partially
-reveals this when speakers overlap across splits. Reporting a speaker-independent
-protocol (no speaker in more than one split) and a cross-corpus protocol (an
-entirely separate corpus) is therefore important for realistic performance
-estimates. We follow this reasoning and evaluate all seven configurations both
-in-distribution (clip-level) and cross-corpus on Boli, whose speakers and
-recordings are fully disjoint from training.
-
-% ── III. SYSTEM ARCHITECTURE ─────────────────────────────────────────
-\section{System Architecture}
+% ── III. CORPORA AND MODELS ──────────────────────────────────────────
+\section{Corpora and Models}
 \label{sec:arch}
 
-The system comprises a classification pipeline that identifies which dysfluency
-types are present in speech audio. The pipeline builds on a common preprocessing
-module and exposes models through a unified model registry API.
+The system is a clip-level classification pipeline that predicts which of the
+five dysfluency types are present in a 3-s audio window. All models share one
+preprocessing module and are exposed through a common registry API.
 
-\subsection{Data Pipeline}
-The system integrates three publicly available stuttering datasets:
-\begin{itemize}
-\item \emph{SEP-28K}~\cite{lea2021sep28k}: 32,321 clips annotated for five
-dysfluency types (28,177 podcast clips plus a 4,144-clip FluencyBank
-re-annotation), with TSV-format labels.
-\item \emph{UCLASS}~\cite{howell2009uclass}: 4,712 clips in SEP-28K format, sourced
-from stuttering therapy sessions.
-\item \emph{Project Boli}~\cite{boli2025}: 54 clips with word-level dysfluency
-annotations and timestamps, drawn from the corpus's English task recordings.
-Boli is a multilingual, multi-accent corpus whose full release carries
-word-level annotations in five Indian languages, but our ingestion path
-resolves the English task codes only, so the 54 clips used here are all
-English. The cross-corpus evaluation reported below is therefore a
-change of speakers, recording pipeline, and annotation convention---not a
-change of language.
-\end{itemize}
+\subsection{Source Corpora and Clip Construction}
+SEP-28K contributes 32{,}321
+clips (28{,}177 podcast clips and a 4{,}144-clip re-annotation of adult
+FluencyBank speech); UCLASS contributes 4{,}712 therapy-session clips in
+SEP-28K format; and Project Boli contributes 54 clips with word-level
+annotations and timestamps; Boli is confined to the test split, so no external
+speaker is seen in training. The three are merged into 37{,}087 manifest rows,
+with per-clip interval CSVs recording events as
+\texttt{(start\_sec, end\_sec, type)} tuples; clips whose audio is missing or
+empty are dropped, leaving 36{,}674 usable clips. The 36{,}620 non-Boli clips
+are partitioned 80/10/10 at random under seed 42 into 29{,}296 training, 3{,}662
+validation, and 3{,}662 test clips, and all 54 Project Boli clips are then pinned
+to the test split, giving a test partition of 3{,}716 rows. Audio is resampled
+to 16~kHz mono, DC-removed, peak-normalized, and silence-trimmed.
 
-Table~\ref{tab:datasets} summarizes their key properties. The three datasets are
-merged into a unified corpus of 37,087 clips with per-clip interval CSVs recording
-dysfluency events as \texttt{(start\_sec, end\_sec, type)} tuples. Clips with
-missing or header-only (empty) audio files are removed, leaving 36,674 usable
-clips. An 80/10/10 random split (seed 42) assigns 29,296 training clips, 3,662
-validation clips, and 3,716 test clips. To guarantee an honest cross-corpus
-evaluation, all Project Boli clips are pinned to the test split and never appear
-in the training or validation splits. Audio is resampled to 16~kHz mono,
-DC-removed, peak-normalized, silence-trimmed, and padded/truncated to a maximum of
-3 seconds.
+Evaluation does not iterate over manifest rows. It enumerates the audio files
+present in a split directory and keeps those that have a matching label CSV and
+a non-empty body, so the number of scored clips is the number of distinct
+scored recordings rather than the number of rows admitted. On the test partition
+this yields 3{,}715 scored clips, of which 53 are Project Boli; the difference
+between the 54 admitted rows and the 53 scored recordings is one row that this
+filter does not admit. The same rule applied to the external evaluation set is
+what produces the Boli count of 53 used throughout this paper.
 
-We note one departure between this split and the one the reported models were
-actually trained and tuned on. The prepared 3,662-clip validation split is not
-consumed by the training or evaluation code; both read the training directory
-and derive their own held-out portion from it. Training and threshold selection
-therefore operate on a 20\% stratified subsample of the 29,296 training clips
-(5,857 clips, seed 42), stratified by the first positive dysfluency class. The
-prepared validation directory is unused in every number reported here. We
-describe the operating point as \emph{validation-tuned} throughout, but the
-reader should understand it as tuned on a held-out subsample of the training
-pool rather than on the nominal validation split.
+\subsubsection{Construction of the Project Boli subset}
+\label{sec:boli}
+The external subset is derived by an explicit four-step selection procedure from
+the released Boli corpus. First, all \texttt{.txt} files in the
+\texttt{Transcripts} directory are
+enumerated in sorted order; each is a word-level annotation list whose lines carry
+a start time, an end time, and a dysfluency code. Second, each transcript is
+paired with an audio file by name: a direct filename lookup is attempted, then a
+mapped lookup through a fixed task table, then a recursive basename search; a
+transcript with no resolvable audio is discarded. Third, the paired transcript is
+parsed line by line, lines with fewer than three fields are skipped, and the
+remaining codes (\emph{B}, \emph{PR}, \emph{SR}, \emph{WR}, \emph{IN}) are mapped
+to block, prolongation, sound repetition, word repetition, and interjection; a
+transcript yielding no recognized code is discarded. The 54 surviving transcripts
+each contribute one manifest row whose five binary labels are set by whether any
+annotated word carries the corresponding code. Fourth, all 54 rows are pinned to
+the test split and never seen in training; scoring then enumerates distinct audio
+filenames in that split, so the 54 rows resolve to 53 distinct scored recordings,
+and all external results are computed on those 53 clips.
 
-\begin{table}[t]
-\caption{Source corpora and their integration into the merged corpus. The Boli
-clips used here are the English portion of a corpus that also contains Hindi,
-Marathi, Telugu, Bengali, and Assamese material; the non-English portions were
-not ingested.}
-\label{tab:datasets}
-\centering
-\small
-\setlength{\tabcolsep}{4pt}
-\begin{tabular}{>{\raggedright\arraybackslash}p{1.6cm}rl>{\raggedright\arraybackslash}p{2.4cm}>{\raggedright\arraybackslash}p{2.6cm}}
-\hline
-Dataset & Clips & Language(s) & Annotation & Role\\
-\hline
-SEP-28K & 32,321 & English & clip-level TSV, majority vote & train/val/test\\
-UCLASS & 4,712 & English & clip-level TSV & train/val/test\\
-Boli & 54 & English & word-level intervals & test only\\
-\hline
-\end{tabular}
-\end{table}
+Because the pairing key is the audio filename, the scored unit is the distinct
+recording rather than the annotation row, which is the mechanism behind the
+54-to-53 reduction; the reports retain only the resulting counts, so we cannot say
+which filter removed the single row. Three properties of the released corpus
+matter for interpreting the external results. First, each annotated file is built
+around a single stuttered word~\cite{boli2025}, so the external set is enriched
+for dysfluent content by construction and is not a sample of naturalistic speech.
+Second, the released corpus is multilingual: the Boli paper reports 28 participants who
+stutter (22 Hindi, 2 Telugu, 2 Bengali, 1 Marathi, and 1 Assamese mother tongue),
+contributing roughly 2.5~h of audio. Our ingestion path resolves only the English
+task codes of that release, so all 54 clips we ingest are English and the
+cross-corpus protocol below changes speakers, recording pipeline, and annotation
+convention, but not language: it is a cross-corpus evaluation and not a
+cross-lingual one, and cross-lingual robustness remains untested by these results.
+Third, the retained audio segment is the first 3~s of
+each file (Section~\ref{sec:win}), whereas the Boli label derives from the whole
+file, so a recording longer than 3~s carries a label that need not be audible in
+the segment the model receives.
 
-\subsubsection{Annotation harmonization.}
-The three corpora use different annotation conventions, which we map onto a common
-set of five binary clip-level labels (prolongation, block, sound repetition, word
-repetition, interjection). SEP-28K labels are adopted as-is: a clip is positive
-for a dysfluency type if at least two annotators marked it
-(\texttt{SEP28K\_MIN\_VOTES} = 2). UCLASS provides one label set per clip in the
-same five classes; because each clip is a 3-s window centered on the stutter
-event, each present label is materialized as a weak interval of half-width 0.25~s
-centered at 1.5~s into the clip, i.e.\ spanning 1.25--1.75~s. Project Boli provides word-level tokens annotated with the labels
-\emph{B} (block), \emph{PR} (prolongation), \emph{SR} (sound repetition), \emph{WR}
-(word repetition), and \emph{IN} (interjection); these are mapped through a fixed
-code table to the same five classes, and a clip is labeled positive for a class if
-any of its annotated words carries that class. Thus all downstream models consume
-identical five-dimensional binary targets regardless of the original corpus.
+\subsection{Annotation Harmonization}
+The three corpora use different conventions, which we map onto five common
+binary clip-level labels: prolongation, block, sound repetition, word
+repetition, and interjection. SEP-28K labels are adopted as-is, with a clip
+positive for a type when at least two annotators marked it
+(\texttt{SEP28K\_MIN\_VOTES} $=2$); requiring two votes is a substantive choice,
+since accepting any single vote inflates positives several-fold. Because each
+UCLASS clip is a 3-s window centered on a stutter event, each present label is
+materialized as a weak interval of half-width 0.25~s centered at 1.5~s, i.e.\
+spanning 1.25--1.75~s. Project Boli provides
+word-level tokens labeled \emph{B}, \emph{PR}, \emph{SR}, \emph{WR}, and
+\emph{IN}, mapped through a fixed code table to the same five classes as
+described in Section~\ref{sec:boli}, a clip being positive for a class when any
+annotated word carries it. All models therefore consume identical
+five-dimensional binary targets.
 
-\subsubsection{The 3-second window.}
-SEP-28K clips are natively 3~s long, so a maximum window of 3~s is the natural
-budget for the classification task and matches the predominant corpus. For UCLASS,
-whose clips are 3-s windows centered on a stutter event, the window preserves the
-event of interest. Because classification is clip-level, an event whose acoustic
-extent crosses the window boundary does not alter the training target: the
-clip-level label only records presence or absence. This is not the case for
-temporal localization, which is out of scope here. Two caveats apply. First,
-aggressive silence trimming followed by zero-padding to 3~s can place leading or
-trailing speech at the window edges, discarding some prosodic context. Second,
-for blocks---which manifest as silent or tenuous pauses---the fixed window and the
-trimming may suppress the very pause that defines the event when it falls near a
-boundary. We return to this in the discussion of per-class results.
+\subsection{Preprocessing and the 3-Second Window}
+\label{sec:win}
+SEP-28K clips are natively 3~s, so a 3-s maximum window matches the predominant
+corpus; because the task is clip-level, an event whose acoustic extent crosses the
+window boundary does not alter the target. Audio longer than 3~s is truncated to
+its first 3~s and shorter audio is zero-padded, so every configuration receives an
+identically shaped input. Two consequences recur below: silence trimming risks
+suppressing the pause that defines a block, and for any Boli recording longer
+than 3~s the label is derived from the whole file while the retained segment is
+its first 3~s, so a positive label need not be present in the audio the model
+receives (Section~\ref{sec:interpret}).
 
-\subsection{Classification Pipeline}
+\subsection{Model Configurations}
+Seven configurations are evaluated. Trainable parameter counts are 472{,}845{,}450
+for arm01 (five independent Wav2Vec2 binary classifiers), 97{,}332{,}362 each for
+arm02 and arm03 (Wav2Vec2 multitask, backbone frozen for 3 and 20 epochs), and
+341{,}322, 274{,}242, 456{,}906, and 539{,}594 for arm04--arm07 (CNN with pooling,
+single-head CNN with pooling, CNN with LSTM, and CNN with transformer). The CNNs
+therefore hold 0.3--0.6\% of the parameters of arm01. The evaluation artifacts
+report slightly larger figures for the CNNs---342{,}030, 274{,}950, 457{,}614, and
+540{,}302---because they count every element of the stored checkpoint, including
+708 BatchNorm buffer elements (running statistics) that are not trainable; we quote
+the trainable counts here. Inference latency,
+throughput, and peak GPU memory were not measured and are not inferred from these
+counts (Section~\ref{sec:compute}).
 
-\subsubsection{Five Independent Binary Classifiers.}
-Each dysfluency type is handled by a separate binary classifier built on
-\texttt{facebook/wav2vec2-base} (94,569,090 parameters per classifier, including a
-${\approx}0.2$M-parameter classification head on top of the 94.37M-parameter
-backbone). The architecture follows the sequence-classification formulation of
-\texttt{Wav2Vec2For\-Sequence\-Classification}: raw audio $\rightarrow$ Wav2Vec2
-encoder $\rightarrow$ a learned projection of the frame-level hidden states
-(\texttt{Linear}(768$\rightarrow$256)) $\rightarrow$ mean pooling over time
+\subsubsection{Model descriptions.}
+arm01 handles each dysfluency type with a separate binary classifier on
+\texttt{facebook/wav2vec2-base}, 94{,}569{,}090 parameters each: raw audio
+$\rightarrow$ encoder $\rightarrow$ a learned projection of the frame-level hidden
+states (\texttt{Linear}(768$\rightarrow$256)) $\rightarrow$ mean pooling over time
 $\rightarrow$ a linear classifier (\texttt{Linear}(256$\rightarrow$2)) $\rightarrow$
-softmax. Two details of the reference implementation are worth stating
-explicitly because they are easy to assume otherwise: the projection precedes
-the pooling rather than following it, and the head contains no dropout layer. No
-attention mask is passed by our pipeline, so the temporal reduction is an
-unmasked mean over frames; because all clips are zero-padded or truncated to a
-fixed 3~s, every clip presents the same number of frames.
-Each classifier is trained independently with focal loss ($\gamma = 2.0$) to
-handle class imbalance, the AdamW optimizer (lr $= 3\times10^{-5}$, weight decay
-$= 0.01$), a linear warmup (500 steps), and mixed-precision training on CUDA.
-Backbone freezing for the first 3 epochs prevents catastrophic forgetting of the
-pretrained representations; once the backbone is unfrozen it is trained with a
-reduced learning rate of $3\times10^{-6}$ (one tenth of the head rate).
+softmax. Two details are easy to assume otherwise and are therefore worth stating:
+the projection precedes the pooling rather than following it, and the head contains
+no dropout layer. No attention mask is passed by the pipeline, so the temporal
+reduction is an unmasked mean over frames; because every clip is zero-padded or
+truncated to a fixed 3~s, all clips present the same number of frames. Each
+classifier is trained independently with focal loss ($\gamma = 2.0$), AdamW
+(lr $= 3\times10^{-5}$, weight decay $= 0.01$), a 500-step linear warmup, and
+mixed precision, the backbone frozen for the first 3 epochs; once the backbone is
+unfrozen it is trained with a reduced learning rate of $3\times10^{-6}$, one tenth
+of the head rate. arm02 and arm03 instead feed five parallel per-class
+heads from one shared encoder, each an MLP on a temporal mean pool
+(\texttt{Linear}(768$\rightarrow$768) $\rightarrow$ Tanh $\rightarrow$
+\texttt{Linear}(768$\rightarrow$2)), minimizing the summed focal loss, for 97.3M
+parameters in total, only ${\approx}2.8$M more than one independent classifier,
+because the backbone is shared. The two differ only in that arm03 freezes the
+backbone for 20 epochs instead of 3, isolating freezing duration; the 3-epoch
+freezing schedule and the post-unfreeze learning-rate reduction of arm01 apply to
+both.
 
-\subsubsection{Shared-Backbone Multitask Classifier.}
-A single Wav2Vec2 encoder feeds five parallel per-class heads, each a small MLP
-(\texttt{Linear}(768$\rightarrow$768)\allowbreak{} $\rightarrow$ Tanh $\rightarrow$
-\texttt{Linear}(768$\rightarrow$2)) operating on a temporal mean pool of the
-encoder's hidden states. The total parameter count is 97.3M, only
-${\approx}2.8M$ more than a single independent classifier, since the backbone is
-shared. Training uses the
-summed focal loss across all five heads, allowing the shared backbone to learn
-representations useful for all dysfluency types. The same 3-epoch freezing
-schedule and post-unfreeze learning-rate reduction as arm01 are used.
-
-\subsubsection{CNN Spectrogram Models.}
-The compact CNN models (arms04--07) share a common backbone but differ in their
-sequence aggregator. The input is a log-mel spectrogram of 128 Mel bands computed
-with a 2048-point FFT and a hop length of 512 on the 16~kHz audio. The encoder is
-four convolutional blocks with 32, 64, 128, and 128 channels respectively, each
-using a $3\times3$ kernel with padding 1, batch normalization, ReLU activation, a
-$(2,1)$ max-pool (all but the last block), and 2-D dropout with rate
-$0.4$. The encoder output is a $128 \times 16 \times 94$ tensor (channels $\times$
-mel bins $\times$ frames), since the $(2,1)$ pool halves the frequency axis three
-times and leaves the temporal axis at 94 frames; this is passed to one of
-three aggregators: (i) \emph{pool}---global mean pooling over time and frequency
-followed by a \texttt{Linear}(128$\rightarrow$128) projection; (ii) \emph{LSTM}---a
-single-layer unidirectional LSTM with a hidden size of 128 operating over the
-frequency-pooled time axis, whose final hidden state is used; or (iii)
-\emph{transformer}---a one-layer transformer encoder with a model dimension of
-128, four attention heads, a feed-forward width of 512, and dropout $0.4$, applied
-over the frequency-pooled time axis and followed by temporal mean pooling. Finally,
-five per-class two-layer MLP heads
+arm04--arm07 share a spectrogram backbone and differ in the sequence aggregator.
+Input is a log-mel spectrogram with 128 Mel bands, a 2048-point FFT, and hop length
+512. The encoder is four convolutional blocks with 32, 64, 128, and 128 channels,
+each with a $3\times3$ kernel (padding 1), batch normalization, ReLU, a $(2,1)$
+max-pool in all but the last block, and 2-D dropout at rate $0.4$. The three pools
+halve the frequency axis three times and leave the temporal axis at 94 frames, so
+the encoder output is a $128\times16\times94$ tensor (channels $\times$ mel bins
+$\times$ frames). This is aggregated by global mean pooling plus a
+\texttt{Linear}(128$\rightarrow$128) projection (arm04); a single-layer
+unidirectional LSTM with hidden size 128 over the frequency-pooled time axis, using
+the final hidden state (arm06); or a one-layer transformer encoder with model
+dimension 128, four heads, feed-forward width 512, and dropout $0.4$, followed by
+temporal mean pooling (arm07). Five per-class two-layer MLP heads
 (\texttt{Linear}(128$\rightarrow$128) $\rightarrow$ Tanh $\rightarrow$
-\texttt{Linear}(128$\rightarrow$2)) produce the logits for each dysfluency type.
-arm04 uses the pool aggregator (342,030 parameters), arm06 the LSTM aggregator
-(457,614), and arm07 the transformer aggregator (540,302). arm05 is the
-single-head variant of the pool model (274,950 parameters): the head block is
-built once per configured class rather than five times, so each arm05 model
-carries the same two-layer head
-(\texttt{Linear}(128$\rightarrow$128) $\rightarrow$ Tanh $\rightarrow$
-\texttt{Linear}(128$\rightarrow$2)) but only a single instance of it, and one
-such model is trained per dysfluency type (five models in total), mirroring the
-five-binary Wav2Vec2 design at a much smaller scale.
-
-The CNN arms are trained from scratch, so no backbone freezing or discriminative
-pre-training applies. Their loss differs from the Wav2Vec2 arms: instead of
-focal loss, they use binary cross-entropy on the positive logit with a per-class
-positive weight set to the negative-to-positive class ratio of the training
-pool, and the per-head losses are summed over the configured classes, mirroring
-the multitask Wav2Vec2 objective. The two families therefore differ in training
-objective as well as in representation, which we note as a confound when
-comparing them.
-
-\subsection{Model Registry}
-All classifiers are loaded through a unified registry module
-(\texttt{Classifier}) that decouples model
-loading from training. The registry reads checkpoint paths and per-class
-thresholds from a JSON configuration file, enabling model swapping without code
-changes. Audio preprocessing (resampling, cleaning, normalization, padding) is
-applied automatically within the API.
+\texttt{Linear}(128$\rightarrow$2)) produce the logits. The CNN arms are trained
+from scratch, so no backbone freezing or discriminative pre-training applies, and
+their objective differs from that of the Wav2Vec2 arms: instead of focal loss they
+use binary cross-entropy on the positive logit with a per-class positive weight set
+to the negative-to-positive class ratio of the training pool, with the per-head
+losses summed over the configured classes. That ratio is computed over the whole
+training directory rather than over the training subset alone, a difference from
+the multitask Wav2Vec2 trainer that we record but do not expect to matter. The two
+families therefore differ in training objective as well as in representation, which
+we note as a confound when comparing them. arm05 is the single-head variant of the
+pool model: the head block is built once per configured class rather than five
+times, so each arm05 model carries the same two-layer head but only a single
+instance of it, and one such model is trained per dysfluency type (five models in
+total), mirroring the five-binary Wav2Vec2 design at a much smaller scale.
 
 % ── IV. EXPERIMENTAL SETUP ───────────────────────────────────────────
 \section{Experimental Setup}
 \label{sec:setup}
 
-\subsection{Model Configurations}
-We evaluate seven experimental configurations, summarized in
-Table~\ref{tab:arms}. The first configuration consists of five independently
-trained binary Wav2Vec2 classifiers, one per dysfluency type; the remaining
-configurations are single models.
-
-\begin{table}[t]
-\caption{Experimental configurations, aggregator types, and parameter counts.}
-\label{tab:arms}
-\centering
-\small
-\begin{tabular}{lllr}
-\hline
-Arm & Architecture & Type & Parameters\\
-\hline
-arm01 & 5$\times$ Wav2Vec2 binary classifiers & classifier & 472,845,450\\
-arm02 & Wav2Vec2 multitask, freeze 3 epochs & multitask & 97,332,362\\
-arm03 & Wav2Vec2 multitask, freeze 20 epochs & multitask & 97,332,362\\
-arm04 & CNN + pooling, multitask & multitask & 342,030\\
-arm05 & CNN + single head & single-head & 274,950\\
-arm06 & CNN + LSTM, multitask & multitask & 457,614\\
-arm07 & CNN + Transformer, multitask & multitask & 540,302\\
-\hline
-\end{tabular}
-\end{table}
-
 \subsection{Training Protocol}
-All models are trained on a single NVIDIA GPU with the following shared settings:
-seed $= 42$, 20 epochs with early stopping (patience $= 5$), mixed precision in
-the classification pipelines, batch size $= 8$ (binary classifiers), 16
-(multitask and CNN classifiers), maximum audio length $= 3$ seconds, and sample
-rate $= 16$~kHz. No gradient clipping is applied; an earlier configuration that
-clipped the total gradient norm was abandoned because, on a 94.6M-parameter
-model with a randomly initialized head, the clip dominated the head's early
-gradient signal. Preprocessed audio is cached to disk for fast
-re-runs. We train each configuration once, from seed 42; every reported value is
-therefore a single-run point estimate.
+All models are trained on a single NVIDIA GPU with seed $= 42$, 20 epochs and
+early stopping (patience $= 5$), mixed precision, batch size 8 (binary
+classifiers) or 16 (multitask and CNN), and 3~s audio at 16~kHz. Training reads
+the training directory only: it derives its own held-out portion from it, a 20\%
+stratified subsample (5{,}857 clips, seed 42) that serves as the early-stopping
+and threshold-tuning set, so the parameters are fitted on 23{,}439 clips and the
+prepared validation split is never opened. No gradient
+clipping is applied; an earlier configuration that clipped the total gradient norm
+was abandoned because, on a 94.6M-parameter model with a randomly initialized
+head, the clip dominated the head's early gradient signal. The checkpoints
+evaluated here were trained without input augmentation, so
+we claim no augmentation effect. Each configuration is trained once, so every
+reported value is a single-run point estimate.
 
-Thresholds for binary classification are tuned on the held-out 20\% subsample of
-the training pool described in Section~\ref{sec:arch} (the operating point is
-referred to as \emph{validation-tuned} throughout) by
-sweeping a fixed grid of 17 decision thresholds
-(\texttt{THRESHOLD\_SWEEP} = \texttt{np.arange(0.1, 0.91, 0.05)}: 0.10, 0.15,
-\ldots, 0.90) and selecting, per class, the value that maximizes F1 on that
-subsample---not Youden's J, which is computed and stored separately. For example, the
-multitask Wav2Vec2 model (arm02) uses thresholds of 0.55
-(prolongation), 0.35 (block), 0.40 (sound repetition), 0.35 (word repetition),
-and 0.45 (interjection). No test-set or
-cross-corpus threshold fitting is performed. We note that F1-optimal operating
-points selected on this in-distribution subsample can still be degenerate
-under distribution shift: Section~\ref{sec:results} reports large differences in
-predicted-positive rate when these thresholds are applied to the external Boli
-set. Because the subsample is drawn from the training pool rather than from a
-disjoint validation split, it is also the same data used for early-stopping
-model selection, so the tuned thresholds are mildly optimistic; we treat this as
-a limitation rather than a source of hidden test-set leakage, since the test
-split is never used for any selection.
+\subsection{Threshold Selection}
+Thresholds are tuned on a held-out 20\% stratified subsample of the training pool
+(5{,}857 clips, seed 42) by sweeping 17 fixed values from
+0.1 to 0.9 in steps of 0.05 and, per class, selecting the value maximizing
+F1 on that subsample rather than Youden's J. That subsample is also the
+early-stopping set, so the tuned thresholds are mildly optimistic; we treat this as
+a limitation rather than as test-set leakage, since the test split is never used
+for any selection. The prepared 3{,}662-clip validation split is not consumed by
+the training or evaluation code and is unused in every number reported here.
+arm02 uses thresholds of 0.55, 0.35, 0.40, 0.35, and 0.45 for prolongation, block,
+sound repetition, word repetition, and interjection. No test-set or
+cross-corpus threshold fitting is performed anywhere in this paper; the same thresholds are applied unchanged to the
+external set, the transfer that Sections~\ref{sec:results}
+and~\ref{sec:discussion} examine.
 
-\subsection{Evaluation Metrics}
-For classification, we report precision, recall, F1 score, AUROC, and AUPRC per
-dysfluency type, plus macro-averaged F1 across all five types. Because the classes
-are imbalanced (the majority of clips is fluent), AUPRC complements AUROC as a
-threshold-independent measure of ranking quality on the positive (dysfluent)
-class. We report macro values as the unweighted arithmetic mean over the five
-classes.
+\subsection{Reported Metrics}
+\label{sec:metrics}
+For each configuration, protocol, and class we report precision, recall, F1,
+AUROC, and AUPRC, plus macro averages (the unweighted mean over the five classes),
+which keep classes of differing prevalence from being dominated by the most
+frequent; the behaviour of these metrics under shift is discussed in
+Section~\ref{sec:related}. AUPRC is reported as a lift over its chance level, the
+positive-class prevalence. Precision and recall are omitted from the main tables,
+having fixed the threshold in advance, but are recoverable from F1 and the PPR
+with the confusion counts.
 
-\subsection{Evaluation Protocol}
-Two evaluation settings are used, with distinct interpretations.
+\subsection{Evaluation Protocols}
+\subsubsection{In-distribution, clip-level (Test).}
+The test partition holds 3{,}716 manifest rows, of which 3{,}662 come from
+SEP-28K and UCLASS and 54 from Project Boli. The partition operates on clips, not
+speakers, so speakers may appear in both training and test for the SEP-28K and
+UCLASS portions; these numbers are an upper-bound benchmark under
+near-distribution conditions and are not speaker-independent. Results are
+reported over the 3{,}715 scored clips, of which the 53 scored Boli recordings
+(${\approx}1.4\%$) are out-of-domain. The macro base rate on this split is 0.143.
 
-\subsubsection{In-distribution, clip-level held-out (Test).}
-The merged-corpus test split contains 3,716 clips: 3,662 clips from SEP-28K and
-UCLASS plus the 54 Project Boli clips described below. This is a \emph{clip-level}
-split: for SEP-28K and UCLASS clips, speakers may appear in both training and test
-partitions, because the split operates on clips and not on speakers. As a result,
-these in-distribution numbers are not speaker-independent and are best viewed as
-an upper-bound benchmark under near-distribution conditions. The results reported
-in this paper cover the 3,715 clips for which every model produced a prediction
-(one clip was discarded during prediction processing; the Boli subset therefore
-contributes 53 scored clips, ${\approx}1.4\%$ of the scored test set). Because
-these 53 Boli clips are out-of-domain but included in the scored test set, the
-``in-distribution'' numbers contain a small, quantified out-of-domain component;
-this does not change the qualitative ordering reported below but should be kept
-in mind when comparing our macro values with single-corpus results.
+\subsubsection{Speaker-independent, cross-corpus (Boli).}
+The 53 scored Boli recordings are unseen during training, with different speakers,
+recording conditions, and label-construction procedure (Section~\ref{sec:arch}).
+Per-class support is small: PR 16, BL 35, SR 34, WR 14, IN 9, giving a macro base
+rate of 0.408. We treat all external conclusions as exploratory.
 
-\subsubsection{Speaker-independent, cross-corpus held-out (Boli).}
-53 clips from the Project Boli dataset (one of the 54 pinned clips was discarded
-during prediction processing) are therefore
-entirely unseen during training. They were recorded by different speakers and
-under different recording conditions than SEP-28K and UCLASS, and they carry
-word-level rather than clip-level annotations. This provides a
-\emph{speaker-independent} estimate of generalization to new speakers and
-recording conditions; it is not a cross-lingual evaluation, since all 54 Boli
-clips are English (Section~\ref{sec:arch}). Per-class clip counts on Boli are
-limited (PR: 16, B: 35, SR: 34, WR: 14, IN: 9), so Boli results are noisy but
-honest.
+Two trivial baselines accompany the models: the \emph{all-positive} classifier,
+which labels every clip positive for every class, and the \emph{random-at-rate}
+classifier, which labels clips positive with probability equal to the class base
+rate. All-positive is the more informative under heavy imbalance, because it
+attains recall 1 by construction and its F1 is determined entirely by the base
+rate, so a model that does not exceed it has not demonstrated usable
+discrimination; the expected macro F1 of random-at-rate equals the macro base
+rate.
 
-% ── V. RESULTS AND DISCUSSION ────────────────────────────────────────
-\section{Results and Discussion}
+\subsection{Statistical Uncertainty}
+\label{sec:uncert}
+Uncertainty is quantified by nonparametric bootstrap resampling of clips: for each
+reported quantity we resample the evaluated clips with replacement 10{,}000 times,
+recompute the metric, and take the 2.5th and 97.5th percentiles. Resampling is
+unstratified, so it propagates variability in class prevalence as well as in the
+decisions; on the 53-clip external set the former dominates for the trivial
+baselines. F1 at a fixed threshold and the predicted-positive rate are functions
+of the confusion counts alone, so their bootstrap operates exactly on the stored
+per-class confusion matrices. These intervals capture clip-level sampling
+variability only: each configuration was trained once, so they exclude training
+seed, and overlapping intervals should not be read as a real difference in model
+quality. AUROC and AUPRC are reported as point estimates without intervals, because
+both depend on the full per-clip score vector, which was not retained after
+evaluation, so no bootstrap of them can be formed; we therefore treat the
+threshold-free ordering as directional evidence and the external results as
+exploratory.
+
+% ── V. RESULTS ───────────────────────────────────────────────────────
+\section{Results}
 \label{sec:results}
 
-\subsection{In-Distribution and Cross-Corpus Macro F1}
-Table~\ref{tab:macro} summarizes macro F1 for all seven configurations under both
-default (0.5) and tuned thresholds, on the clip-level in-distribution test set and
-on the speaker-independent Boli set. Figures~\ref{fig:testf1} and~\ref{fig:bolif1}
-show the corresponding per-class F1 scores for the multitask Wav2Vec2 model and
-the CNN models.
-
-\begin{table}[t]
-\caption{Macro F1 across all seven configurations plus deterministic baselines.
-Test = clip-level in-distribution held-out; Boli = speaker-independent
-cross-corpus held-out. ``0.5'' uses a fixed 0.5 threshold; ``tuned'' uses
-per-class validation-F1-optimal thresholds (Section~\ref{sec:setup}).
-``All-positive'' always predicts the positive class (recall $=1$ per class);
-``Random@rate'' predicts positive with probability equal to the class base rate.
-Neither baseline requires tuning.}
+\subsection{In-Distribution Results (RQ1)}
+\label{sec:res-indist}
+Table~\ref{tab:macro} reports macro F1 for all seven configurations under fixed
+(0.5) and tuned thresholds on both evaluation sets, with the two trivial
+baselines. Parenthesized intervals are 95\% bootstrap confidence intervals
+(Section~\ref{sec:uncert}).
+\begin{table}[!htbp]
+\caption{Macro F1 (unweighted mean over the five classes) for all seven
+configurations and two trivial baselines, with 95\% bootstrap confidence intervals
+on the tuned columns. ``Test'' is the clip-level in-distribution split (3{,}715
+scored clips, speakers shared with training); ``Boli'' is the speaker-independent
+cross-corpus split (53 scored recordings). ``0.5'' applies a fixed threshold;
+``tuned'' applies the per-class validation-F1-optimal thresholds of
+Section~\ref{sec:setup}, unchanged on Boli. The two baselines are untuned, so
+their columns coincide. Intervals reflect clip-level resampling only and exclude
+seed variation.}
 \label{tab:macro}
 \centering
 \footnotesize
-\setlength{\tabcolsep}{4pt}
+\setlength{\tabcolsep}{2.5pt}
+\renewcommand{\arraystretch}{0.9}
 \begin{tabular}{lrrrr}
 \hline
 Arm & Test F1 (0.5) & Test F1 (tuned) & Boli F1 (0.5) & Boli F1 (tuned)\\
 \hline
-arm01\_5x\_w2v2 & 0.5730 & 0.5704 & 0.2540 & 0.2920\\
-arm02\_mt\_frz3 & 0.5415 & 0.5557 & 0.1621 & 0.2384\\
-arm03\_mt\_frz20 & 0.1413 & 0.3781 & 0.0457 & 0.2138\\
-arm04\_cnn\_pool & 0.1492 & 0.2556 & 0.3507 & 0.3315\\
-arm05\_cnn\_single & 0.2116 & 0.2617 & 0.4501 & 0.4756\\
-arm06\_cnn\_lstm & 0.2418 & 0.2489 & 0.4508 & 0.5077\\
-arm07\_cnn\_tf & 0.2694 & 0.2714 & 0.4214 & 0.3451\\
+arm01\_5x\_w2v2 & 0.573 & 0.570 \ci{0.554--0.587} & 0.254 & 0.292 \ci{0.169--0.391}\\
+arm02\_mt\_frz3 & 0.542 & 0.556 \ci{0.539--0.572} & 0.162 & 0.238 \ci{0.127--0.332}\\
+arm03\_mt\_frz20 & 0.141 & 0.378 \ci{0.362--0.394} & 0.046 & 0.214 \ci{0.119--0.298}\\
+arm04\_cnn\_pool & 0.149 & 0.256 \ci{0.245--0.266} & 0.351 & 0.332 \ci{0.254--0.398}\\
+arm05\_cnn\_single & 0.212 & 0.262 \ci{0.251--0.272} & 0.450 & 0.476 \ci{0.389--0.547}\\
+arm06\_cnn\_lstm & 0.242 & 0.249 \ci{0.240--0.257} & 0.451 & 0.508 \ci{0.440--0.566}\\
+arm07\_cnn\_tf & 0.269 & 0.271 \ci{0.259--0.283} & 0.421 & 0.345 \ci{0.260--0.419}\\
 \hline
-All-positive & 0.247 & 0.247 & 0.550 & 0.550\\
+All-positive & 0.247 & 0.247 \ci{0.239--0.254} & 0.550 & 0.550 \ci{0.490--0.604}\\
 Random@rate & 0.143 & 0.143 & 0.408 & 0.408\\
 \hline
 \end{tabular}
 \end{table}
 
-\begin{figure}[t]
-\centering
-\includegraphics[width=0.85\textwidth]{figures/classifier_test_f1.png}
-\Description{Bar chart of per-class F1 scores on the clip-level in-distribution
-test set.}
-\caption{Per-class F1 scores (multitask Wav2Vec2) on the clip-level
-in-distribution test set.}
-\label{fig:testf1}
-\end{figure}
+Under the clip-level protocol, arm01 attains the highest measured test macro F1
+at tuned thresholds and arm02 follows closely: 0.570 (0.554--0.587) against 0.556
+(0.539--0.572), with substantially overlapping intervals on a split of 3{,}715
+clips. Since the intervals describe clip sampling alone and each configuration
+was trained once, we report the pair as indistinguishable and do not treat arm01
+as the better model. Both exceed the remaining configurations by a wide margin,
+their intervals lying far above those of every CNN. The CNNs reach macro F1 of
+0.25--0.27 at tuned thresholds, above the random-at-rate baseline (0.143) but
+only marginally above the all-positive baseline (0.247), and in the case of arm06
+the two intervals overlap. Freezing duration is the one architectural factor with
+a large and unambiguous effect: arm03, which freezes the backbone for 20 epochs
+rather than 3, falls to 0.378 (0.362--0.394) tuned macro F1, a relative reduction
+of ${\approx}32\%$ from arm02, with non-overlapping intervals, which is evidence
+that task adaptation of the encoder is necessary here. Its fixed-0.5 score of 0.141
+also falls below the random-at-rate baseline, a further sign that its scores are
+poorly distributed rather than merely poorly ranked.
 
-\begin{figure}[t]
-\centering
-\includegraphics[width=0.85\textwidth]{figures/classifier_boli_f1.png}
-\Description{Bar chart of per-class tuned F1 on the Project Boli
-speaker-independent cross-corpus held-out set, comparing the shared-backbone
-Wav2Vec2 (arm02) and CNN-LSTM (arm06) models.}
-\caption{Per-class tuned F1 on the Project Boli speaker-independent
-cross-corpus set for the shared-backbone Wav2Vec2 model (arm02) and the CNN-LSTM
-model (arm06), each using its per-class validation-F1-optimal thresholds.}
-\label{fig:bolif1}
-\end{figure}
+\subsection{Cross-Corpus Results at Tuned Thresholds (RQ2)}
+\label{sec:res-boli-tuned}
+On the 53-clip external set, the all-positive baseline attains macro F1 0.550
+(0.490--0.604), which no configuration exceeds; the best model, arm06, reaches
+0.508 (0.440--0.566). The two intervals overlap, so this is a comparison of point
+estimates rather than a separated difference, and the ordering among the CNNs is
+likewise unresolved: the four CNN intervals span 0.254 to 0.566 and overlap
+extensively. The one clear separation is between the best CNN and the two
+task-adapted Wav2Vec2 configurations, whose intervals (0.169--0.391 and
+0.127--0.332) lie below that of arm06. Table~\ref{tab:boli_perclass} gives the
+per-class breakdown.
 
-Under the clip-level in-distribution protocol, the \emph{five-binary Wav2Vec2
-classifier} (arm01) achieves the highest measured test macro F1 (0.5704 at tuned
-thresholds), and the \emph{multitask Wav2Vec2} with
-3-epoch backbone freezing (arm02) follows closely (0.5557)
-while using ${\approx}4.9\times$ fewer parameters
-than five independent classifiers. The margin between the two top configurations is
-only ${\approx}0.015$. Because every configuration is a single training run, this
-difference is within the range of run-to-run variation we would expect from
-different random seeds, and we do not interpret it as evidence that one
-architecture is better than the other; both substantially outperform the remaining
-configurations under this protocol.
-
-Backbone-freezing duration matters: the \emph{multitask Wav2Vec2 with 20-epoch
-freezing} (arm03) performs notably worse (test F1 $= 0.141$ at default, 0.378 at
-tuned), confirming that excessive backbone freezing prevents the model from
-learning task-specific representations.
-
-Under the clip-level protocol, the CNN-based configurations (arms04--07) achieve
-substantially lower in-distribution macro F1 (0.149--0.269 at default thresholds),
-reflecting the limited capacity of small convolutional networks
-(${\sim}$300K--540K parameters) relative to the 94M-parameter Wav2Vec2 backbone.
-For reference, an all-positive baseline and a base-rate-random classifier achieve
-macro F1 of 0.247 and 0.143 on the same test set: the Wav2Vec2 configurations
-clearly capture in-distribution signal, while the CNN configurations exceed these
-trivial baselines only marginally (tuned macro F1 $0.25$--$0.27$).
-
-\subsection{Speaker-Independent Evaluation (Project Boli)}
-On the 53-clip Boli set---whose speakers and recording conditions are
-fully unseen during training---a naive \emph{all-positive} classifier, which
-predicts every clip as positive for every dysfluency type, achieves a macro F1 of
-$0.550$, \emph{higher than every configuration we evaluated} (best: arm06,
-$0.5077$). Table~\ref{tab:boli_perclass} reports per-class tuned F1 for all seven
-configurations together with the all-positive baseline. Read naively, the table
-appears to show that the CNN configurations ``generalize best'' to the unseen
-corpus; however, none of them exceeds the trivial baseline, and the per-class
-picture shows why. The CNN configurations reach comparatively high F1 on block,
-word repetition, and interjection almost entirely by predicting (nearly) every
-clip as positive: at its validation-tuned thresholds, arm06 applies the
-positive label to essentially all $53$ Boli clips for block, word repetition, and
-interjection, so its per-class
-F1 approaches---and for interjection exactly equals---the all-positive F1 that is
-achievable without any learning (Table~\ref{tab:boli_thresholdfree}). By contrast, the Wav2Vec2 configurations collapse
-toward \emph{all-negative} predictions on the shifted distribution: their macro
-predicted-positive rate (PPR) is $0.08$--$0.10$ against an average class base
-rate of $0.41$, so their F1 is limited by near-zero recall on most classes. The
-tuned-F1 ``reversal'' reported in the in-distribution section
-(Table~\ref{tab:macro}) is therefore an artifact of operating-point drift under
-distribution shift, not evidence of a difference in generalization ability.
-
-\begin{table}[t]
-\caption{Per-class tuned F1 on the Project Boli speaker-independent held-out set
-(PR = prolongation, BL = block, SR = sound repetition, WR = word repetition,
-IN = interjection). Class support on Boli is small (PR: 16, BL: 35, SR: 34,
-WR: 14, IN: 9). ``All-positive'' labels every clip as positive for every class.}
+\begin{table}[!htbp]
+\caption{Per-class F1 on the speaker-independent cross-corpus set (53 scored
+recordings) at the validation-tuned thresholds, transferred unchanged. The
+all-positive row labels every clip positive, giving per-class F1 $2s/(n+s)$ for
+support $s$ and $n=53$; no configuration exceeds it in macro F1. The macro column
+carries a 95\% bootstrap interval; per-class intervals are omitted because with
+support between 9 and 35 they are too wide to inform the comparison (e.g.\ arm06
+block, 0.795, 95\% CI 0.691--0.873).}
 \label{tab:boli_perclass}
 \centering
 \small
+\renewcommand{\arraystretch}{0.9}
 \begin{tabular}{lrrrrrr}
 \hline
 Arm & PR & BL & SR & WR & IN & Macro\\
 \hline
-arm01\_5x\_w2v2 & 0.400 & 0.250 & 0.256 & 0.125 & 0.429 & 0.292\\
-arm02\_mt\_frz3 & 0.200 & 0.154 & 0.256 & 0.182 & 0.400 & 0.238\\
-arm03\_mt\_frz20 & 0.200 & 0.233 & 0.182 & 0.182 & 0.273 & 0.214\\
-arm04\_cnn\_pool & 0.308 & 0.491 & 0.182 & 0.387 & 0.290 & 0.332\\
-arm05\_cnn\_single & 0.326 & 0.765 & 0.508 & 0.431 & 0.348 & 0.476\\
-arm06\_cnn\_lstm & 0.492 & 0.795 & 0.542 & 0.418 & 0.290 & 0.508\\
-arm07\_cnn\_tf & 0.316 & 0.320 & 0.490 & 0.267 & 0.333 & 0.345\\
+arm01\_5x\_w2v2 & 0.400 & 0.250 & 0.256 & 0.125 & 0.429 & 0.292 \ci{0.169--0.391}\\
+arm02\_mt\_frz3 & 0.200 & 0.154 & 0.256 & 0.182 & 0.400 & 0.238 \ci{0.127--0.332}\\
+arm03\_mt\_frz20 & 0.200 & 0.233 & 0.182 & 0.182 & 0.273 & 0.214 \ci{0.119--0.298}\\
+arm04\_cnn\_pool & 0.308 & 0.491 & 0.182 & 0.387 & 0.290 & 0.332 \ci{0.254--0.398}\\
+arm05\_cnn\_single & 0.326 & 0.765 & 0.508 & 0.431 & 0.348 & 0.476 \ci{0.389--0.547}\\
+arm06\_cnn\_lstm & 0.492 & 0.795 & 0.542 & 0.418 & 0.290 & 0.508 \ci{0.440--0.566}\\
+arm07\_cnn\_tf & 0.316 & 0.320 & 0.490 & 0.267 & 0.333 & 0.345 \ci{0.260--0.419}\\
 \hline
-All-positive & 0.464 & 0.795 & 0.782 & 0.418 & 0.290 & 0.550\\
+All-positive & 0.464 & 0.795 & 0.782 & 0.418 & 0.290 & 0.550 \ci{0.490--0.604}\\
 \hline
 \end{tabular}
 \end{table}
 
-\begin{table}[t]
-\caption{Threshold-free macro metrics and predicted-positive rate (PPR) on the
-Project Boli set (53 clips). AUPRC of a random classifier equals the average base
-rate (macro $0.408$), so the ``lift'' column reports AUPRC relative to that
-prior. PPR is the mean over classes of the fraction of clips predicted positive at
-the validation-tuned thresholds.}
-\label{tab:boli_thresholdfree}
+The CNN rows appear to show that compact spectrogram models
+``generalize best''. That reading is incorrect, and
+Table~\ref{tab:boli_drift} shows why. The CNNs reach their higher F1 on block,
+word repetition, and interjection by labelling nearly every external clip
+positive: arm06 applies the positive label to all 53 clips for each of those
+three classes, so its per-class F1 approaches, and for interjection exactly
+equals, the value a predictor with no learned discrimination attains at the same
+support. Its macro predicted-positive rate is 0.879, more than twice the 0.408
+base rate, while the Wav2Vec2 configurations move the opposite way at PPR
+0.079--0.102, leaving their F1 limited by near-zero recall. Both behaviours follow
+from where a fixed threshold lands after the score distribution shifts, and
+neither is evidence about ranking quality. The finding is negative: at thresholds
+never fitted to the external set, no configuration
+demonstrates usable dysfluency discrimination, and the apparent advantage of the
+CNN family under thresholded F1 is consistent with substantial operating-point
+drift and does not by itself indicate superior ranking quality.
+
+\subsection{Threshold-Free Cross-Corpus Results and Operating-Point Drift (RQ3, RQ4)}
+\label{sec:res-thresholdfree}
+Because F1 conflates ranking with threshold placement, we also report
+threshold-free quantities for the same predictions
+(Table~\ref{tab:boli_drift}), together with the predicted-positive rate measured
+on the in-distribution split under the same thresholds. AUPRC lift is AUPRC
+divided by the macro base rate of 0.408, the AUPRC of a random predictor.
+
+\begin{table}[!htbp]
+\caption{Threshold-free macro metrics and predicted-positive rate (PPR) from the
+same predictions as Table~\ref{tab:boli_perclass}. AUROC and AUPRC are point
+estimates; AUPRC lift is relative to the macro base rate 0.408, its chance level.
+PPR is the mean fraction of clips labelled positive at the tuned thresholds, so it
+measures where the operating point landed rather than performance, and it carries
+a 95\% bootstrap interval. The two PPR columns apply identical thresholds to the
+two evaluation sets, so their difference measures drift directly. Base-rate rows
+give the in-distribution (0.143) and external (0.408) priors.}
+\label{tab:boli_drift}
 \centering
 \small
-\begin{tabular}{lrrrr}
+\renewcommand{\arraystretch}{0.9}
+\setlength{\tabcolsep}{2pt}
+\begin{tabular}{lrrrrr}
 \hline
-Arm & Macro AUROC & Macro AUPRC & AUPRC lift & Macro PPR\\
+Arm & AUROC & AUPRC & AUPRC lift & PPR (Test) & PPR (Boli)\\
 \hline
-arm01\_5x\_w2v2 & 0.620 & 0.546 & 1.34 & 0.079\\
-arm02\_mt\_frz3 & 0.621 & 0.557 & 1.37 & 0.102\\
-arm03\_mt\_frz20 & 0.538 & 0.443 & 1.09 & 0.204\\
-arm04\_cnn\_pool & 0.473 & 0.412 & 1.01 & 0.574\\
-arm05\_cnn\_single & 0.497 & 0.445 & 1.09 & 0.615\\
-arm06\_cnn\_lstm & 0.522 & 0.419 & 1.03 & 0.879\\
-arm07\_cnn\_tf & 0.500 & 0.412 & 1.01 & 0.438\\
+arm01\_5x\_w2v2 & 0.620 & 0.546 & 1.34 & 0.134 & 0.079 \ci{0.049--0.113}\\
+arm02\_mt\_frz3 & 0.621 & 0.557 & 1.37 & 0.159 & 0.102 \ci{0.068--0.140}\\
+arm03\_mt\_frz20 & 0.538 & 0.443 & 1.09 & 0.195 & 0.204 \ci{0.158--0.253}\\
+arm04\_cnn\_pool & 0.473 & 0.412 & 1.01 & 0.572 & 0.574 \ci{0.528--0.619}\\
+arm05\_cnn\_single & 0.497 & 0.445 & 1.09 & 0.583 & 0.615 \ci{0.566--0.664}\\
+arm06\_cnn\_lstm & 0.522 & 0.419 & 1.03 & 0.845 & 0.879 \ci{0.849--0.909}\\
+arm07\_cnn\_tf & 0.500 & 0.412 & 1.01 & 0.365 & 0.438 \ci{0.381--0.494}\\
 \hline
-\textbf{Base rate (random)} & 0.500 & 0.408 & 1.00 & 0.408\\
+Base rate (random) & 0.500 & 0.408 & 1.00 & 0.143 & 0.408\\
 \hline
 \end{tabular}
 \end{table}
 
-The threshold-free metrics corroborate this reading. Table~\ref{tab:boli_thresholdfree}
-reports macro AUROC and macro AUPRC for all configurations. The two
-task-adapted Wav2Vec2 configurations (arm01, arm02) rank Boli clips best: macro
-AUROC $0.620$--$0.621$, and macro AUPRC $0.546$--$0.557$, i.e., a lift of
-${\approx}1.3$--$1.4\times$ over the base-rate prior. The frozen-backbone variant
-(arm03) sits near chance (AUROC $0.538$, lift $1.09$). The CNN configurations
-rank around chance: macro AUROC $0.473$--$0.522$ and macro AUPRC
-$0.412$--$0.445$ (lift ${\approx}1.01$--$1.09$). In absolute terms the Wav2Vec2
-ranking advantage is modest (e.g., macro AUROC $0.621$ vs.\ $0.522$; each class
-has at most 35 positive clips, nine in the worst case), so no strong
-generalization claim is warranted in either direction; but the direction of the
-evidence is the \emph{opposite} of the F1-based reading: under threshold-free
-metrics the Wav2Vec2 models separate dysfluent from fluent clips on the unseen
-corpus better than the CNN models do, and none of the seven configurations comes
-close to reliable cross-corpus detection.
+The threshold-free view inverts the thresholded ordering once more. arm01 and
+arm02 rank the external clips best, with macro AUROC 0.620--0.621 and macro AUPRC
+0.546--0.557, a lift of ${\approx}1.3$--$1.4\times$ over the prevalence prior;
+arm03, the over-frozen variant, sits near chance; and the CNNs are at or barely
+above chance, with macro AUROC 0.473--0.522 and macro AUPRC 0.412--0.445. The
+advantage is modest: these are point estimates without
+intervals, and on 53 clips with at most 35 positives per class and 9 in the worst
+case, a macro AUROC of 0.62 against 0.52 is well within the range that resampling
+could plausibly reduce to nothing. We therefore state the result directionally:
+the threshold-free metrics place the task-adapted Wav2Vec2
+configurations above the CNNs, and no configuration comes near reliable
+cross-corpus detection.
 
-The primary open question is therefore not ``which representation family
-generalizes better''---the present data do not support a CNN advantage once base
-rates and operating points are accounted for---but \emph{why}
-validation-calibrated operating points drift so strongly under distribution shift,
-and whether the modest ranking advantage of Wav2Vec2 features persists on larger
-external corpora. We frame two candidate explanations, both of which the present
-experiments support only circumstantially and do not directly test:
-\begin{itemize}
-\item \emph{Operating-point drift hypothesis:} the shifted Boli distribution
-changes the models' score distributions (score matching on out-of-domain inputs),
-so fixed validation-tuned thresholds land in degenerate regions of the ROC curve.
-Because F1 depends on the operating point, it then tracks base rates and the
-predicted-positive rate rather than discrimination; threshold-free metrics are
-immune to this effect.
-\item \emph{Corpus-specificity / spectrogram-invariance hypothesis (ranking):}
-the higher-capacity Wav2Vec2 representations may encode corpus-specific
-characteristics of SEP-28K/UCLASS---speakers, accents, recording
-conditions---that transfer only weakly to unseen speakers, while
-the coarse spectral patterns preserved by mel-spectrogram CNNs transfer more
-evenly; this would explain why the two families differ in ranking quality the
-observed direction without resolving which family is preferable for a given
-deployment.
-\end{itemize}
+The same table quantifies the mechanism behind that disagreement, which is our
+answer to RQ3. Because the two PPR columns apply identical thresholds to the two
+evaluation sets, the comparison is a measurement rather than an inference. Three
+facts follow.
 
-Both hypotheses can be tested experimentally without retraining the classifiers:
-lightweight \emph{probe} classifiers trained on the frozen embeddings of each
-model family---one predicting speaker identity and one predicting the source
-corpus---would test the corpus-specificity and spectrogram-invariance hypotheses,
-while recalibrating thresholds on a handful of Boli clips would directly quantify
-operating-point drift. We leave these probe experiments to future work. The Boli
-evaluation set is small (53 clips; per-class support as low as 9), so
-definitive conclusions about cross-corpus generalization require additional
-external corpora.
+First, the operating points are far from the prevailing base rate in both
+protocols: for six of the seven configurations the 95\% interval for external
+macro PPR excludes the external base rate of 0.408, the sole exception being
+arm07 (0.381--0.494). The three Wav2Vec2 configurations sit far below the
+external base rate, at 0.079--0.204, and the four CNNs above it, at 0.438--0.879.
+
+Second, the CNN operating points were already displaced
+before the shift. On the in-distribution split, where the base rate is 0.143, the
+CNNs label 0.365--0.845 of clips positive, a factor of 2.6--5.9 above prevalence,
+while reaching only 0.249--0.271 macro F1. The external F1 they appear to win is
+thus not produced by the shift: the same over-positive operating point that
+cripples their in-distribution F1 becomes advantageous externally only because the
+Boli base rate (0.408) is nearly three times the in-distribution one. In relative
+terms their operating point is \emph{less} displaced externally than
+in-distribution (for arm06, 5.9 times the base rate on the test split against 2.2
+times on Boli), the opposite of the drift a generalization failure would produce.
+
+Third, the task-adapted Wav2Vec2 configurations move the other way under the same
+thresholds, from 0.134 and 0.159 in-distribution to 0.079 and 0.102 externally,
+toward all-negative. Their low external F1 is the mirror image of the CNNs'
+behaviour; neither is a statement about ranking quality, because AUROC and AUPRC
+do not move with the threshold and so order the two families the other way
+round.
+
+
+\begin{figure}[!htbp]
+\centering
+\setlength{\tabcolsep}{0pt}
+\begin{tabular}{@{}c@{\hspace{6pt}}c@{}}
+\includegraphics[width=0.375\textwidth]{figures/ppr_drift.pdf} &
+\includegraphics[width=0.375\textwidth]{figures/metric_disagreement.pdf} \\[-3pt]
+{\tiny (a) predicted-positive rate} & {\tiny (b) macro F1 vs.\ AUROC}
+\end{tabular}
+\Description{Two bar charts. Panel (a): horizontal bars of the macro
+predicted-positive rate of the seven configurations on the 53-clip cross-corpus
+set, with a dashed line at the 0.408 macro base rate; the three Wav2Vec2
+configurations fall below it (0.079 to 0.204) and the four CNN configurations
+above it (0.438 to 0.879). Panel (b): grouped bars of cross-corpus macro F1
+against macro AUROC per configuration, with the all-positive F1 line at 0.550 and
+the chance AUROC line at 0.500; the CNNs obtain the higher F1 at chance AUROC,
+while arm01 and arm02 obtain the lowest F1 at the highest AUROC.}
+\caption{The two metric families disagree, and the mechanism is visible.
+(a) Operating-point drift on the cross-corpus set (RQ3): macro
+predicted-positive rate at the in-distribution-tuned thresholds, against the 0.408
+macro base rate (dashed), as in Table~\ref{tab:boli_drift}. (b) RQ2 against RQ4:
+cross-corpus macro F1 (solid) against macro AUROC (hatched); no configuration
+reaches the all-positive F1 line, and the two orderings are near-reversals.}
+\label{fig:charts}
+\end{figure}
 
 \subsection{Per-Class Analysis}
-Detailed per-class metrics for the multitask Wav2Vec2 (arm02) on the clip-level
-test set at tuned thresholds are presented in Table~\ref{tab:perclass}, including
-AUPRC. The tuned thresholds themselves are listed in Table~\ref{tab:thresholds};
-for the multitask model these are per-class validation-F1-optimal operating
-points (prolongation 0.55, block 0.35, sound repetition 0.40, word repetition
-0.35, interjection 0.45). Figure~\ref{fig:testauc} shows the per-class AUROC and
-AUPRC.
+Table~\ref{tab:perclass} gives per-class metrics for arm02 on the
+clip-level test split at its tuned thresholds.
 
-\begin{table}[t]
-\caption{Per-class metrics for the multitask Wav2Vec2 (arm02) on the clip-level
-test set at tuned thresholds. Macro is the unweighted mean over classes.}
+\begin{table}[!htbp]
+\caption{Per-class metrics for the multitask Wav2Vec2 model (arm02) on the
+in-distribution test split (3{,}715 scored clips) at the validation-tuned
+thresholds 0.55, 0.35, 0.40, 0.35, and 0.45 for prolongation, block, sound
+repetition, word repetition, and interjection. Base rate is support divided by
+3{,}715, the chance level of AUPRC for that class. F1 carries a 95\% bootstrap
+interval.}
 \label{tab:perclass}
 \centering
 \footnotesize
-\setlength{\tabcolsep}{4pt}
-\begin{tabular}{lrrrr}
-\hline
-Class & F1 (tuned) & AUROC & AUPRC & Support\\
-\hline
-Prolongation & 0.457 & 0.845 & 0.491 & 400\\
-Block & 0.429 & 0.768 & 0.444 & 553\\
-Sound Rep. & 0.621 & 0.878 & 0.624 & 494\\
-Word Rep. & 0.499 & 0.855 & 0.550 & 366\\
-Interjection & 0.773 & 0.935 & 0.848 & 834\\
-\hline
-\textbf{Macro} & \textbf{0.556} & \textbf{0.856} & \textbf{0.592} & ---\\
-\hline
-\end{tabular}
-\end{table}
-
-\begin{table}[t]
-\caption{Per-class validation-tuned thresholds (F1-optimal over the swept grid)
-for the multitask Wav2Vec2 (arm02).}
-\label{tab:thresholds}
-\centering
-\small
-\begin{tabular}{lr}
-\hline
-Class & Threshold\\
-\hline
-Prolongation & 0.55\\
-Block & 0.35\\
-Sound Rep. & 0.40\\
-Word Rep. & 0.35\\
-Interjection & 0.45\\
-\hline
-\end{tabular}
-\end{table}
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=0.85\textwidth]{figures/classifier_test_auc.png}
-\Description{Bar chart of per-class area under the ROC curve (AUROC) and
-precision-recall curve (AUPRC) on the clip-level test set.}
-\caption{Per-class AUROC and AUPRC (multitask Wav2Vec2) on the clip-level test
-set.}
-\label{fig:testauc}
-\end{figure}
-
-Several observations follow.
-\begin{itemize}
-\item \emph{Interjection} achieves the highest F1 among the evaluated classes
-(F1 $= 0.773$, AUROC $= 0.935$, AUPRC $= 0.848$). Filler words (``um,'' ``uh,''
-``like'') have distinct acoustic signatures that are well-separated from fluent
-speech, making them relatively easy for the model to identify.
-\item \emph{Block} is the most challenging class (F1 $= 0.429$, AUROC $= 0.768$,
-AUPRC $= 0.444$). Silent pauses and tense pauses before speech are acoustically
-similar to normal speech pauses, making them difficult to distinguish without
-contextual information. The fixed 3-s window and silence trimming described in
-Section~\ref{sec:arch} may additionally suppress the very pause that defines a
-block when it falls near a window boundary.
-\item \emph{Sound repetition} achieves the second-highest F1 (0.621) with the
-second-highest recall (0.627), indicating the model is effective at catching sound
-repetitions but with lower precision.
-\item The gap between AUROC and F1 (e.g., prolongation AUROC $= 0.845$ vs.\ F1 $=
-0.457$) indicates that the model ranks dysfluent clips well but its probability
-outputs are not well matched to the validation-tuned operating thresholds when
-those thresholds are applied to the test set. We do not measure calibration
-directly; quantifying predictive calibration (e.g., expected calibration error and
-Brier score, following Guo et al.~\cite{guo2017calibration}) is an explicit item
-of future work.
-\end{itemize}
-
-Regarding blocks specifically, a natural hypothesis is that explicit temporal and
-prosodic features---pause duration, voicing, and energy trajectory around the
-suspected pause---would improve block detection beyond what the raw classifiers
-extract. We regard this as the most promising single-class improvement and propose
-it as a dedicated follow-up study; the present work only isolates the failure
-pattern.
-
-Table~\ref{tab:confmat} reports confusion matrices (TP, FP, TN, FN at tuned
-thresholds) for the five binary Wav2Vec2 classifiers (arm01) on the test set, and
-Figure~\ref{fig:confmat} shows them graphically. They show the same pattern as the
-multitask model: interjection is detected most confidently, block produces the
-most false negatives and the largest number of false positives relative to its
-support, and prolongation is the next most frequently missed.
-
-\begin{table}[t]
-\caption{Confusion matrices (TP, FP, TN, FN) for the five binary Wav2Vec2
-classifiers (arm01) on the clip-level test set at tuned thresholds. Each row sums
-to the 3,715 scored clips.}
-\label{tab:confmat}
-\centering
-\footnotesize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{0.9}
 \begin{tabular}{lrrrrr}
 \hline
-Class & TP & FP & TN & FN & Threshold\\
+Class & F1 (tuned) & AUROC & AUPRC & Support & Base rate\\
 \hline
-Prolongation & 189 & 139 & 3176 & 211 & 0.550\\
-Block & 210 & 284 & 2878 & 343 & 0.500\\
-Sound Rep. & 301 & 185 & 3036 & 193 & 0.450\\
-Word Rep. & 182 & 151 & 3198 & 184 & 0.400\\
-Interjection & 668 & 175 & 2706 & 166 & 0.500\\
+Prolongation & 0.457 \ci{0.407--0.503} & 0.845 & 0.491 & 400 & 0.108\\
+Block & 0.429 \ci{0.397--0.460} & 0.768 & 0.444 & 553 & 0.149\\
+Sound Rep. & 0.621 \ci{0.584--0.656} & 0.878 & 0.624 & 494 & 0.133\\
+Word Rep. & 0.499 \ci{0.456--0.541} & 0.855 & 0.550 & 366 & 0.099\\
+Interjection & 0.773 \ci{0.750--0.795} & 0.935 & 0.848 & 834 & 0.225\\
 \hline
-\end{tabular}
-\end{table}
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=0.31\textwidth]{figures/prolongation_confusion_matrix.png}
-\hfill
-\includegraphics[width=0.31\textwidth]{figures/block_confusion_matrix.png}
-\hfill
-\includegraphics[width=0.31\textwidth]{figures/soundrep_confusion_matrix.png}\\[0.5em]
-\includegraphics[width=0.31\textwidth]{figures/wordrep_confusion_matrix.png}
-\hfill
-\includegraphics[width=0.31\textwidth]{figures/interjection_confusion_matrix.png}
-\Description{Five confusion matrices, one per dysfluency type, for the binary
-Wav2Vec2 classifiers on the clip-level in-distribution test set.}
-\caption{Confusion matrices for the five binary Wav2Vec2 classifiers (arm01) on
-the clip-level in-distribution test set. Top row: prolongation, block, and sound
-repetition; bottom row: word repetition and interjection.}
-\label{fig:confmat}
-\end{figure}
-
-\subsection{Computational Considerations}
-Table~\ref{tab:tradeoff} summarizes the parameter-accuracy-generalization
-trade-off for the most informative configurations. Sizes are computed from the
-reported parameter counts assuming 32-bit floating-point storage
-($\text{MB} = \text{params} \times 4 / 10^6$); we did not benchmark GPU memory,
-latency, or throughput, and report only the analytically derived footprint.
-
-\begin{table}[t]
-\caption{Trade-off between parameter count, computed fp32 size, and evaluation
-performance (tuned F1, Table~\ref{tab:macro}). On Boli, an all-positive baseline
-reaches macro F1 $0.550$, above every configuration shown here
-(Section~\ref{sec:results}).}
-\label{tab:tradeoff}
-\centering
-\small
-\begin{tabular}{lrrrr}
-\hline
-Model family & Params & Size (fp32) & Test F1 & Boli F1\\
-\hline
-Wav2Vec2 (5$\times$ binary) & 472.8M & 1.89 GB & 0.570 & 0.292\\
-Wav2Vec2 (multitask) & 97.3M & 389 MB & 0.556 & 0.238\\
-CNN (best) & 540K & 2.2 MB & 0.271 & 0.508\\
+\textbf{Macro} & \textbf{0.556 \ci{0.540--0.572}} & \textbf{0.856} & \textbf{0.592} & --- & \textbf{0.143}\\
 \hline
 \end{tabular}
 \end{table}
 
-Wav2Vec2 models achieve ${\sim}2\times$ higher in-distribution F1 than the CNN
-models but comprise roughly 180$\times$ (multitask) to 875$\times$ (five binary
-classifiers) more parameters. On the external Boli set their tuned F1 is lower,
-but Section~\ref{sec:results} shows that this reflects operating-point drift and
-class-base-rate effects rather than a ranking advantage: under threshold-free
-metrics the Wav2Vec2 configurations rank Boli clips \emph{better} than the CNNs
-(macro AUPRC $0.546$--$0.557$ vs.\ $0.412$--$0.445$). From an engineering
-standpoint, the multitask Wav2Vec2 configuration delivers nearly the same
-clip-level F1 as five independent classifiers at a fraction of the parameter
-budget. The CNN models remain attractive for resource-constrained settings given
-their very small footprint, but they are not a drop-in generalization remedy: none
-of the evaluated configurations exceeds a trivial baseline on the external
-corpus, so cross-corpus deployment of any of these systems is not yet supported
-by evidence.
+Interjection is the easiest class, at F1 0.773 (0.750--0.795) with AUROC 0.935,
+and block the hardest, at F1 0.429 (0.397--0.460) with AUROC 0.768; the two
+intervals are well separated. Read against their own chance levels, the AUPRC
+values in Table~\ref{tab:perclass} are 2.99--5.59 times the base rate, so the
+ranking signal is real in-distribution even where thresholded F1 is low. One
+reading is that interjections are lexically stereotyped fillers whose acoustic
+form differs from surrounding fluent speech, whereas blocks are pauses close to
+ordinary hesitation that depend on prosodic and contextual information a 3-s
+window and a mean-pooled representation may not preserve; the two mechanisms are
+not separable here, and the block result fits the window and trimming artifacts of
+Section~\ref{sec:arch} equally well.
 
-\subsection{Comparison with Published Results}
-Our best Wav2Vec2 results (macro F1 $= 0.570$ at tuned thresholds for the
-five-binary configuration, 0.556 for the multitask variant, clip-level
-split) sit within the range reported in the literature: Bayerl et
-al.~\cite{bayerl2022multi} reported macro F1 of 0.56--0.63 on FluencyBank, and
-Su\v{s}ac et al.~\cite{susac2026stuttmil} reported per-class F1 from 0.30
-(block) to 0.78 (interjection) on SEP-28K with an attention-based
-multiple-instance-learning model. Our per-class values follow the same
-ordering, with interjection highest (0.773 for the multitask variant) and block
-lowest (0.429); our
-measured orderings are consistent with that of Su\v{s}ac et al.---for example, our
-block F1 is lower than our interjection F1, and both are in the same relative
-arrangement. However, differences in datasets, splits, label definitions,
-threshold strategies, and evaluation protocols prevent direct attribution of
-absolute differences to architecture alone, and we make no such claim.
+For every class the AUROC exceeds the tuned F1, most markedly for prolongation
+(AUROC 0.845 against F1 0.457): the models order dysfluent clips better than the
+tuned thresholds convert that ordering into decisions. Whether this reflects
+miscalibration or a mismatch between F1-optimal and accuracy-optimal operating
+points cannot be settled here, because we do not measure calibration. The arm01
+block classifier produces the most false negatives (343) and the most false
+positives relative to its support (284), the same pattern visible in its per-class
+F1 and AUROC.
 
-\subsection{Limitations}
-\begin{itemize}
-\item \emph{Clip-level in-distribution split:} The test set shares speakers with
-training for SEP-28K and UCLASS, inflating in-distribution metrics; those results
-are not speaker-independent. The only speaker-independent evidence is the Boli
-cross-corpus set, which is small (53 clips).
-\item \emph{Single seed:} All results are single training runs from seed 42.
-Statistics such as mean $\pm$ standard deviation or confidence intervals require
-multi-seed runs and are not available; accordingly we do not claim statistically
-significant differences, especially between arm01 and arm02, whose measured
-difference (0.015) is small.
-\item \emph{Loss differs across representation families:} the Wav2Vec2
-configurations are trained with focal loss ($\gamma = 2.0$), whereas the CNN
-configurations are trained with positive-weighted binary cross-entropy
-(Section~\ref{sec:arch}). Family-level comparisons therefore confound
-representation with training objective; isolating the two would require training
-each family under both objectives.
-\item \emph{Threshold tuning reuses the training pool:} the prepared 3,662-clip
-validation split is unused; early-stopping model selection and threshold
-tuning both operate on the same 20\% stratified subsample of the training
-clips (5,857 clips, seed 42). The tuned operating points are therefore
-mildly optimistic, and the two selection steps are not statistically
-independent. The test split is never used for any selection, so this is a
-limitation of the tuning protocol rather than test-set leakage.
-\item \emph{English-only cross-corpus set:} all 54 ingested Boli clips are
-English, so our cross-corpus protocol tests speaker, recording-pipeline, and
-annotation-convention shift but not language shift. Cross-lingual robustness
-remains untested and should not be inferred from these results.
-\item \emph{Small external corpus:} Boli provides 53 scored clips, with per-class
-supports of at most 35; the cross-corpus conclusions are therefore noisy.
-\item \emph{Operating-point dependence:} All tuned-F1 results depend on
-validation-F1-optimal thresholds. On Boli these thresholds drift strongly (PPR
-ranges from 0.08 for the Wav2Vec2 configurations to 0.88 for the CNN
-configurations), and no configuration exceeds an all-positive baseline (macro F1
-$0.550$) on that set. Cross-corpus \emph{deployment} of any evaluated system is
-therefore not supported; threshold-free ranking is reported alongside tuned F1
-for this reason.
-\item \emph{Untested hypotheses:} The corpus-specificity, spectrogram-invariance,
-and operating-point-drift explanations are not directly tested; embedding-based
-probe experiments (speaker-ID and source-corpus classifiers) and threshold
-recalibration probes are proposed as future work.
-\item \emph{Scope of baselines:} Only Wav2Vec2-based and compact CNN models are
-evaluated. Additional self-supervised backbones (HuBERT, XLS-R, WavLM), a
-classical acoustic baseline (e.g., MFCC + SVM), and further external corpora would
-strengthen the comparison and are left to future work.
-\item \emph{Calibration:} Predictive calibration (e.g., ECE, Brier score) is not
-measured; per-class thresholds are tuned on validation only and may not transfer to
-all deployment scenarios.
-\end{itemize}
+\subsection{Computational Cost and Relation to Published Results}
+\label{sec:compute}
+Parameter count, storage size, computational cost, and runtime cost are distinct:
+the first two follow from the weights and a stated precision, the last must be
+measured. We therefore report parameter counts and their fp32 storage in
+Section~\ref{sec:arch} but not latency, throughput, or peak GPU memory, and we do
+not infer them from parameter counts, which give fp32 storage of 1.89\,GB for
+arm01 against 1.1--2.2\,MB for the CNNs. Within the Wav2Vec2 family we would
+select the multitask configuration for operational reasons: 97.3M parameters
+against 472.8M because the encoder is shared rather than replicated five times,
+and one forward pass per clip instead of five. It does not measurably beat arm01. Our best in-distribution macro F1, 0.570 (five-binary)
+and 0.556 (multitask), falls within the 0.56--0.63 reported for Wav2Vec2 on
+FluencyBank~\cite{bayerl2022multi}, and our per-class ordering matches the 0.30
+(block) to 0.78 (interjection) span on SEP-28k-E~\cite{susac2026stuttmil}; this is
+an ordering comparison, not a numerical one, since our split shares speakers
+between training and test and the corpora, label definitions, and threshold
+strategies differ~\cite{bayerl2022partitioning}.
 
-\subsection{Practical Implications}
-The results indicate that model selection cannot be grounded in in-distribution
-metrics alone: the threshold-dependent F1 ranking reverses on the unseen corpus
-through operating-point drift rather than through a real ranking advantage, and
-no configuration exceeds a trivial baseline on the external set. Until
-speaker-independent evidence is obtained with additional corpora and multiple
-seeds, deployment guidance should remain conservative:
-\begin{itemize}
-\item \emph{Report both protocols and both metric families always:} clip-level
-in-distribution and cross-corpus metrics should be reported together, and
-threshold-dependent metrics (F1) should be accompanied by threshold-free metrics
-(AUROC, AUPRC) and trivial baselines, since any one of these alone under- or
-overstates performance.
-\item \emph{Inflated-deployment caution:} the in-distribution test shares speakers
-with training; any system deployed on new speakers will likely perform below the
-reported in-distribution numbers.
-\item \emph{Interjection} achieves the highest F1 among the evaluated classes and
-can serve as a cheap diagnostic signal, but it should not be equated with
-reliability of the remaining classes; block detection in particular requires
-complementary signals (e.g., pause-aware features).
-\item \emph{Document the split type:} whether speakers overlap between training and
-test materially changes how results may be interpreted.
-\end{itemize}
+% ── VI. DISCUSSION ───────────────────────────────────────────────────
+\section{Discussion}
+\label{sec:discussion}
 
-% ── VI. CONCLUSION ───────────────────────────────────────────────────
-\section{Conclusion}
+\subsection{What the In-Distribution Results Show}
+The Wav2Vec2 configurations capture in-distribution signal that the compact CNNs,
+at roughly 0.3--0.6\% of the parameter count, do not. The most likely explanation
+is representational capacity: a 94M-parameter pretrained encoder supplies features
+that a four-block CNN trained from scratch on 29K clips cannot match. Capacity,
+pretraining, and objective are not separable in our design, since the Wav2Vec2
+configurations minimize focal loss while the CNNs minimize a class-balanced binary
+cross-entropy and we vary the architecture family as a whole, so we do not
+attribute the gap to any single factor. The one factor we can isolate, freezing
+duration, acts in the opposite direction and is unambiguous: withholding task
+adaptation from the same encoder costs ${\approx}32\%$ of tuned macro F1, an effect
+larger than any difference among the CNNs.
+
+\subsection{Why the External Results Are Hard to Interpret}
+\label{sec:interpret}
+Three features complicate every reading of Tables~\ref{tab:boli_perclass}
+and~\ref{tab:boli_drift}: 53 scored recordings, per-class support as low as 9, and
+a label-construction procedure unlike that of the training corpora. The bootstrap
+intervals quantify the first two, and the third is the most consequential. The
+wide intervals are not a formality: the external macro F1 of the strongest model,
+0.508 (0.440--0.566), overlaps that of the all-positive baseline, 0.550
+(0.490--0.604), so the negative result of Section~\ref{sec:res-boli-tuned} is a
+statement about point estimates on a set too small to separate them. The one
+comparison the data does support cleanly is the operating-point one: the
+predicted-positive rate intervals in Table~\ref{tab:boli_drift} exclude the
+prevailing base rate for six of seven configurations, and the same thresholds
+applied in-distribution show the CNN operating points were already displaced
+before the shift. That measurement, not the F1 ranking, is the substantive content
+of the external evaluation.
+
+Because Boli files are built around an annotated stutter
+event~\cite{boli2025}, a positive Boli label reflects a curated event rather
+than the outcome of sampling continuous speech and applying a majority vote,
+which is how SEP-28K and UCLASS labels arise. The all-positive baseline
+consequently scores 0.550 here against 0.247 on the test split, and that gap is at
+least partly a property of how the external clips were selected rather than of any
+model. A second complication is the label--window mismatch flagged in
+Section~\ref{sec:arch}, which depresses recall for reasons unrelated to
+representation family; we cannot determine how often it occurs, because we did
+not retain the durations of the evaluated recordings.
+
+\subsection{Proposed Explanations}
+\label{sec:hypotheses}
+Two explanations the present experiments do not distinguish are stated as
+proposals rather than findings.
+
+\emph{Operating-point drift.} The score distributions of all seven
+configurations are displaced under the shift, so thresholds fixed
+in-distribution land in different regions of the ROC curve for the two families,
+and F1 then tracks the predicted-positive rate and the base rate rather than
+discrimination. The direct evidence is the paired PPR columns of
+Table~\ref{tab:boli_drift} and Figure~\ref{fig:charts}(a), in which the families
+sit on opposite sides of the base rate, together with the ordering flipping when
+the threshold is removed. Because both PPR columns use the same thresholds, the
+displacement is measured rather than assumed. What the measurement does not
+settle is why it occurs, since that would require the score distributions
+themselves rather than their induced decisions; the disagreement between F1 and
+AUROC/AUPRC is the expected signature of such displacement, which is exactly when
+a single thresholded number invites misinterpretation.
+
+\emph{Corpus-specificity.} The higher-capacity Wav2Vec2 representations may
+encode corpus-specific characteristics of SEP-28K and UCLASS (speakers, accents,
+recording conditions, annotation conventions) that transfer weakly to a corpus
+built by a different procedure, while the coarse spectral patterns retained by a
+mel-spectrogram CNN transfer more evenly. The threshold-free ordering is
+consistent with this account, since arm01 and arm02 lead on AUROC and AUPRC while
+the CNNs sit near chance, but it is equally consistent with the label--window
+mismatch and label provenance above, and no measurement we have separates these.
+A probe classifier on frozen embeddings predicting source corpus would be the
+most direct test; we have not run one.
+
+\subsection{Threats to Validity}
+\label{sec:limitations}
+\paragraph{Statistical power and single-run training.} This is the most
+consequential threat, with two independent sources. Every configuration was
+trained once from seed 42, so the arm01/arm02 difference of under 0.02 macro F1 is
+not interpretable even though their bootstrap intervals overlap, and the arm03
+degradation carries no training uncertainty either: the intervals in
+Tables~\ref{tab:macro}--\ref{tab:perclass} describe clip sampling only. Separately,
+the external set has 53 scored recordings with per-class support from 9 to 35,
+which is why external F1 comparisons are point estimates and the threshold-free
+metrics have no intervals. We use ``better'' and ``outperforms'' only where a
+difference exceeds plausible seed and sampling variation.
+
+\paragraph{Uncontrolled properties of the external set, and untested
+explanations.} As detailed in Section~\ref{sec:arch}, the external labels are
+built differently from the training labels, the ingested clips are English-only
+and so the external set does not test language shift, and truncation to the
+first 3~s may decouple labels from retained
+audio. The window, trimming, and truncation policy is held fixed across all
+configurations and both protocols, so it does not confound the comparisons
+reported here, but it is an uncontrolled absolute factor and a plausible
+contributor to the block-class difficulty. All tuned F1 values depend on
+validation-F1-optimal thresholds, and we do not measure calibration, so we cannot
+distinguish a miscalibrated probability head from a mismatched operating
+point~\cite{guo2017calibration}; the two accounts in Section~\ref{sec:hypotheses}
+remain proposals. Finally, capacity, pretraining, and objective are not separated,
+latency and throughput were not measured, and a single external corpus cannot
+distinguish a general failure of cross-corpus transfer from a property of this
+corpus.
+
+\section{Practical Implications and Conclusion}
 \label{sec:conclusion}
+Model selection for this task cannot rest on in-distribution F1, because that
+split shares speakers with training and the cross-corpus F1 ordering is dominated
+by where a fixed threshold lands. Reported results should therefore include, at
+minimum, a speaker-disjoint or cross-corpus split, threshold-free metrics
+alongside F1, a trivial all-positive baseline, and the predicted-positive rate at
+the reported threshold; each would have changed the conclusion we drew from the F1
+columns alone.
 
-This paper presented an end-to-end speech dysfluency classification system and
-compared seven experimental configurations across two representation families
-under a clip-level in-distribution protocol and a speaker-independent cross-corpus
-protocol. Our main observations are:
-\begin{itemize}
-\item Under the clip-level in-distribution protocol, the \emph{five-binary
-Wav2Vec2 classifier} achieved the highest measured macro F1 (0.5704), while the
-\emph{shared-backbone multitask variant} followed closely (0.5557) using
-${\approx}4.9\times$ fewer parameters in total; the difference between the two is
-small and should be treated as a single-seed point estimate.
-\item On the Project Boli speaker-independent cross-corpus set, no configuration
-exceeds an all-positive baseline (macro F1 $0.550$). The apparent F1 advantage of
-the CNN configurations is an operating-point artifact---their
-validation-calibrated thresholds drift toward near-all-positive predictions
-(macro PPR $0.88$) while the Wav2Vec2 thresholds drift toward near-all-negative
-(macro PPR $0.08$). Under threshold-free metrics the ranking reverses and becomes
-modest: the Wav2Vec2 configurations reach macro AUPRC $0.546$--$0.557$ ($\approx
-1.3$--$1.4\times$ the base-rate prior) versus $0.412$--$0.445$ for the CNN
-configurations.
-\item \emph{Interjection} achieved the highest F1 among the evaluated classes
-(0.773), while \emph{block} was the most challenging (0.429), consistent with the
-ordering reported elsewhere in the literature.
-\item \emph{Backbone freezing duration} materially affects the multitask Wav2Vec2
-configuration: freezing for 20 epochs instead of 3 degrades tuned macro F1 by
-${\approx}32\%$.
-\end{itemize}
+On RQ1, Wav2Vec2 dominates in-distribution at macro F1 0.55--0.57 against
+0.25--0.27 for the CNNs and 0.247 for an all-positive baseline, with the
+five-binary and multitask variants indistinguishable and excessive freezing
+costing ${\approx}32\%$ of tuned macro F1. On RQ2 the cross-corpus F1 ordering
+inverts, with the CNNs appearing to lead, and on RQ3 that inversion is consistent
+with operating-point drift rather than generalization: at identical thresholds the
+CNNs label 37--85\% and 44--88\% of in-distribution and external clips positive
+against base rates of 0.143 and 0.408, while the Wav2Vec2 configurations fall to
+8--10\% externally, and no configuration exceeds the all-positive baseline of
+0.550. On RQ4 threshold-free metrics reverse the ordering again, placing the
+task-adapted Wav2Vec2 configurations above the CNNs at macro AUROC 0.620--0.621
+against 0.473--0.522. The conclusions we can draw are narrow: F1 alone cannot
+support cross-corpus claims for this task, and interjection is easier to detect
+than block under both protocols. We cannot claim cross-corpus deployment, because
+no configuration exceeded a trivial baseline on the external set of 53 scored
+recordings with per-class support as low as 9 and at least three confounding
+properties (Section~\ref{sec:arch}). The cause of the score drift and the modest
+threshold-free advantage of Wav2Vec2 remain unresolved
+(Section~\ref{sec:limitations}).
 
-The tension between the two protocols---Wav2Vec2 dominating in-distribution and
-ranking slightly better on the unseen corpus under threshold-free metrics, yet
-suffering far larger operating-point drift---motivates further investigation into
-the relationship between representation capacity, corpus-specific information
-encoded by a representation, and cross-corpus robustness. We specifically propose:
-(1) speaker-independent splits of the full corpus with multi-seed runs and
-confidence intervals; (2) embedding-based probe experiments
-(speaker-identification and source-corpus classification) together with threshold
-recalibration probes to test the corpus-specificity, spectrogram-invariance, and
-operating-point-drift hypotheses; (3) additional external corpora and languages;
-(4) evaluation of HuBERT, XLS-R, and WavLM backbones as well as a classical MFCC
-baseline; (5) quantitative calibration analysis and pause-aware features for block
-detection.
-
-% ── BIBLIOGRAPHY ─────────────────────────────────────────────────────
-\begin{credits}
-\subsubsection{\discintname}
-The authors have no competing interests to declare that are relevant to the
-content of this article.
-\end{credits}
-%
 % ---- Bibliography ----
 %
 % BibTeX users should specify bibliography style 'splncs04'.
@@ -1051,5 +935,11 @@ content of this article.
 %
 \bibliographystyle{splncs04}
 \bibliography{references}
+
+% ── CONFLICT OF INTEREST ─────────────────────────────────────────────
+\begin{credits}
+\subsubsection{\discintname}
+The authors declare no competing interests relevant to this article.
+\end{credits}
 %
 \end{document}

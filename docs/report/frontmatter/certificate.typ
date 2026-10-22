@@ -3,7 +3,7 @@
 
 // --- Certificate ---
 #[
-  #set page(paper: "a4", margin: (top: 75.6pt, bottom: 72pt, left: 54pt, right: 54pt))
+  #set page(paper: "a4", margin: (top: 54pt, bottom: 54pt, left: 54pt, right: 54pt))
   #set text(font: "Times New Roman")
   #set par(leading: 0pt, spacing: 0pt)
 
@@ -30,7 +30,7 @@
 
   // -- certified / approved paragraphs --
   #block(width: 100%)[
-    #set par(justify: true, leading: 12.37pt, spacing: 12.37pt)
+    #set par(justify: true, leading: 1.5em, spacing: 12.37pt)
     #set text(size: 12pt, hyphenate: false)
     Certified that the project work entitled #text(weight: "bold")[“#text(fill: rgb("#ff0000"))[#project_title]”] is carried out by #text(fill: purple, weight: "bold")[#author_list] bearing USNs #text(fill: purple, weight: "bold")[#usns.at(0)], #text(fill: purple, weight: "bold")[#usn_rest and #usn_last] respectively bonafide students of #text(fill: rgb("#c00000"), weight: "bold")[#college_name, #college_place] in partial fulfilment for the award of #text(fill: purple, weight: "bold")[#degree] in #text(fill: rgb("#002060"), weight: "bold")[#department] of the #text(fill: rgb("#c00000"), weight: "bold")[#university_name], #university_city during the year #academic_year. It is certified that all corrections/suggestions indicated during Internal Assessment have been incorporated in the report deposited in the departmental library.
 
@@ -58,7 +58,7 @@
   )
 
   // -- external viva --
-  #v(60.7pt)
+  #v(45pt)
   #h(180pt)#underline(text(size: 12pt, weight: "bold")[EXTERNAL VIVA])
   #v(4.9pt)
   #grid(columns: (360pt, 1fr), column-gutter: 0pt,

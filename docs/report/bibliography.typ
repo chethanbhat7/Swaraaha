@@ -1,7 +1,7 @@
 #import "lib.typ": *
 
 #set text(size: 12pt)
-#set par(justify: true, leading: 18pt, spacing: 18pt)
+#set par(justify: true, leading: 1.5em, spacing: 18pt)
 
 // Heading for the TOC; rendered invisibly so the visible title below is centered like other chapter heads
 #[

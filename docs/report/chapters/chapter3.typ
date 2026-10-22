@@ -24,7 +24,7 @@ Furthermore, it supports seamless integration with user interfaces for audio upl
 Emphasis is placed on maintaining data security and patient confidentiality, ensuring ethical and reliable operation throughout the analysis workflow.
 Additionally, the architecture allows for performance optimization, enabling fast and accurate stutter detection even when deployed on large speech datasets.
 
-Figure 3.1 illustrates the proposed deep learning architecture designed for the automatic classification and localization of stuttering using speech audio.
+The proposed deep learning architecture for the automatic classification and localization of stuttering using speech audio is illustrated in Figure 3.1.
 The framework integrates two model pathways, five independent Wav2Vec 2.0 binary classifiers for classification and a Wav2Vec2 frame-level pipeline for localization, to improve feature extraction, multi-perspective learning, and classification robustness.
 The complete workflow consists of five major phases: Input, Pre-processing, Feature Extraction, Classification, and Output.
 This dual-model structure enables richer representation learning and enhances overall detection accuracy.
@@ -36,7 +36,7 @@ Audio enters the system when the user records directly or uploads a pre-recorded
 The web app captures audio with MediaRecorder APIs; the desktop app uses sounddevice.
 Each sample may contain one or more dysfluencies, including blocks, prolongations, word repetitions, sound repetitions, and interjections.
 Ensuring adequate recording quality is crucial, as variations in microphone hardware, background noise, and speaking rate can affect model reliability.
-The dataset includes recordings from Project Boli, SEP-28K, and UCLASS captured across English, Kannada, and Hindi.
+The dataset includes recordings from Project Boli, SEP-28K, and UCLASS, and the ingestion pipeline resolves the English material of all three sources.
 This stage establishes the foundation of the diagnostic system by providing high-quality data for subsequent processing.
 
 *Preprocessing:* Before being fed into the deep learning model, speech audio undergoes preprocessing to enhance clarity, reduce noise, and ensure consistency across samples.
@@ -136,7 +136,7 @@ In the context of deep learning and stutter detection, the workflow diagram illu
 
 #add_image(align(center, image("/assets/workflow-diagram.png", width: 92%)), caption: [Workflow Diagram])
 
-The workflow diagram illustrates the workflow of the proposed deep learning pipeline for stutter detection and localization.
+The workflow of the proposed deep learning pipeline for stutter detection and localization is shown in Figure 3.4.
 The process begins with the collection of speech audio samples from three public stuttering datasets, Project Boli, SEP-28K, and UCLASS, all converted to 16 kHz mono and standardized through DC offset removal, peak normalization, silence trimming, and fixed-length padding.
 Data augmentation techniques such as random noise injection, time stretching, pitch shifting, temporal shifting, and amplitude scaling are applied to the waveforms, along with time and frequency masking on the spectrograms, expanding the effective dataset so the models generalize well across varied speaking patterns.
 The processed audio is then split into training, validation, and testing sets using an 80:10:10 ratio, with the training subset further re-split 80/20 during training.

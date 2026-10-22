@@ -55,6 +55,19 @@
   }
 }
 
+// --- Front-matter list entries (linked with roman page numbers) ---
+#let front_entry(title, target) = {
+  v(12pt, weak: true)
+  link(target)[
+    #grid(
+      columns: (1fr, auto),
+      align: (left, right),
+      strong(title),
+      context numbering("I", counter(page).at(target).first()),
+    )
+  ]
+}
+
 // --- TOC outline ---
 #non_outlined_heading[TABLE OF CONTENTS]
 
@@ -63,6 +76,10 @@
   align: (left, center),
   stack(dir: ltr)[*Title*], [*Page No.*]
 )
+
+#front_entry("LIST OF TABLES", <lot>)
+#front_entry("LIST OF FIGURES", <lof>)
+#front_entry("LIST OF ABBREVIATIONS", <loa>)
 
 #outline(
   title: none,
@@ -76,7 +93,7 @@
 #counter(page).update(1)
 
 // --- Tables list ---
-#non_outlined_heading[LIST OF TABLES]
+#non_outlined_heading(label: <lot>)[LIST OF TABLES]
 
 #grid(
   columns: (8em, 1fr, 6.5em),
@@ -91,7 +108,7 @@
 #pagebreak()
 
 // --- Figure list ---
-#non_outlined_heading[LIST OF FIGURES]
+#non_outlined_heading(label: <lof>)[LIST OF FIGURES]
 
 #grid(
   columns: (8.5em, 1fr, 6.5em),

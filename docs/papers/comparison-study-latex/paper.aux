@@ -1,115 +1,112 @@
 \relax 
-\citation{yairi2009childhood}
-\citation{yairi2009childhood}
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
 \citation{yairi2009childhood}
 \citation{sheikh2022review}
-\@writefile{toc}{\contentsline {title}{A Comparative Study of Self-Supervised and Spectrogram-Based Models for Cross-Corpus Speech Dysfluency Detection}{1}{}\protected@file@percent }
+\citation{baevski2020wav2vec}
+\@writefile{toc}{\contentsline {title}{A Comparative Study of {Wav2Vec}~2.0 and Compact {CNN} Models for Cross-Corpus Speech Dysfluency Detection}{1}{chapter.1}\protected@file@percent }
 \@writefile{toc}{\authcount {1}}
-\@writefile{toc}{\contentsline {author}{Anonymous}{1}{}\protected@file@percent }
-\citation{baevski2020wav2vec}
-\citation{lea2021sep28k}
+\@writefile{toc}{\contentsline {author}{}{1}{chapter.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{section.1}\protected@file@percent }
+\newlabel{sec:intro}{{1}{1}{Introduction}{section.1}{}}
+\citation{bayerl2023crosscorpus}
+\citation{bayerl2022partitioning}
 \citation{sheikh2022review}
-\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{2}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {2}Related Work}{2}{}\protected@file@percent }
-\newlabel{sec:related}{{2}{2}{}{section.2}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Traditional Approaches}{2}{}\protected@file@percent }
 \citation{kourkounakis2020detecting}
-\citation{kourkounakis2020detecting,sheikh2021stutternet}
-\citation{baevski2020wav2vec}
-\citation{baevski2020wav2vec}
+\citation{sheikh2021stutternet}
 \citation{conneau2021xlsr}
 \citation{hsu2021hubert}
 \citation{babu2022xlsr}
 \citation{chen2022wavlm}
 \citation{bayerl2022multi}
+\citation{bayerl2022therapy}
 \citation{susac2026stuttmil}
-\citation{lea2021sep28k}
-\citation{bernsteinratner2018fluencybank}
-\citation{howell2009uclass}
-\citation{boli2025}
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Deep Learning Methods}{3}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Self-Supervised Speech Representation Models}{3}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.4}Wav2Vec2-Based Stutter Detection}{3}{}\protected@file@percent }
-\citation{lea2021sep28k}
-\citation{howell2009uclass}
-\citation{boli2025}
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.5}Stuttering and Dysfluency Datasets}{4}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.6}Cross-Corpus and Speaker-Independent Evaluation}{4}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {3}System Architecture}{4}{}\protected@file@percent }
-\newlabel{sec:arch}{{3}{4}{}{section.3}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Data Pipeline}{4}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Source corpora and their integration into the merged corpus. The Boli clips used here are the English portion of a corpus that also contains Hindi, Marathi, Telugu, Bengali, and Assamese material; the non-English portions were not ingested.}}{5}{}\protected@file@percent }
-\newlabel{tab:datasets}{{1}{5}{}{table.1}{}}
-\@writefile{toc}{\contentsline {subsubsection}{Annotation harmonization.}{5}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{The 3-second window.}{6}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Classification Pipeline}{6}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{Five Independent Binary Classifiers.}{6}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{Shared-Backbone Multitask Classifier.}{6}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{CNN Spectrogram Models.}{6}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Model Registry}{7}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {4}Experimental Setup}{7}{}\protected@file@percent }
-\newlabel{sec:setup}{{4}{7}{}{section.4}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Model Configurations}{7}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Experimental configurations, aggregator types, and parameter counts.}}{8}{}\protected@file@percent }
-\newlabel{tab:arms}{{2}{8}{}{table.2}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Training Protocol}{8}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Evaluation Metrics}{8}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Evaluation Protocol}{9}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{In-distribution, clip-level held-out (Test).}{9}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{Speaker-independent, cross-corpus held-out (Boli).}{9}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {5}Results and Discussion}{9}{}\protected@file@percent }
-\newlabel{sec:results}{{5}{9}{}{section.5}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}In-Distribution and Cross-Corpus Macro F1}{9}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Macro F1 across all seven configurations plus deterministic baselines. Test = clip-level in-distribution held-out; Boli = speaker-independent cross-corpus held-out. ``0.5'' uses a fixed 0.5 threshold; ``tuned'' uses per-class validation-F1-optimal thresholds (Section~\ref {sec:setup}). ``All-positive'' always predicts the positive class (recall $=1$ per class); ``Random@rate'' predicts positive with probability equal to the class base rate. Neither baseline requires tuning.}}{10}{}\protected@file@percent }
-\newlabel{tab:macro}{{3}{10}{}{table.3}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Speaker-Independent Evaluation (Project Boli)}{10}{}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Per-class F1 scores (multitask Wav2Vec2) on the clip-level in-distribution test set.}}{11}{}\protected@file@percent }
-\newlabel{fig:testf1}{{1}{11}{}{figure.1}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Per-class tuned F1 on the Project Boli speaker-independent held-out set (PR = prolongation, BL = block, SR = sound repetition, WR = word repetition, IN = interjection). Class support on Boli is small (PR: 16, BL: 35, SR: 34, WR: 14, IN: 9). ``All-positive'' labels every clip as positive for every class.}}{11}{}\protected@file@percent }
-\newlabel{tab:boli_perclass}{{4}{11}{}{table.4}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Per-class tuned F1 on the Project Boli speaker-independent cross-corpus set for the shared-backbone Wav2Vec2 model (arm02) and the CNN-LSTM model (arm06), each using its per-class validation-F1-optimal thresholds.}}{12}{}\protected@file@percent }
-\newlabel{fig:bolif1}{{2}{12}{}{figure.2}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Threshold-free macro metrics and predicted-positive rate (PPR) on the Project Boli set (53 clips). AUPRC of a random classifier equals the average base rate (macro $0.408$), so the ``lift'' column reports AUPRC relative to that prior. PPR is the mean over classes of the fraction of clips predicted positive at the validation-tuned thresholds.}}{13}{}\protected@file@percent }
-\newlabel{tab:boli_thresholdfree}{{5}{13}{}{table.5}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces Per-class metrics for the multitask Wav2Vec2 (arm02) on the clip-level test set at tuned thresholds. Macro is the unweighted mean over classes.}}{13}{}\protected@file@percent }
-\newlabel{tab:perclass}{{6}{13}{}{table.6}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Per-Class Analysis}{13}{}\protected@file@percent }
+\citation{bayerl2023crosscorpus}
+\citation{bayerl2022partitioning}
 \citation{guo2017calibration}
-\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces Per-class validation-tuned thresholds (F1-optimal over the swept grid) for the multitask Wav2Vec2 (arm02).}}{14}{}\protected@file@percent }
-\newlabel{tab:thresholds}{{7}{14}{}{table.7}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Per-class AUROC and AUPRC (multitask Wav2Vec2) on the clip-level test set.}}{14}{}\protected@file@percent }
-\newlabel{fig:testauc}{{3}{14}{}{figure.3}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces Confusion matrices (TP, FP, TN, FN) for the five binary Wav2Vec2 classifiers (arm01) on the clip-level test set at tuned thresholds. Each row sums to the 3,715 scored clips.}}{15}{}\protected@file@percent }
-\newlabel{tab:confmat}{{8}{15}{}{table.8}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Confusion matrices for the five binary Wav2Vec2 classifiers (arm01) on the clip-level in-distribution test set. Top row: prolongation, block, and sound repetition; bottom row: word repetition and interjection.}}{15}{}\protected@file@percent }
-\newlabel{fig:confmat}{{4}{15}{}{figure.4}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.4}Computational Considerations}{15}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {2}Related Work}{3}{section.2}\protected@file@percent }
+\newlabel{sec:related}{{2}{3}{Related Work}{section.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Detection Approaches}{3}{subsection.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Corpora and Metrics Under Shift}{3}{subsection.2.2}\protected@file@percent }
+\citation{boli2025}
+\@writefile{toc}{\contentsline {section}{\numberline {3}Corpora and Models}{4}{section.3}\protected@file@percent }
+\newlabel{sec:arch}{{3}{4}{Corpora and Models}{section.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Source Corpora and Clip Construction}{4}{subsection.3.1}\protected@file@percent }
+\newlabel{sec:boli}{{3.1}{4}{Construction of the Project Boli subset}{section*.2}{}}
+\@writefile{toc}{\contentsline {subsubsection}{Construction of the Project Boli subset}{4}{section*.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Annotation Harmonization}{5}{subsection.3.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Preprocessing and the 3-Second Window}{5}{subsection.3.3}\protected@file@percent }
+\newlabel{sec:win}{{3.3}{5}{Preprocessing and the 3-Second Window}{subsection.3.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}Model Configurations}{6}{subsection.3.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{Model descriptions.}{6}{section*.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4}Experimental Setup}{7}{section.4}\protected@file@percent }
+\newlabel{sec:setup}{{4}{7}{Experimental Setup}{section.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Training Protocol}{7}{subsection.4.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Threshold Selection}{7}{subsection.4.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Reported Metrics}{8}{subsection.4.3}\protected@file@percent }
+\newlabel{sec:metrics}{{4.3}{8}{Reported Metrics}{subsection.4.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Evaluation Protocols}{8}{subsection.4.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{In-distribution, clip-level (Test).}{8}{section*.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{Speaker-independent, cross-corpus (Boli).}{8}{section*.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.5}Statistical Uncertainty}{8}{subsection.4.5}\protected@file@percent }
+\newlabel{sec:uncert}{{4.5}{8}{Statistical Uncertainty}{subsection.4.5}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {5}Results}{9}{section.5}\protected@file@percent }
+\newlabel{sec:results}{{5}{9}{Results}{section.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}In-Distribution Results (RQ1)}{9}{subsection.5.1}\protected@file@percent }
+\newlabel{sec:res-indist}{{5.1}{9}{In-Distribution Results (RQ1)}{subsection.5.1}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Macro F1 (unweighted mean over the five classes) for all seven configurations and two trivial baselines, with 95\% bootstrap confidence intervals on the tuned columns. ``Test'' is the clip-level in-distribution split (3{,}715 scored clips, speakers shared with training); ``Boli'' is the speaker-independent cross-corpus split (53 scored recordings). ``0.5'' applies a fixed threshold; ``tuned'' applies the per-class validation-F1-optimal thresholds of Section~\ref {sec:setup}, unchanged on Boli. The two baselines are untuned, so their columns coincide. Intervals reflect clip-level resampling only and exclude seed variation.}}{9}{table.1}\protected@file@percent }
+\newlabel{tab:macro}{{1}{9}{Macro F1 (unweighted mean over the five classes) for all seven configurations and two trivial baselines, with 95\% bootstrap confidence intervals on the tuned columns. ``Test'' is the clip-level in-distribution split (3{,}715 scored clips, speakers shared with training); ``Boli'' is the speaker-independent cross-corpus split (53 scored recordings). ``0.5'' applies a fixed threshold; ``tuned'' applies the per-class validation-F1-optimal thresholds of Section~\ref {sec:setup}, unchanged on Boli. The two baselines are untuned, so their columns coincide. Intervals reflect clip-level resampling only and exclude seed variation}{table.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Cross-Corpus Results at Tuned Thresholds (RQ2)}{9}{subsection.5.2}\protected@file@percent }
+\newlabel{sec:res-boli-tuned}{{5.2}{9}{Cross-Corpus Results at Tuned Thresholds (RQ2)}{subsection.5.2}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Per-class F1 on the speaker-independent cross-corpus set (53 scored recordings) at the validation-tuned thresholds, transferred unchanged. The all-positive row labels every clip positive, giving per-class F1 $2s/(n+s)$ for support $s$ and $n=53$; no configuration exceeds it in macro F1. The macro column carries a 95\% bootstrap interval; per-class intervals are omitted because with support between 9 and 35 they are too wide to inform the comparison (e.g.\ arm06 block, 0.795, 95\% CI 0.691--0.873).}}{10}{table.2}\protected@file@percent }
+\newlabel{tab:boli_perclass}{{2}{10}{Per-class F1 on the speaker-independent cross-corpus set (53 scored recordings) at the validation-tuned thresholds, transferred unchanged. The all-positive row labels every clip positive, giving per-class F1 $2s/(n+s)$ for support $s$ and $n=53$; no configuration exceeds it in macro F1. The macro column carries a 95\% bootstrap interval; per-class intervals are omitted because with support between 9 and 35 they are too wide to inform the comparison (e.g.\ arm06 block, 0.795, 95\% CI 0.691--0.873)}{table.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Threshold-Free Cross-Corpus Results and Operating-Point Drift (RQ3, RQ4)}{10}{subsection.5.3}\protected@file@percent }
+\newlabel{sec:res-thresholdfree}{{5.3}{10}{Threshold-Free Cross-Corpus Results and Operating-Point Drift (RQ3, RQ4)}{subsection.5.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Threshold-free macro metrics and predicted-positive rate (PPR) from the same predictions as Table~\ref {tab:boli_perclass}. AUROC and AUPRC are point estimates; AUPRC lift is relative to the macro base rate 0.408, its chance level. PPR is the mean fraction of clips labelled positive at the tuned thresholds, so it measures where the operating point landed rather than performance, and it carries a 95\% bootstrap interval. The two PPR columns apply identical thresholds to the two evaluation sets, so their difference measures drift directly. Base-rate rows give the in-distribution (0.143) and external (0.408) priors.}}{11}{table.3}\protected@file@percent }
+\newlabel{tab:boli_drift}{{3}{11}{Threshold-free macro metrics and predicted-positive rate (PPR) from the same predictions as Table~\ref {tab:boli_perclass}. AUROC and AUPRC are point estimates; AUPRC lift is relative to the macro base rate 0.408, its chance level. PPR is the mean fraction of clips labelled positive at the tuned thresholds, so it measures where the operating point landed rather than performance, and it carries a 95\% bootstrap interval. The two PPR columns apply identical thresholds to the two evaluation sets, so their difference measures drift directly. Base-rate rows give the in-distribution (0.143) and external (0.408) priors}{table.3}{}}
 \citation{bayerl2022multi}
 \citation{susac2026stuttmil}
-\@writefile{lot}{\contentsline {table}{\numberline {9}{\ignorespaces Trade-off between parameter count, computed fp32 size, and evaluation performance (tuned F1, Table~\ref {tab:macro}). On Boli, an all-positive baseline reaches macro F1 $0.550$, above every configuration shown here (Section~\ref {sec:results}).}}{16}{}\protected@file@percent }
-\newlabel{tab:tradeoff}{{9}{16}{}{table.9}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.5}Comparison with Published Results}{16}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.6}Limitations}{16}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.7}Practical Implications}{17}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {6}Conclusion}{18}{}\protected@file@percent }
-\newlabel{sec:conclusion}{{6}{18}{}{section.6}{}}
+\citation{bayerl2022partitioning}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces The two metric families disagree, and the mechanism is visible. (a) Operating-point drift on the cross-corpus set (RQ3): macro predicted-positive rate at the in-distribution-tuned thresholds, against the 0.408 macro base rate (dashed), as in Table~\ref {tab:boli_drift}. (b) RQ2 against RQ4: cross-corpus macro F1 (solid) against macro AUROC (hatched); no configuration reaches the all-positive F1 line, and the two orderings are near-reversals.}}{12}{figure.1}\protected@file@percent }
+\newlabel{fig:charts}{{1}{12}{The two metric families disagree, and the mechanism is visible. (a) Operating-point drift on the cross-corpus set (RQ3): macro predicted-positive rate at the in-distribution-tuned thresholds, against the 0.408 macro base rate (dashed), as in Table~\ref {tab:boli_drift}. (b) RQ2 against RQ4: cross-corpus macro F1 (solid) against macro AUROC (hatched); no configuration reaches the all-positive F1 line, and the two orderings are near-reversals}{figure.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.4}Per-Class Analysis}{12}{subsection.5.4}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Per-class metrics for the multitask Wav2Vec2 model (arm02) on the in-distribution test split (3{,}715 scored clips) at the validation-tuned thresholds 0.55, 0.35, 0.40, 0.35, and 0.45 for prolongation, block, sound repetition, word repetition, and interjection. Base rate is support divided by 3{,}715, the chance level of AUPRC for that class. F1 carries a 95\% bootstrap interval.}}{12}{table.4}\protected@file@percent }
+\newlabel{tab:perclass}{{4}{12}{Per-class metrics for the multitask Wav2Vec2 model (arm02) on the in-distribution test split (3{,}715 scored clips) at the validation-tuned thresholds 0.55, 0.35, 0.40, 0.35, and 0.45 for prolongation, block, sound repetition, word repetition, and interjection. Base rate is support divided by 3{,}715, the chance level of AUPRC for that class. F1 carries a 95\% bootstrap interval}{table.4}{}}
+\citation{boli2025}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.5}Computational Cost and Relation to Published Results}{13}{subsection.5.5}\protected@file@percent }
+\newlabel{sec:compute}{{5.5}{13}{Computational Cost and Relation to Published Results}{subsection.5.5}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {6}Discussion}{13}{section.6}\protected@file@percent }
+\newlabel{sec:discussion}{{6}{13}{Discussion}{section.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}What the In-Distribution Results Show}{13}{subsection.6.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}Why the External Results Are Hard to Interpret}{13}{subsection.6.2}\protected@file@percent }
+\newlabel{sec:interpret}{{6.2}{13}{Why the External Results Are Hard to Interpret}{subsection.6.2}{}}
+\citation{guo2017calibration}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}Proposed Explanations}{14}{subsection.6.3}\protected@file@percent }
+\newlabel{sec:hypotheses}{{6.3}{14}{Proposed Explanations}{subsection.6.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.4}Threats to Validity}{14}{subsection.6.4}\protected@file@percent }
+\newlabel{sec:limitations}{{6.4}{14}{Threats to Validity}{subsection.6.4}{}}
+\@writefile{toc}{\contentsline {paragraph}{Statistical power and single-run training.}{14}{section*.6}\protected@file@percent }
 \bibstyle{splncs04}
 \bibdata{references}
 \bibcite{babu2022xlsr}{1}
 \bibcite{baevski2020wav2vec}{2}
+\@writefile{toc}{\contentsline {paragraph}{Uncontrolled properties of the external set, and untested explanations.}{15}{section*.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {7}Practical Implications and Conclusion}{15}{section.7}\protected@file@percent }
+\newlabel{sec:conclusion}{{7}{15}{Practical Implications and Conclusion}{section.7}{}}
 \bibcite{boli2025}{3}
 \bibcite{bayerl2022multi}{4}
-\bibcite{bernsteinratner2018fluencybank}{5}
-\bibcite{chen2022wavlm}{6}
-\bibcite{conneau2021xlsr}{7}
-\bibcite{guo2017calibration}{8}
-\bibcite{howell2009uclass}{9}
-\bibcite{hsu2021hubert}{10}
-\bibcite{kourkounakis2020detecting}{11}
-\bibcite{lea2021sep28k}{12}
+\bibcite{bayerl2023crosscorpus}{5}
+\bibcite{bayerl2022partitioning}{6}
+\bibcite{bayerl2022therapy}{7}
+\bibcite{chen2022wavlm}{8}
+\bibcite{conneau2021xlsr}{9}
+\bibcite{guo2017calibration}{10}
+\bibcite{hsu2021hubert}{11}
+\bibcite{kourkounakis2020detecting}{12}
 \bibcite{sheikh2021stutternet}{13}
 \bibcite{sheikh2022review}{14}
 \bibcite{susac2026stuttmil}{15}
 \bibcite{yairi2009childhood}{16}
-\@writefile{toc}{\contentsline {subsubsection}{Disclosure of Interests.}{19}{}\protected@file@percent }
-\gdef \@abspage@last{20}
+\@writefile{toc}{\contentsline {subsubsection}{Disclosure of Interests.}{16}{section*.9}\protected@file@percent }
+\gdef \@abspage@last{16}

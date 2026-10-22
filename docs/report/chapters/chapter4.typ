@@ -79,7 +79,7 @@ The Wav2Vec2 frame-level localizer is measured with frame-level precision, recal
 A confusion matrix is generated for each of the five binary classifiers to visualize the distribution of predictions, highlighting true positives, false positives, true negatives, and false negatives.
 This detailed evaluation helps identify the strengths and weaknesses of each class, for example that interjections are detected most reliably while blocks are the hardest class.
 
-All reported results use the held-out test set of 3,715 clips, which is never touched during training or threshold selection, together with a cross-corpus Boli set that checks how well the models transfer to unseen languages and speakers.
+All reported results use the held-out test set of 3,715 clips, which is never touched during training or threshold selection, together with a cross-corpus Boli set that checks how well the models transfer to unseen speakers.
 
 == USER INTERFACE
 The web-based interface connects the user to the proposed stutter detection and localization system.

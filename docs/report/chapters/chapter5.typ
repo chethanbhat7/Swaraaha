@@ -43,7 +43,7 @@ The React web application was exercised in supported browsers and the PySide6 de
 Supported audio formats (WAV, MP3, OGG, and M4A) were validated across the upload, drag-and-drop, and microphone capture paths, corrupted files were rejected with clear error messages, and analysis turnaround was confirmed to stay within a few seconds per clip as required by the performance requirements in Chapter 2.
 The combined system-level suite confirmed that the application meets its functional and non-functional requirements.
 
-== RESULT AND DISCUSSION
+== RESULT AND ANALYSIS
 This section presents the evaluation of the trained models: how the Wav2Vec2-based and CNN-based model families were trained and evaluated, the hyper parameter tuning applied, and a comparative performance analysis of all architectures.
 
 === Model Evaluation of the Wav2Vec2 Classifiers
@@ -51,7 +51,7 @@ The model registry defines two Wav2Vec2-based classification configurations: the
 This section first analyzes the multitask variant in detail and then reports the shipped `single` configuration; the confusion matrices at the end of the section come from the shipped `single` configuration.
 
 The multitask variant uses a single Wav2Vec2-base backbone with five shared binary heads.
-Training used Focal Loss (gamma=2.0), backbone freezing for 3 epochs, AdamW (LR $3 times 10^(-5)$), a 500-step warm-up, and early stopping with a patience of 5.
+Training used Focal Loss (gamma=2.0), backbone freezing for 3 epochs, AdamW (LR 3 × 10#super[-5]), a 500-step warm-up, and early stopping with a patience of 5.
 Results on 3,715 held-out test samples at the default threshold of 0.5 are in Table 5.1.
 
 #add_table(
@@ -80,9 +80,12 @@ Block is the hardest class (F1=0.364); silent pauses and hesitations are hard to
 
 #add_image(align(center, image("/assets/classifier_test_auc.png", width: 90%)), caption: [Per-class AUROC and AUPRC of the multitask Wav2Vec2 classifier])
 
+The per-class F1 scores are plotted in Figure 5.1, and the corresponding AUROC and AUPRC values are plotted in Figure 5.2.
+Both figures mirror the table above: interjection leads on every measure, while block trails on F1 even though its AUROC and AUPRC stay reasonably high.
+
 The shipped `single` configuration of five independent binary classifiers scores slightly higher in distribution, with a test F1 of 0.573 at threshold 0.5 (0.570 with tuned thresholds).
 
-The confusion matrices below visualize the distribution of predictions of the shipped `single` configuration of five independent binary classifiers.
+The confusion matrices for the five dysfluency types are shown in Figure 5.3 and visualize the distribution of predictions of the shipped `single` configuration of five independent binary classifiers.
 
 #add_image(
   grid(
@@ -118,6 +121,8 @@ The localizer detects most dysfluency events with good accuracy: frame precision
 The mean IoU of 0.779 means the regions it finds overlap well with ground truth.
 Of 995 true events it predicted 1,846, of which 1,263 were false alarms (4.28 per minute).
 
+These frame-level metrics are visualized in Figure 5.4.
+
 #add_image(align(center, image("/assets/localizer_metrics.png", width: 90%)), caption: [Frame-level metrics of the Wav2Vec2 localizer])
 
 === Wav2Vec2 Classifier Training
@@ -125,6 +130,7 @@ The training phase prepares the models that the system relies on for classificat
 
 The system is trained and evaluated on three publicly available stuttering datasets: Project Boli, SEP-28K, and UCLASS.
 Project Boli is a multilingual Indian language dataset with stuttering data across Hindi, Kannada, Telugu, and other Indian languages, sourced from GitHub, and includes both read and spontaneous speech.
+The ingestion resolves only the English task codes of this dataset, so the Boli material used here is English speech; it is therefore a cross-corpus rather than a cross-lingual evaluation set.
 SEP-28K provides roughly 28,000 audio clips from stuttering support group podcasts, annotated for blocks, prolongations, sound repetitions, word repetitions, and interjections, and was obtained from Kaggle.
 UCLASS is an additional stuttering speech dataset from Kaggle that provides supplementary annotated clips.
 Each dataset is normalized into a unified format with a `combined_labels.csv` file of multi-label binary annotations and interval files per clip.
@@ -132,7 +138,7 @@ The merged dataset is split 80:10:10 into training, validation, and testing subs
 
 Each classifier is trained in a two-stage scheme.
 The backbone stays frozen for the first three epochs so the classification head can stabilize, then it is unfrozen with a learning rate scaled to 0.1 of the head learning rate.
-Focal Loss with a gamma value of 2 handles the class imbalance, and the AdamW optimizer runs at a learning rate of $3 times 10^(-5)$ with a weight decay of 0.01 and a 500-step warm-up.
+Focal Loss with a gamma value of 2 handles the class imbalance, and the AdamW optimizer runs at a learning rate of 3 × 10#super[-5] with a weight decay of 0.01 and a 500-step warm-up.
 Early stopping with a patience of 5 epochs prevents overfitting, and the checkpoint with the highest macro F1-score on the validation set is saved as the final model.
 During training, data augmentation applies waveform-level transforms (random noise injection, time stretching, pitch shifting, temporal shifting, and amplitude scaling) and spectrogram-level transforms (time and frequency masking).
 Checkpoints are stored under names that encode their training hyperparameters through a fingerprint convention, with checkpoint-based resume, an audio preprocessing cache for fast re-runs, `torch.compile` for roughly twice the training speed on CUDA, and gradient accumulation for effective batch size scaling.
@@ -148,7 +154,7 @@ The CNN-based models form the second model family, built to run classifications 
 
 Four CNN-based multitask classification architectures were evaluated: CNN Pool, CNN Single, CNN-LSTM, and CNN-Transformer, ranging from 0.27M to 0.54M parameters.
 On the held-out test set they score markedly lower than the Wav2Vec2 classifiers, with tuned F1 values between 0.249 and 0.271.
-On the cross-corpus Boli set, however, the ranking flips: CNN Single reaches 0.476 and CNN-LSTM 0.508, the best cross-corpus result of all seven architectures, suggesting that the lighter models generalize better to unseen speakers and languages.
+On the cross-corpus Boli set, however, the ranking flips: CNN Single reaches 0.476 and CNN-LSTM 0.508, the best cross-corpus result of all seven architectures, suggesting that the lighter models generalize better to unseen speakers.
 
 The CNN spectrogram localizer was evaluated on the same 3,715 test samples at a threshold of 0.5.
 It is far more permissive than the Wav2Vec2 localizer: frame recall is high (0.873) but precision is much lower (0.527), and it predicted 4,483 events against 995 true events, with 4,329 false alarms (23.49 per minute).
@@ -212,7 +218,9 @@ Test set and cross-corpus Boli results are in Table 5.4.
 
 The shipped five-classifier Wav2Vec2 configuration scores highest in distribution (tuned F1 0.570), narrowly ahead of the multitask variant (0.556); both benefit from large pre-trained speech representations.
 The CNN models have far fewer parameters but score lower on the test set.
-On the Boli cross-corpus set the ranking flips: CNN-LSTM reaches 0.508, the best cross-corpus result, followed by CNN Single (0.476). Lighter models seem to generalize better to unseen speakers and languages, while heavy pre-trained models do better on familiar data.
+On the Boli cross-corpus set the ranking flips: CNN-LSTM reaches 0.508, the best cross-corpus result, followed by CNN Single (0.476). Lighter models seem to generalize better to unseen speakers, while heavy pre-trained models do better on familiar data.
+
+The per-class tuned F1 scores on the Boli set are shown in Figure 5.5, where the lighter CNN variants lead the comparison.
 
 #add_image(align(center, image("/assets/classifier_boli_f1.png", width: 90%)), caption: [Per-class tuned F1 on the Boli set])
 

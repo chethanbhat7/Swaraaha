@@ -121,7 +121,7 @@ Trains five independent binary classifiers (one per dysfluency type) on top of `
 - **Split:** Stratified 80/20 train/val split per class
 - **Loss:** Focal loss (γ=2.0) for better handling of class imbalance
 - **Optimizer:** AdamW with linear warmup (500 steps) + linear decay
-- **Mixed precision:** Automatic on CUDA via `torch.amp.GradScaler`
+- **Mixed precision:** Automatic on CUDA via `torch.autocast` (float16, no GradScaler — GradScaler caused NaN in the classifier loop)
 - **Augmentation:** On-the-fly `AudioAugmentor` (noise, pitch shift, time stretch, roll, scale)
 - **Audio cache:** Preprocessed audio is cached to `data/cache/{split}` (pickle) — subsequent runs load instantly
 - **`torch.compile`:** Model is JIT-compiled via `torch.compile` when on CUDA for faster training
