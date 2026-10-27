@@ -1,0 +1,23 @@
+digraph G {
+    rankdir=TB;
+    node [shape=box, style=filled, fillcolor="#ececff", color="#9370db",
+          fontname="Times New Roman", fontsize=18, margin="0.3,0.18"];
+    edge [color="#333333"];
+
+    Input  [label="Input Audio"];
+    Pre    [label="Preprocessing"];
+    Type   [label="Model Type"];
+    LocM   [label="Localization Model"];
+    ClsM   [label="Classifier Model"];
+    LocR   [label="Localization Results"];
+    ClsR   [label="Classification Results"];
+    Out    [label="Output"];
+
+    Input -> Pre -> Type;
+    Type -> LocM;
+    Type -> ClsM;
+    LocM -> LocR;
+    ClsM -> ClsR;
+    LocR -> Out;
+    ClsR -> Out;
+}

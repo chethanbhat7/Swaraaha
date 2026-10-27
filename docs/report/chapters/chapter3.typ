@@ -29,7 +29,7 @@ The framework integrates two model pathways, five independent Wav2Vec 2.0 binary
 The complete workflow consists of five major phases: Input, Pre-processing, Feature Extraction, Classification, and Output.
 This dual-model structure enables richer representation learning and enhances overall detection accuracy.
 
-#add_image(align(center, image("/assets/architecture-verticle.png", height: 32.5%)), caption: [System Architecture])
+#add_image(align(center, image("/assets/architecture.svg", width: 70%)), caption: [System Architecture])
 
 *Speech Audio Input:* The system begins with the collection of speech audio samples, which serve as the primary dataset for stutter detection.
 Audio enters the system when the user records directly or uploads a pre-recorded file through the web interface or desktop application.
