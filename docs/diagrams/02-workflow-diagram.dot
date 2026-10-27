@@ -1,4 +1,4 @@
-// Render: neato -n2 -Tpng flow.dot -o flow.png
+// Render: neato -n2 -Tpng 02-workflow-diagram.dot -o 02-workflow-diagram.png
 // Coordinates are in points, measured from the original image (1 px = 1 pt, y axis flipped).
 digraph G {
     layout=neato;

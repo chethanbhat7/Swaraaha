@@ -141,7 +141,7 @@ A workflow diagram is a structured visual representation of a sequence of operat
 It employs standardized symbols such as rectangles to denote actions, diamonds for decision points, and arrows to indicate the direction of flow, thereby offering clarity and insight into the procedural steps involved.
 In the context of deep learning and stutter detection, the workflow diagram illustrated here systematically maps out the process for developing a stutter classification and localization system.
 
-#add_image(align(center, image("/assets/workflow-diagram.svg", width: 100%)), caption: [Workflow Diagram])
+#add_image(align(center, image("/assets/02-workflow-diagram.svg", width: 100%)), caption: [Workflow Diagram])
 
 The workflow of the proposed deep learning pipeline for stutter detection and localization is shown in Figure 3.4.
 The process begins with the collection of speech audio samples from three public stuttering datasets, Project Boli, SEP-28K, and UCLASS, all converted to 16 kHz mono and standardized through DC offset removal, peak normalization, silence trimming, and fixed-length padding.
