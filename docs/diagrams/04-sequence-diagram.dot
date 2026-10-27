@@ -3,17 +3,17 @@
 // Internal backend steps are self-messages; PDF generation folded into the backend.
 digraph SwaraahaSequenceDiagram {
 
-    fontname = "Times-Roman";
-    fontsize = 16;
+    fontname = "Times New Roman";
+    fontsize = 18;
     rankdir = TB;
     splines = false;
-    nodesep = 0.25;
-    ranksep = 0.42;
+    nodesep = 0.32;
+    ranksep = 0.5;
     bgcolor = "white";
 
     // ================= participant header boxes =================
-    node [fontname = "Times-Roman", fontsize = 13, color = "black", penwidth = 1.2];
-    node [shape = box, style = "filled", fillcolor = "#83C5E5", fontsize = 13, margin = "0.18,0.10"];
+    node [fontname = "Times New Roman", fontsize = 15, color = "black", penwidth = 1.3];
+    node [shape = box, style = "filled", fillcolor = "#83C5E5", fontsize = 15, margin = "0.22,0.12"];
 
     P_usr [label = "User", group = "usr"];
     P_fr  [label = "Frontend", group = "fr"];
@@ -127,7 +127,7 @@ digraph SwaraahaSequenceDiagram {
 
     // ================= messages (do not affect layout) =================
     edge [style = solid, color = "black", arrowsize = 0.8,
-          fontname = "Times-Roman", fontsize = 12, constraint = false];
+          fontname = "Times New Roman", fontsize = 16, constraint = false];
 
     a1_usr -> a1_fr [label = "upload / record;\nchoose language"];
 

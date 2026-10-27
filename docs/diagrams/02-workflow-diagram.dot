@@ -1,86 +1,71 @@
-// Swaraaha — Detailed Workflow Diagram (simplified for report legibility).
-// Serpentine ("snake") layout: four steps down, break right, four steps up,
-// break right, then the final steps down. Multi-head shared-backbone only.
-digraph SwaraahaWorkflowDiagram {
+// Render: neato -n2 -Tpng flow.dot -o flow.png
+// Coordinates are in points, measured from the original image (1 px = 1 pt, y axis flipped).
+digraph G {
+    layout=neato;
+    splines=line;
+    bgcolor=white;
+    node [shape=box, style=filled, fillcolor="#6ce5d0", color=black, penwidth=2,
+          fontname="Times New Roman", fontsize=40, fixedsize=true, label=""];
+    edge [color=black, penwidth=2, arrowsize=1.3];
 
-    // ---- global style (shared across all diagrams) ----
-    fontname = "Times New Roman";
-    fontsize = 16;
-    rankdir = TB;
-    splines = polyline;
-    nodesep = 0.55;
-    ranksep = 0.5;
-    bgcolor = "white";
-    newrank = true;
+    // ---- main nodes (drawn back to front) ----
+    DC   [label="Data Collection",     pos="461,1308",   width=4.194, height=1.722];
 
-    node [
-        shape = box,
-        style = "filled",
-        fillcolor = "#83C5E5",
-        color = "black",
-        fontname = "Times New Roman",
-        fontsize = 15,
-        penwidth = 1.2,
-        margin = "0.25,0.14"
-    ];
+    Big  [pos="461.5,805", width=12.375, height=9.444];
+    Norm [label="Normal",              pos="212,804.5",  width=4.153, height=1.681, fontsize=40];
+    Dot  [style="dotted,filled", pos="635.5,805", width=6.264, height=8.472];
+    Pro  [label="Prolongation",        pos="636,1017",   width=4.194, height=1.0, fontsize=26];
+    Blk  [label="Block",               pos="636,911.5",  width=4.194, height=1.0, fontsize=26];
+    SRep [label="Sound Repetition",    pos="636,805",    width=4.194, height=1.0, fontsize=26];
+    WRep [label="Word Repetition",     pos="636,698.5",  width=4.194, height=1.0, fontsize=26];
+    Intj [label="Interjection",        pos="636,592.5",  width=4.194, height=1.0, fontsize=26];
 
-    edge [
-        color = "black",
-        fontname = "Times New Roman",
-        fontsize = 13,
-        arrowsize = 0.9
-    ];
+    Clean [label="Data cleaning",      pos="461,301.5",  width=4.194, height=1.708];
+    Pre   [label="Data\nPreprocessing", pos="461,75.5",  width=4.194, height=1.708];
+    Agg   [label="Data Aggregation",   pos="1364,75.5",  width=4.194, height=1.708];
 
-    // ================= pipeline steps =================
-    n1  [label = "1. Datasets\nSEP-28K, UCLASS,\nProject Boli", group = "c1"];
-    n2  [label = "2. Merge &\nlabel normalisation", group = "c1"];
-    n3  [label = "3. Cleaning &\nquality filtering", group = "c1"];
-    n4  [label = "4. Feature extraction\n(Wav2Vec2 frames,\nspectral frames)", group = "c1"];
+    Train [label="Training",           pos="1052,317.5", width=4.167, height=1.708];
+    Val   [label="Validation",         pos="1680.5,317.5", width=4.181, height=1.708];
 
-    n5  [label = "5. Balancing &\naugmentation\n(time stretch, pitch,\nnoise, masking)", group = "c2"];
-    n6  [label = "6. Dataset split\n(train 80%,\nvalidation, test)", group = "c2"];
-    n7  [label = "7. Model training\nWav2Vec2 multi-head\nclassifier (5 heads)\n+ temporal localizer", group = "c2"];
-    n8  [label = "8. Checkpoints\n(best / final)", group = "c2"];
+    HPh [label="Hyper parameter selection", pos="1364,805.5", width=10.389, height=1.542];
+    HPp [label="Learning Rate\nDropout Rate\nNo. of. Custom Layers\nOptimizer",
+                                       pos="1364,608",   width=10.389, height=3.944];
+    TM  [label="Training Model",       pos="1364,994",   width=10.389, height=1.556];
 
-    n9  [label = "9. Evaluation &\nthreshold tuning\n(metrics, F1-optimal\n-> registry.json)", group = "c3"];
-    n10 [label = "10. Deployment\nmodel.analyze() ->\nseverity & PDF report\n-> Web + Desktop apps", group = "c3"];
+    Dia [shape=diamond, label="Calculation\nof Accuracy, Precision,\nRecall, F1 Score and\nLoss",
+                                       pos="2241,995",   width=8.972, height=4.153];
+    Rep [label="Clinical Report",      pos="2241.5,694.5", width=4.181, height=1.708];
 
-    // ================= columns (rank alignment) =================
-    // column 1: n1(top) -> n4(bottom); column 2: n5(bottom) -> n8(top);
-    // column 3: n9(top) -> n10(below)
-    { rank = same; n1; n8; n9; }
-    { rank = same; n2; n7; n10; }
-    { rank = same; n3; n6; }
-    { rank = same; n4; n5; }
+    // ---- free-floating labels ----
+    L1 [shape=plaintext, style="", label="~30,000 samples",          pos="317,1194", width=4.5, height=0.8];
+    L2 [shape=plaintext, style="", label="Split 8:1:1",              pos="1265,174", width=3.0, height=0.8];
+    L3 [shape=plaintext, style="", label="Mono-channel 16kHz audio", pos="912,37",   width=7.0, height=0.8];
 
-    // ================= flow =================
-    // column 1: down
-    n1 -> n2;
-    n2 -> n3;
-    n3 -> n4;
+    // ---- invisible waypoints for right-angle edges ----
+    node [shape=point, width=0.01, height=0.01, style=invis, label=""];
+    JA [pos="1364,217"];  JT [pos="1052,217"];  JV [pos="1680,217"];
+    P1 [pos="1053,466"];  P2 [pos="1681,466"];
+    W1 [pos="1364,1326"]; W2 [pos="2241,1326"];
 
-    // break right to column 2
-    n4 -> n5;
+    // ---- edges ----
+    DC   -> Big;
+    Big  -> Clean;
+    Clean -> Pre;
+    Pre  -> Agg;
 
-    // column 2: up (declared tail-up + dir=back so the arrows point upward)
-    n6 -> n5 [dir = back];
-    n7 -> n6 [dir = back];
-    n8 -> n7 [dir = back];
+    Agg -> JA [arrowhead=none];
+    JA  -> JT [arrowhead=none];
+    JA  -> JV [arrowhead=none];
+    JT  -> Train;
+    JV  -> Val;
 
-    // break right to column 3
-    n8 -> n9;
+    Train -> P1;
+    Val   -> P2;
 
-    // column 3: down
-    n9 -> n10;
+    HPh -> TM;
 
-    // ================= keep columns left-to-right =================
-    edge [style = invis];
-    n1 -> n8;
-    n2 -> n7;
-    n7 -> n10;
-    n3 -> n6;
-
-    // evaluation -> training retrain/tune feedback loop
-    edge [style = dashed, constraint = false, label = "retrain / tune"];
-    n9 -> n7;
+    TM -> W1 [arrowhead=none];
+    W1 -> W2 [arrowhead=none];
+    W2 -> Dia;
+    Dia -> Rep;
 }

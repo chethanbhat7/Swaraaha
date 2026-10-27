@@ -4,11 +4,11 @@ digraph SwaraahaSystemFlowchart {
 
     // ---- global style (shared across all four diagrams) ----
     fontname = "Times New Roman";
-    fontsize = 16;
+    fontsize = 18;
     rankdir = TB;
     splines = polyline;
-    nodesep = 0.6;
-    ranksep = 0.6;
+    nodesep = 0.7;
+    ranksep = 0.7;
     bgcolor = "white";
 
     node [
@@ -16,16 +16,16 @@ digraph SwaraahaSystemFlowchart {
         fillcolor = "#83C5E5",
         color = "black",
         fontname = "Times New Roman",
-        fontsize = 16,
-        penwidth = 1.2,
-        margin = "0.22,0.12"
+        fontsize = 18,
+        penwidth = 1.3,
+        margin = "0.26,0.14"
     ];
 
     edge [
         color = "black",
         fontname = "Times New Roman",
-        fontsize = 13,
-        arrowsize = 0.9
+        fontsize = 15,
+        arrowsize = 1.0
     ];
 
     // ---- nodes ----

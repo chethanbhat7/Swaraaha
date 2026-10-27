@@ -3,19 +3,19 @@
 digraph SwaraahaUseCaseDiagram {
 
     // ---- global style (shared across all diagrams) ----
-    fontname = "Times-Roman";
-    fontsize = 16;
+    fontname = "Times New Roman";
+    fontsize = 18;
     rankdir = LR;
-    nodesep = 0.6;
-    ranksep = 1.0;
+    nodesep = 0.7;
+    ranksep = 1.2;
     bgcolor = "white";
     compound = true;
 
     edge [
         color = "black",
-        fontname = "Times-Roman",
-        fontsize = 13,
-        arrowsize = 0.9
+        fontname = "Times New Roman",
+        fontsize = 15,
+        arrowsize = 1.0
     ];
 
     // ======== actor: UML stick figure (single node, outside system boundary) ========
@@ -40,7 +40,7 @@ digraph SwaraahaUseCaseDiagram {
         style = "rounded,filled";
         fillcolor = "#EAF6FC";
         color = "black";
-        fontname = "Times-Roman";
+        fontname = "Times New Roman";
         fontsize = 14;
         pencolor = "black";
         penwidth = 1.5;
@@ -50,7 +50,7 @@ digraph SwaraahaUseCaseDiagram {
             style = "filled",
             fillcolor = "#83C5E5",
             color = "black",
-            fontname = "Times-Roman",
+            fontname = "Times New Roman",
             fontsize = 14,
             penwidth = 1.2,
             margin = "0.15,0.1"
