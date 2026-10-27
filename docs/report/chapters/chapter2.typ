@@ -2,7 +2,7 @@
 #import "../meta.typ": *
 
 // --- Chapter 2: Requirement Specification and Analysis ---
-#chapter_heading(size: 17pt)[REQUIREMENT SPECIFICATION AND ANALYSIS]
+#chapter_heading(size: 18pt)[REQUIREMENT SPECIFICATION AND ANALYSIS]
 
 == INTRODUCTION
 

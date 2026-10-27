@@ -41,8 +41,8 @@
   [
     #text(weight: "bold")[Prof. Ajay Shastry C G]
     #v(0.4em)
-    He has a teaching experience of 8 years. His areas of interest include
-    Cybersecurity, AI/ML, and Internet of Things.
+    - An educator with eight years of experience, his research and teaching interests center around Cybersecurity, AI/ML, and the Internet of Things.
+    - Completed B.E in Computer Science at Vivekananda College of Engineering & Technology, Puttur from 2012 - 2016 and M. Tech in Computer Science at Sahyadri College of Engineering and Management, Mangalore from 2016 - 2018.
     #v(0.5em)
     Email ID: #text("ajayshastrycg.ai@vcetputtur.ac.in")
     #v(0.2em)

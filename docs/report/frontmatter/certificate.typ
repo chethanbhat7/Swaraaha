@@ -39,23 +39,18 @@
 
   // -- signatures --
   #v(50.4pt)
-  #grid(columns: (150pt, 140pt, 1fr), column-gutter: 0pt,
-    align(left, line(length: 110pt, stroke: 0.6pt)),
-    align(left, line(length: 110pt, stroke: 0.6pt)),
-    align(left, line(length: 140pt, stroke: 0.6pt)),
-  )
-  #v(32.0pt)
-  #grid(columns: (150pt, 140pt, 1fr), column-gutter: 0pt,
-    align(left, text(size: 12pt, weight: "bold")[Signature of the Guide]),
-    align(left, text(size: 12pt, weight: "bold")[Signature of the HOD]),
-    align(left, text(size: 12pt, weight: "bold")[Signature of the Principal]),
-  )
-  #v(7.1pt)
-  #grid(columns: (150pt, 140pt, 1fr), column-gutter: 0pt,
-    align(left, text(size: 12pt, weight: "bold")[#guide]),
-    align(left, text(size: 12pt, weight: "bold")[#hod]),
-    align(left, box(width: 100%)[#text(size: 12pt, weight: "bold", hyphenate: false)[#principal.]])
-  )
+  #align(center)[
+    #table(
+      columns: (1fr, 1fr, 1.1fr),
+      align: center,
+      stroke: none,
+      inset: 8pt,
+      column-gutter: 20pt,
+      [#line(length: 140pt, stroke: 0.6pt)], [#line(length: 140pt, stroke: 0.6pt)], [#line(length: 140pt, stroke: 0.6pt)],
+      [#text(size: 12pt, weight: "bold")[Signature of the Guide]], [#text(size: 12pt, weight: "bold")[Signature of the HOD]], [#text(size: 12pt, weight: "bold")[Signature of the Principal]],
+      [#text(size: 12pt, weight: "bold")[#guide]], [#text(size: 12pt, weight: "bold")[#hod]], [#text(size: 12pt, weight: "bold")[#principal]],
+    )
+  ]
 
   // -- external viva --
   #v(45pt)

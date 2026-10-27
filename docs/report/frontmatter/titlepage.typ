@@ -46,11 +46,9 @@
   )
   #v(6.05pt)
   #for a in authors [
-    #grid(columns: (30pt, 1fr, 95pt, 95pt), column-gutter: 0pt,
-      [],
+    #grid(columns: (1.5fr, 1fr, 0.5fr), column-gutter: 1pt,
       align(left, text(size: 13pt, weight: "bold", fill: rgb("#0070c0"))[#upper(a.name)]),
       align(right, text(size: 13pt, weight: "bold", fill: rgb("#0070c0"))[#a.usn]),
-      [],
     )
     #v(6.0pt)
   ]
