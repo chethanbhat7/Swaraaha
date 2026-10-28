@@ -65,12 +65,12 @@
   // Footer definition
   footer: {
     set text(11pt)
-    frame_double_rule()
-    v(-1.25em)
-    footer_dept
-    h(1fr)
-    [Page ]
-    context counter(page).display()
+    stack(
+      dir: ttb,
+      spacing: 3pt,
+      frame_double_rule(),
+      [#footer_dept #h(1fr) Page #context counter(page).display()],
+    )
   }
 )
 

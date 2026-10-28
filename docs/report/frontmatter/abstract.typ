@@ -14,6 +14,7 @@
   The system identifies the types of dysfluencies present and reports when they occur.
   Users record or upload audio through a simple interface and receive the results in an accessible format.
   The result is a tool for early stutter detection and objective speech evaluation, useful to both speech-language pathologists and people in treatment.
+  The system also contributes to the growing use of artificial intelligence in healthcare, supporting diagnosis, therapy, and an improved quality of life for people who stutter.
 ]
 
 #pagebreak()

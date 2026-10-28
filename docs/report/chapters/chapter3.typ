@@ -117,15 +117,8 @@ After analysis, users can view waveform visualizations, spectrograms, transcript
 
 Users can also localize dysfluencies within the speech, generate analysis or clinical reports, and revisit previously recorded sessions through a history feature.
 Supporting actions include toggling between interface themes and accessing standardized reading passages for consistent evaluation.
-
-The typical flow is: record or upload audio, initiate analysis, review the visualizations and results, and generate or save the report.
-
-The actor set is deliberately small so that the interface stays usable for both trained clinicians and first-time users.
-A single authenticated User actor owns every use case in the diagram, while the backend processing services act as supporting participants that the User never interacts with directly.
-Each use case begins with either a recording or an upload, which keeps the entry points predictable and lets the analysis pipeline treat live and stored audio uniformly.
-The full analysis mode runs classification, transcription, localization, and alignment together, whereas the classification-only mode skips the heavier stages to return a fast dysfluency summary, which is useful on low-resource devices or when a quick screening is sufficient.
-Report generation is modelled as a separate use case because it can be triggered independently of analysis, reusing stored results from the session history rather than re-running the models.
-Theme switching and access to standardized reading passages are lightweight supporting use cases that improve accessibility and keep assessment conditions reproducible across sessions.
+The diagram keeps the user in a single role so that clinicians and individuals follow the same path, from capturing speech to reviewing the outcome.
+Results are stored per session, which lets a user compare recordings over time and monitor progress across assessments.
 
 #add_image(align(center, image("/assets/03-use-case-diagram.svg", width: 60%)), caption: [Use Case Diagram])
 
