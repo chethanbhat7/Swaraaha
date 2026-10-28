@@ -13,13 +13,13 @@
 <g id="node1" class="node">
 <title>P_usr</title>
 <polygon fill="#83c5e5" stroke="black" stroke-width="1.3" points="64.68,-996.22 0,-996.22 0,-957.94 64.68,-957.94 64.68,-996.22"/>
-<text xml:space="preserve" text-anchor="middle" x="32.34" y="-973.33" font-family="Times New Roman" font-size="15.00">User</text>
+<text xml:space="preserve" text-anchor="middle" x="32.34" y="-973.33" font-family="Times New Roman" font-size="22.00">User</text>
 </g>
 <!-- P_fr -->
 <g id="node2" class="node">
 <title>P_fr</title>
 <polygon fill="#83c5e5" stroke="black" stroke-width="1.3" points="269.68,-996.22 175,-996.22 175,-957.94 269.68,-957.94 269.68,-996.22"/>
-<text xml:space="preserve" text-anchor="middle" x="222.34" y="-973.33" font-family="Times New Roman" font-size="15.00">Frontend</text>
+<text xml:space="preserve" text-anchor="middle" x="222.34" y="-973.33" font-family="Times New Roman" font-size="22.00">Frontend</text>
 </g>
 <!-- P_usr&#45;&gt;P_fr -->
 <!-- a1_usr -->
@@ -32,7 +32,7 @@
 <g id="node3" class="node">
 <title>P_be</title>
 <polygon fill="#83c5e5" stroke="black" stroke-width="1.3" points="433.18,-996.22 341.5,-996.22 341.5,-957.94 433.18,-957.94 433.18,-996.22"/>
-<text xml:space="preserve" text-anchor="middle" x="387.34" y="-973.33" font-family="Times New Roman" font-size="15.00">Backend</text>
+<text xml:space="preserve" text-anchor="middle" x="387.34" y="-973.33" font-family="Times New Roman" font-size="22.00">Backend</text>
 </g>
 <!-- P_fr&#45;&gt;P_be -->
 <!-- a1_fr -->
@@ -45,8 +45,8 @@
 <g id="node4" class="node">
 <title>P_clf</title>
 <polygon fill="#83c5e5" stroke="black" stroke-width="1.3" points="665.18,-1006.72 549.5,-1006.72 549.5,-947.44 665.18,-947.44 665.18,-1006.72"/>
-<text xml:space="preserve" text-anchor="middle" x="607.34" y="-983.83" font-family="Times New Roman" font-size="15.00">Classifier</text>
-<text xml:space="preserve" text-anchor="middle" x="607.34" y="-962.83" font-family="Times New Roman" font-size="15.00">(multi&#45;head)</text>
+<text xml:space="preserve" text-anchor="middle" x="607.34" y="-983.83" font-family="Times New Roman" font-size="22.00">Classifier</text>
+<text xml:space="preserve" text-anchor="middle" x="607.34" y="-962.83" font-family="Times New Roman" font-size="22.00">(multi&#45;head)</text>
 </g>
 <!-- P_be&#45;&gt;P_clf -->
 <!-- a1_be -->
@@ -59,7 +59,7 @@
 <g id="node5" class="node">
 <title>P_loc</title>
 <polygon fill="#83c5e5" stroke="black" stroke-width="1.3" points="823.56,-996.22 731.12,-996.22 731.12,-957.94 823.56,-957.94 823.56,-996.22"/>
-<text xml:space="preserve" text-anchor="middle" x="777.34" y="-973.33" font-family="Times New Roman" font-size="15.00">Localizer</text>
+<text xml:space="preserve" text-anchor="middle" x="777.34" y="-973.33" font-family="Times New Roman" font-size="22.00">Localizer</text>
 </g>
 <!-- P_clf&#45;&gt;P_loc -->
 <!-- a1_clf -->
@@ -72,7 +72,7 @@
 <g id="node6" class="node">
 <title>P_tr</title>
 <polygon fill="#83c5e5" stroke="black" stroke-width="1.3" points="979.56,-996.22 869.12,-996.22 869.12,-957.94 979.56,-957.94 979.56,-996.22"/>
-<text xml:space="preserve" text-anchor="middle" x="924.34" y="-973.33" font-family="Times New Roman" font-size="15.00">Transcriber</text>
+<text xml:space="preserve" text-anchor="middle" x="924.34" y="-973.33" font-family="Times New Roman" font-size="22.00">Transcriber</text>
 </g>
 <!-- P_loc&#45;&gt;P_tr -->
 <!-- a1_loc -->
@@ -91,8 +91,8 @@
 <g id="edge90" class="edge">
 <title>a1_usr&#45;&gt;a1_fr</title>
 <path fill="none" stroke="black" d="M33.19,-910.08C46.36,-910.08 208.88,-910.08 221.56,-910.08"/>
-<text xml:space="preserve" text-anchor="middle" x="127.34" y="-942.88" font-family="Times New Roman" font-size="16.00">upload / record;</text>
-<text xml:space="preserve" text-anchor="middle" x="127.34" y="-920.38" font-family="Times New Roman" font-size="16.00">choose language</text>
+<text xml:space="preserve" text-anchor="middle" x="127.34" y="-942.88" font-family="Times New Roman" font-size="22.00">upload / record;</text>
+<text xml:space="preserve" text-anchor="middle" x="127.34" y="-920.38" font-family="Times New Roman" font-size="22.00">choose language</text>
 </g>
 <!-- a2_usr -->
 <!-- a1_usr&#45;&gt;a2_usr -->
@@ -150,8 +150,8 @@
 <g id="edge91" class="edge">
 <title>a2_fr&#45;&gt;b2_be</title>
 <path fill="none" stroke="black" d="M223.08,-860.12C233.63,-860.12 354.62,-860.12 381.9,-860.12"/>
-<text xml:space="preserve" text-anchor="middle" x="302.5" y="-892.92" font-family="Times New Roman" font-size="16.00">POST /api/analyze</text>
-<text xml:space="preserve" text-anchor="middle" x="302.5" y="-870.42" font-family="Times New Roman" font-size="16.00">(audio, language)</text>
+<text xml:space="preserve" text-anchor="middle" x="302.5" y="-892.92" font-family="Times New Roman" font-size="22.00">POST /api/analyze</text>
+<text xml:space="preserve" text-anchor="middle" x="302.5" y="-870.42" font-family="Times New Roman" font-size="22.00">(audio, language)</text>
 </g>
 <!-- b3_clf -->
 <g id="node85" class="node">
@@ -394,8 +394,8 @@
 <g id="edge100" class="edge">
 <title>a11_usr&#45;&gt;a11_fr</title>
 <path fill="none" stroke="black" d="M33.19,-206.76C46.36,-206.76 208.88,-206.76 221.56,-206.76"/>
-<text xml:space="preserve" text-anchor="middle" x="127.34" y="-239.56" font-family="Times New Roman" font-size="16.00">patient details;</text>
-<text xml:space="preserve" text-anchor="middle" x="127.34" y="-217.06" font-family="Times New Roman" font-size="16.00">Download PDF Report</text>
+<text xml:space="preserve" text-anchor="middle" x="127.34" y="-239.56" font-family="Times New Roman" font-size="22.00">patient details;</text>
+<text xml:space="preserve" text-anchor="middle" x="127.34" y="-217.06" font-family="Times New Roman" font-size="22.00">Download PDF Report</text>
 </g>
 <!-- a12_usr -->
 <!-- a11_usr&#45;&gt;a12_usr -->
@@ -454,7 +454,7 @@
 <g id="edge101" class="edge">
 <title>a12_fr&#45;&gt;b12_be</title>
 <path fill="none" stroke="black" d="M223.08,-156.8C233.63,-156.8 354.62,-156.8 381.9,-156.8"/>
-<text xml:space="preserve" text-anchor="middle" x="302.5" y="-167.1" font-family="Times New Roman" font-size="16.00">POST /api/report</text>
+<text xml:space="preserve" text-anchor="middle" x="302.5" y="-167.1" font-family="Times New Roman" font-size="22.00">POST /api/report</text>
 </g>
 <!-- a13_clf -->
 <!-- a12_clf&#45;&gt;a13_clf -->
@@ -528,7 +528,7 @@
 <g id="edge92" class="edge">
 <title>b3_be&#45;&gt;b3_clf</title>
 <path fill="none" stroke="black" d="M392.78,-797.92C423.08,-797.92 570.86,-797.92 601.69,-797.92"/>
-<text xml:space="preserve" text-anchor="middle" x="497.34" y="-808.22" font-family="Times New Roman" font-size="16.00">classify(audio)</text>
+<text xml:space="preserve" text-anchor="middle" x="497.34" y="-808.22" font-family="Times New Roman" font-size="22.00">classify(audio)</text>
 </g>
 <!-- b5_be -->
 <g id="node76" class="node">
@@ -554,7 +554,7 @@
 <g id="edge94" class="edge">
 <title>b5_be&#45;&gt;b5_loc</title>
 <path fill="none" stroke="black" d="M392.93,-653.5C416.11,-659.61 503.34,-682.62 503.34,-682.62 503.34,-682.62 734.23,-656.83 772.11,-652.6"/>
-<text xml:space="preserve" text-anchor="middle" x="503.34" y="-689.92" font-family="Times New Roman" font-size="16.00">localize(audio, 0.3)</text>
+<text xml:space="preserve" text-anchor="middle" x="503.34" y="-689.92" font-family="Times New Roman" font-size="22.00">localize(audio, 0.3)</text>
 </g>
 <!-- b7_be -->
 <g id="node78" class="node">
@@ -580,7 +580,7 @@
 <g id="edge96" class="edge">
 <title>b7_be&#45;&gt;b7_tr</title>
 <path fill="none" stroke="black" d="M392.89,-485.18C434.23,-489.32 692.34,-515.22 692.34,-515.22 692.34,-515.22 884.53,-489.87 919.06,-485.32"/>
-<text xml:space="preserve" text-anchor="middle" x="692.34" y="-522.52" font-family="Times New Roman" font-size="16.00">transcribe(audio)</text>
+<text xml:space="preserve" text-anchor="middle" x="692.34" y="-522.52" font-family="Times New Roman" font-size="22.00">transcribe(audio)</text>
 </g>
 <!-- b9_be -->
 <g id="node80" class="node">
@@ -596,8 +596,8 @@
 <g id="edge98" class="edge">
 <title>b9_be&#45;&gt;b9_be</title>
 <path fill="none" stroke="black" d="M392.85,-333.2C402.56,-338.77 415.38,-337.31 415.38,-328.82 415.38,-320.33 402.56,-318.87 392.85,-324.44"/>
-<text xml:space="preserve" text-anchor="middle" x="502.38" y="-336.12" font-family="Times New Roman" font-size="16.00">fuse regions x saliency;</text>
-<text xml:space="preserve" text-anchor="middle" x="502.38" y="-313.62" font-family="Times New Roman" font-size="16.00">compute severity</text>
+<text xml:space="preserve" text-anchor="middle" x="502.38" y="-336.12" font-family="Times New Roman" font-size="22.00">fuse regions x saliency;</text>
+<text xml:space="preserve" text-anchor="middle" x="502.38" y="-313.62" font-family="Times New Roman" font-size="22.00">compute severity</text>
 </g>
 <!-- b10_be -->
 <g id="node81" class="node">
@@ -613,8 +613,8 @@
 <g id="edge99" class="edge">
 <title>b10_be&#45;&gt;a10_fr</title>
 <path fill="none" stroke="black" d="M381.9,-256.72C354.62,-256.72 233.63,-256.72 223.08,-256.72"/>
-<text xml:space="preserve" text-anchor="middle" x="302.5" y="-289.52" font-family="Times New Roman" font-size="16.00">200 JSON (results,</text>
-<text xml:space="preserve" text-anchor="middle" x="302.5" y="-267.02" font-family="Times New Roman" font-size="16.00">severity)</text>
+<text xml:space="preserve" text-anchor="middle" x="302.5" y="-289.52" font-family="Times New Roman" font-size="22.00">200 JSON (results,</text>
+<text xml:space="preserve" text-anchor="middle" x="302.5" y="-267.02" font-family="Times New Roman" font-size="22.00">severity)</text>
 </g>
 <!-- b10_be&#45;&gt;a11_be -->
 <g id="edge39" class="edge">
@@ -635,8 +635,8 @@
 <g id="edge102" class="edge">
 <title>b13_be&#45;&gt;b13_be</title>
 <path fill="none" stroke="black" d="M392.85,-89.08C402.56,-94.65 415.38,-93.19 415.38,-84.7 415.38,-76.21 402.56,-74.75 392.85,-80.32"/>
-<text xml:space="preserve" text-anchor="middle" x="469" y="-92" font-family="Times New Roman" font-size="16.00">generate PDF</text>
-<text xml:space="preserve" text-anchor="middle" x="469" y="-69.5" font-family="Times New Roman" font-size="16.00">(Typst builder)</text>
+<text xml:space="preserve" text-anchor="middle" x="489" y="-92" font-family="Times New Roman" font-size="22.00">generate PDF</text>
+<text xml:space="preserve" text-anchor="middle" x="489" y="-69.5" font-family="Times New Roman" font-size="22.00">(Typst builder)</text>
 </g>
 <!-- b14_be -->
 <g id="node84" class="node">
@@ -652,7 +652,7 @@
 <g id="edge103" class="edge">
 <title>b14_be&#45;&gt;a14_fr</title>
 <path fill="none" stroke="black" d="M381.9,-12.6C354.62,-12.6 233.63,-12.6 223.08,-12.6"/>
-<text xml:space="preserve" text-anchor="middle" x="302.5" y="-22.9" font-family="Times New Roman" font-size="16.00">application/pdf</text>
+<text xml:space="preserve" text-anchor="middle" x="302.5" y="-22.9" font-family="Times New Roman" font-size="22.00">application/pdf</text>
 </g>
 <!-- b4_clf -->
 <g id="node86" class="node">
@@ -673,8 +673,8 @@
 <g id="edge93" class="edge">
 <title>b4_clf&#45;&gt;b4_be</title>
 <path fill="none" stroke="black" stroke-dasharray="5,2" d="M601.69,-735.72C570.86,-735.72 423.08,-735.72 392.78,-735.72"/>
-<text xml:space="preserve" text-anchor="middle" x="497.34" y="-768.52" font-family="Times New Roman" font-size="16.00">per&#45;class results</text>
-<text xml:space="preserve" text-anchor="middle" x="497.34" y="-746.02" font-family="Times New Roman" font-size="16.00">(5 heads)</text>
+<text xml:space="preserve" text-anchor="middle" x="497.34" y="-768.52" font-family="Times New Roman" font-size="22.00">per&#45;class results</text>
+<text xml:space="preserve" text-anchor="middle" x="497.34" y="-746.02" font-family="Times New Roman" font-size="22.00">(5 heads)</text>
 </g>
 <!-- b6_loc -->
 <g id="node88" class="node">
@@ -695,7 +695,7 @@
 <g id="edge95" class="edge">
 <title>b6_loc&#45;&gt;b6_be</title>
 <path fill="none" stroke="black" stroke-dasharray="5,2" d="M772.11,-568.9C734.23,-573.13 503.34,-598.92 503.34,-598.92 503.34,-598.92 416.11,-575.91 392.93,-569.8"/>
-<text xml:space="preserve" text-anchor="middle" x="503.34" y="-606.22" font-family="Times New Roman" font-size="16.00">regions [start, end]</text>
+<text xml:space="preserve" text-anchor="middle" x="503.34" y="-606.22" font-family="Times New Roman" font-size="22.00">regions [start, end]</text>
 </g>
 <!-- b8_tr -->
 <g id="node90" class="node">
@@ -716,7 +716,7 @@
 <g id="edge97" class="edge">
 <title>b8_tr&#45;&gt;b8_be</title>
 <path fill="none" stroke="black" stroke-dasharray="5,2" d="M919.06,-401.62C884.53,-406.17 692.34,-431.52 692.34,-431.52 692.34,-431.52 434.23,-405.62 392.89,-401.48"/>
-<text xml:space="preserve" text-anchor="middle" x="692.34" y="-438.82" font-family="Times New Roman" font-size="16.00">text + timestamps</text>
+<text xml:space="preserve" text-anchor="middle" x="692.34" y="-438.82" font-family="Times New Roman" font-size="22.00">text + timestamps</text>
 </g>
 </g>
 </svg>

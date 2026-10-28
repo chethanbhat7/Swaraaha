@@ -127,7 +127,7 @@ The full analysis mode runs classification, transcription, localization, and ali
 Report generation is modelled as a separate use case because it can be triggered independently of analysis, reusing stored results from the session history rather than re-running the models.
 Theme switching and access to standardized reading passages are lightweight supporting use cases that improve accessibility and keep assessment conditions reproducible across sessions.
 
-#add_image(align(center, image("/assets/03-use-case-diagram.svg", width: 50%)), caption: [Use Case Diagram])
+#add_image(align(center, image("/assets/03-use-case-diagram.svg", width: 60%)), caption: [Use Case Diagram])
 
 The use case diagram shown in Figure 3.3 illustrates the interactions between the user and the stutter detection system.
 The user can register or log in, then either record audio through the microphone or upload a pre-recorded speech file, which is analyzed through the full or classification-only pipeline.
@@ -141,7 +141,7 @@ A workflow diagram is a structured visual representation of a sequence of operat
 It employs standardized symbols such as rectangles to denote actions, diamonds for decision points, and arrows to indicate the direction of flow, thereby offering clarity and insight into the procedural steps involved.
 In the context of deep learning and stutter detection, the workflow diagram illustrated here systematically maps out the process for developing a stutter classification and localization system.
 
-#add_image(align(center, image("/assets/02-workflow-diagram.svg", width: 100%)), caption: [Workflow Diagram])
+#add_image(align(center, image("/assets/workflow-diagram-proper.svg", width: 100%)), caption: [Workflow Diagram])
 
 The workflow of the proposed deep learning pipeline for stutter detection and localization is shown in Figure 3.4.
 The process begins with the collection of speech audio samples from three public stuttering datasets, Project Boli, SEP-28K, and UCLASS, all converted to 16 kHz mono and standardized through DC offset removal, peak normalization, silence trimming, and fixed-length padding.
@@ -166,7 +166,7 @@ The backend sequentially invokes the preprocessing, classification, transcriptio
 Once the processing completes, the fused results are returned to the frontend for display and saved in the local storage for reports and the session history.
 This diagram provides a clear overview of the message exchange that drives the proposed framework.
 
-#add_image(align(center, image("/assets/04-sequence-diagram.svg", width: 85%)), caption: [Sequence Diagram])
+#add_image(align(center, image("/assets/04-sequence-diagram.svg", width: 95%)), caption: [Sequence Diagram])
 The sequence diagram (Figure 3.5) captures the end-to-end interaction model: the GUI acts as the entry point, the backend coordinates the analysis pipeline, and the results layer handles persistence and presentation. This separation of concerns ensures modularity, traceability of requests, and consistent formatting of outputs across the web and desktop interfaces. Together, these interactions ensure that each analysis request is handled reliably from input to report generation, with clear responsibility boundaries between components and minimal coupling between the frontend and backend services.
 
 The request lifecycle begins when the user confirms an analysis, at which point the frontend packages the audio, the selected mode, and any optional parameters into a single request.

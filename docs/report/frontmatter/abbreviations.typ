@@ -36,7 +36,7 @@
   [*TTS*], [Text-to-Speech],
   [*UAR*], [Unweighted Average Recall],
   [*UI*], [User Interface],
-  [*VITS*], [Variational Inference with Adversarial Learning for end-to-end Text-to-Speech],
+  [*VITS*], [#set par(leading: 0.3em); Variational Inference with Adversarial Learning for end-to-end Text-to-Speech],
   [*WavLM*], [Wave Language Model],
   [*WER*], [Word Error Rate],
   [*YOLO*], [You Only Look Once],

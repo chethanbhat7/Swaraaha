@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1428" height="794" viewBox="0 0 1428 794" role="img" aria-labelledby="title desc">
+  <title id="title">Audio classification model training workflow</title>
+  <desc id="desc">Vector flowchart showing data collection, stutter class categories, cleaning and preprocessing, data aggregation, training and validation, hyperparameter selection, model training, evaluation metrics, and a clinical report.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6.5" refY="3.5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L7,3.5 L0,7 Z" fill="#000"/>
+    </marker>
+    <style>
+      .node { fill: #68ddca; stroke: #111; stroke-width: 1.15; }
+      .line { fill: none; stroke: #111; stroke-width: 1.1; marker-end: url(#arrow); }
+      .plain-line { fill: none; stroke: #111; stroke-width: 1.1; }
+      .label { font-family: "Times New Roman", Times, serif; fill: #000; font-size: 26px; text-anchor: middle; }
+      .small { font-family: "Times New Roman", Times, serif; fill: #000; font-size: 22px; text-anchor: middle; }
+      .medium { font-family: "Times New Roman", Times, serif; fill: #000; font-size: 25px; text-anchor: middle; }
+    </style>
+  </defs>
+  <rect width="1428" height="794" fill="#fff"/>
+
+  <!-- Data collection -->
+  <rect class="node" x="206" y="28" width="170" height="70"/>
+  <text class="label" x="286" y="67">Data Collection</text>
+  <path class="line" d="M286 93 V145"/>
+  <text class="medium" x="198" y="126">~30,000 samples</text>
+
+  <!-- Event classes -->
+  <rect class="node" x="51" y="147" width="471" height="359"/>
+  <rect x="259" y="165" width="238" height="322" fill="none" stroke="#777" stroke-width="1" stroke-dasharray="1.5 2.2"/>
+  <rect x="86" y="294" width="130" height="65" fill="none" stroke="#111" stroke-width="1.1"/>
+  <text class="label" x="151" y="333">Normal</text>
+  <rect x="284" y="195" width="189" height="40" fill="none" stroke="#111" stroke-width="1.1"/>
+  <text class="small" x="378.5" y="220">Prolongation</text>
+  <rect x="284" y="251" width="189" height="40" fill="none" stroke="#111" stroke-width="1.1"/>
+  <text class="small" x="378.5" y="276">Block</text>
+  <rect x="284" y="307" width="189" height="40" fill="none" stroke="#111" stroke-width="1.1"/>
+  <text class="small" x="378.5" y="332">Sound Repetition</text>
+  <rect x="284" y="363" width="189" height="40" fill="none" stroke="#111" stroke-width="1.1"/>
+  <text class="small" x="378.5" y="388">Word Repetition</text>
+  <rect x="284" y="419" width="189" height="40" fill="none" stroke="#111" stroke-width="1.1"/>
+  <text class="small" x="378.5" y="444">Interjection</text>
+
+  <!-- Cleaning and preprocessing -->
+  <path class="line" d="M286 506 V559"/>
+  <rect class="node" x="206" y="559" width="170" height="72"/>
+  <text class="label" x="286" y="591">Data cleaning</text>
+  <path class="line" d="M286 625 V678"/>
+  <rect class="node" x="206" y="678" width="170" height="72"/>
+  <text class="label" x="286" y="708">Data</text>
+  <text class="label" x="286" y="732">Preprocessing</text>
+
+  <!-- Aggregation and data split -->
+  <path class="line" d="M366 711 H683"/>
+  <text class="medium" x="523" y="737">Mono-channel 16kHz audio</text>
+  <rect class="node" x="683" y="678" width="195" height="72"/>
+  <text class="label" x="775.5" y="718">Data Aggregation</text>
+
+  <path class="plain-line" d="M762.5 678 V637 H598.5 V616"/>
+  <path class="line" d="M598.5 637 V616"/>
+  <path class="line" d="M762.5 637 H929.5 V616"/>
+  <text class="medium" x="698" y="666">Split 8:1:1</text>
+  <rect class="node" x="519" y="551" width="169" height="71"/>
+  <text class="label" x="598.5" y="590">Training</text>
+  <rect class="node" x="850" y="551" width="169" height="71"/>
+  <text class="label" x="929.5" y="590">Validation</text>
+
+  <!-- Hyperparameter selection -->
+  <path class="line" d="M598.5 551 V506"/>
+  <path class="line" d="M929.5 551 V506"/>
+  <rect class="node" x="565" y="296" width="395" height="210"/>
+  <path class="plain-line" d="M565 355 H960"/>
+  <text class="label" x="762.5" y="333">Hyper parameter selection</text>
+  <text class="label" x="762.5" y="390">Learning Rate</text>
+  <text class="label" x="762.5" y="420">Dropout Rate</text>
+  <text class="label" x="762.5" y="450">No. of Custom Layers</text>
+  <text class="label" x="762.5" y="480">Optimizer</text>
+
+  <!-- Model training -->
+  <path class="line" d="M762.5 296 V256"/>
+  <rect class="node" x="565" y="197" width="405" height="65"/>
+  <text class="label" x="762.5" y="233">Training Model</text>
+
+  <!-- Evaluation feedback loop -->
+  <path class="plain-line" d="M762.5 197 V51 H1225.5 V145"/>
+  <path class="line" d="M1225.5 128 V145"/>
+
+  <!-- Evaluation metrics -->
+  <path class="line" d="M1225.5 305 V351"/>
+  <polygon class="node" points="1225.5,146 1396,226 1225.5,305 1055,226"/>
+  <text class="label" x="1225.5" y="188">Calculation</text>
+  <text class="label" x="1225.5" y="216">of Accuracy, Precision,</text>
+  <text class="label" x="1225.5" y="245">Recall, F1 Score and</text>
+  <text class="label" x="1225.5" y="274">Loss</text>
+  <rect class="node" x="1146" y="351" width="170" height="72"/>
+  <text class="label" x="1226" y="390">Clinical Report</text>
+</svg>
