@@ -4,7 +4,6 @@
 // --- Certificate ---
 #[
   #set page(paper: "a4", margin: (top: 54pt, bottom: 54pt, left: 54pt, right: 54pt))
-  #set text(font: "Times New Roman")
   #set par(leading: 0pt, spacing: 0pt)
 
   #let cl(size, body, weight: "regular", fill: black) = align(center, text(size: size, weight: weight, fill: fill)[#body])

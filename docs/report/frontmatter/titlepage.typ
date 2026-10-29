@@ -3,8 +3,7 @@
 
 // --- Title page ---
 #[
-  #set page(paper: "a4", margin: (top: 57.5pt, bottom: 54pt, left: 90pt, right: 72pt))
-  #set text(font: "Times New Roman", hyphenate: false)
+  #set text(hyphenate: false)
   #set par(leading: 0pt, spacing: 0pt)
 
   #let cl(size, body, weight: "regular", fill: black) = align(center, text(size: size, weight: weight, fill: fill)[#body])
@@ -80,3 +79,5 @@
   #v(7.5pt)
   #cl(12pt, weight: "bold", fill: rgb("#ff0000"))[#submission_month]
 ]
+
+#pagebreak()

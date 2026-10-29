@@ -18,20 +18,11 @@
 #show raw: set text(font: "Times New Roman")
 
 #set par(
-    leading: 1.5em,
-    justify: true,
-    justification-limits: (spacing: (min: 100%, max: 150%)),
+  justify: true,
+  leading: 1.5em,
+  spacing: 18.32pt,
+  justification-limits: (spacing: (min: 100%, max: 150%)),
 )
-
-#set list(
-  indent: 3em,
-  spacing: 1.5em,
-  marker: ([•], [•], [•], [•]),
-)
-
-#show heading: it => {
-  it
-}
 
 #show figure.where(kind: table): set block(breakable: true)
 #show figure.where(kind: table): set figure.caption(position: bottom)
@@ -41,6 +32,11 @@
 // --- Front matter ---
 #include "frontmatter/titlepage.typ"
 #include "frontmatter/certificate.typ"
+
+#set page(
+  margin: (top: 0.75in, bottom: 0.75in, left: 1.25in, right: 1in),
+)
+
 #include "frontmatter/declaration.typ"
 #include "frontmatter/acknowledgement.typ"
 #include "frontmatter/abstract.typ"
@@ -50,7 +46,6 @@
 // --- Header and footer for the main body ---
 #set page(
   paper: "a4",
-  margin: (top: 0.75in, bottom: 0.75in, left: 1in, right: 1.25in),
   numbering: (cur, ..t) => if cur < 10 { "0" + str(cur) } else { str(cur) },
   
   // Header definition
@@ -89,16 +84,9 @@
 #show heading.where(level: 3): set text(size: 14pt, weight: "bold")
 #show heading.where(level: 3): set block(above: 1.5em, below: 15.5pt)
 
-#set par(
-  justify: true,
-  leading: 1.5em,
-  spacing: 18.32pt,
-  justification-limits: (spacing: (min: 100%, max: 150%)),
-)
-
 #set list(
-  indent: 18pt,
-  body-indent: 13pt,
+  indent: 3em,
+  spacing: 1.5em,
   marker: ([•], [•], [•], [•]),
 )
 
