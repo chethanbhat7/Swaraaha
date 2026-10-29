@@ -19,8 +19,10 @@
 
 #set par(
   justify: true,
-  leading: 1.5em,
-  spacing: 18.32pt,
+  //leading: 1.5em,
+  leading: 1em,
+  spacing: 1.5em,
+  // spacing: 18.32pt,
   justification-limits: (spacing: (min: 100%, max: 150%)),
 )
 
