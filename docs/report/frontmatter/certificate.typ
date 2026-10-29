@@ -29,7 +29,7 @@
 
   // -- certified / approved paragraphs --
   #block(width: 100%)[
-    #set par(justify: true, leading: 1.5em, spacing: 18.32pt)
+    #set par(justify: true, leading: 1em, spacing: 1.5em)
     #set text(size: 12pt, hyphenate: false)
     Certified that the project work entitled #text(weight: "bold")[“#text(fill: rgb("#ff0000"))[#project_title]”] is carried out by #text(fill: purple, weight: "bold")[#author_list] bearing USNs #text(fill: purple, weight: "bold")[#usns.at(0)], #text(fill: purple, weight: "bold")[#usn_rest and #usn_last] respectively bonafide students of #text(fill: rgb("#c00000"), weight: "bold")[#college_name, #college_place] in partial fulfilment for the award of #text(fill: purple, weight: "bold")[#degree] in #text(fill: rgb("#002060"), weight: "bold")[#department] of the #text(fill: rgb("#c00000"), weight: "bold")[#university_name], #university_city during the year #academic_year. It is certified that all corrections/suggestions indicated during Internal Assessment have been incorporated in the report deposited in the departmental library.
 
@@ -70,3 +70,5 @@
     align(left)[#text(size: 12pt)[#("." * 36)]],
   )
 ]
+
+#pagebreak()

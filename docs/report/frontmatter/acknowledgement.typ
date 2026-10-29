@@ -3,11 +3,6 @@
 
 // --- Acknowledgement ---
 #[
-  #set page(paper: "a4", margin: (top: 54pt, bottom: 54pt, left: 90pt, right: 72pt))
-  #set text(font: "Times New Roman", size: 12pt)
-  #set par(justify: true, leading: 1.5em, spacing: 18.32pt, justification-limits: (spacing: (min: 100%, max: 150%)))
-  #set text(hyphenate: false)
-
   #v(5.05pt)
   #align(center, text(size: 18pt, weight: "bold")[ACKNOWLEDGEMENT])
   #v(5.5pt)

@@ -2,8 +2,6 @@
 
 // --- Abstract ---
 #[
-  #set par(spacing: 18.32pt, leading: 1.5em)
-
   #non_outlined_heading[ABSTRACT]
   #v(2em)
 

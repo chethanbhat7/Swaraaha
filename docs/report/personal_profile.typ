@@ -1,7 +1,5 @@
 #import "lib.typ": *
 
-#set text(size: 12pt)
-#set par(justify: true, leading: 1.5em, spacing: 18.32pt)
 #set par(justify: false)
 
 #pagebreak()

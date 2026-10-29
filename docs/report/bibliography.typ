@@ -1,8 +1,5 @@
 #import "lib.typ": *
 
-#set text(size: 12pt)
-#set par(justify: true, leading: 1.5em, spacing: 18.32pt)
-
 // Heading for the TOC; rendered invisibly so the visible title below is centered like other chapter heads
 #[
   #set text(size: 0pt)
@@ -12,10 +9,8 @@
 #align(center)[#text(size: 18pt, weight: "bold")[REFERENCES]]
 #v(1em)
 
-#set par(hanging-indent: 2em)
-
 #let bib(num, body) = {
-  [#num #h(0.5em) #body]
+  [#num. #h(0.5em) #body]
   v(0.6em)
 }
 

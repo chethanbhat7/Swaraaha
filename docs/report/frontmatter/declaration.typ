@@ -3,8 +3,6 @@
 
 // --- Declaration ---
 #[
-  #set page(paper: "a4", margin: (top: 59pt, bottom: 54pt, left: 90pt, right: 72pt))
-  #set text(font: "Times New Roman")
   #set par(leading: 0pt, spacing: 0pt)
 
   #align(center, text(size: 18pt, weight: "bold")[DECLARATION])
@@ -40,3 +38,5 @@
   #v(16.2pt)
   Place: #college_place
 ]
+
+#pagebreak()
