@@ -20,7 +20,6 @@
     // tricks
     [
       #set text(size: 0pt)
-      #v(-0.8em)
       #heading(numbering: none)[#toc_title]
     ]
 
@@ -89,16 +88,20 @@
   lit_survey_counter.step()
 
   author
-  [ [#context lit_survey_counter.display()] #body]
+  [ [#context lit_survey_counter.display()] ]
+  body
   v(1em)
 }
 
 #let frame_rule_color = rgb("#622423")
 
 #let frame_double_rule() = {
-  line(length: 100%, stroke: 3pt + frame_rule_color)
-  v(-1.45em)
-  line(length: 100%, stroke: 0.75pt + frame_rule_color)
+  stack(
+    dir: ttb,
+    spacing: 2.5pt,
+    line(length: 100%, stroke: 3pt + frame_rule_color),
+    line(length: 100%, stroke: 0.75pt + frame_rule_color),
+  )
 }
 
 #let header_footer_line() = frame_double_rule()

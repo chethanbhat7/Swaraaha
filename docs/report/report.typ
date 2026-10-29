@@ -30,7 +30,6 @@
 )
 
 #show heading: it => {
-  v(0.5em)
   it
 }
 
@@ -55,23 +54,29 @@
   numbering: (cur, ..t) => if cur < 10 { "0" + str(cur) } else { str(cur) },
   
   // Header definition
-  header: [
-      #set text(11pt)
-      #header_title #h(1fr) #header_year
-      #v(-1.15em)
-      #frame_double_rule()
-  ],
+  header: {
+    set text(11pt)
+    stack(
+      dir: ttb,
+      spacing: 5pt,
+      [#header_title #h(1fr) #header_year],
+      frame_double_rule(),
+    )
+  },
 
   // Footer definition
   footer: {
     set text(11pt)
     stack(
       dir: ttb,
-      spacing: 3pt,
+      spacing: 5pt,
       frame_double_rule(),
       [#footer_dept #h(1fr) Page #context counter(page).display()],
     )
-  }
+  },
+
+  header-ascent: 5pt,
+  footer-descent: 5pt,
 )
 
 #counter(page).update(1)
@@ -80,9 +85,9 @@
 #set heading(numbering: "1.1.1")
 #show heading: it => it
 #show heading.where(level: 2): set text(size: 16pt, weight: "bold")
-#show heading.where(level: 2): set block(above: 12.6pt, below: 16pt)
+#show heading.where(level: 2): set block(above: 1.5em, below: 16pt)
 #show heading.where(level: 3): set text(size: 14pt, weight: "bold")
-#show heading.where(level: 3): set block(above: 12.6pt, below: 15.5pt)
+#show heading.where(level: 3): set block(above: 1.5em, below: 15.5pt)
 
 #set par(
   justify: true,
@@ -94,7 +99,6 @@
 #set list(
   indent: 18pt,
   body-indent: 13pt,
-  spacing: 18.32pt,
   marker: ([•], [•], [•], [•]),
 )
 
