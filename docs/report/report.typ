@@ -33,6 +33,7 @@
 // --- Front matter ---
 #include "frontmatter/titlepage.typ"
 #include "frontmatter/certificate.typ"
+#include "frontmatter/certificate_dairy.typ"
 
 #set page(
   margin: (top: 0.75in, bottom: 0.75in, left: 1.25in, right: 1in),
@@ -105,3 +106,4 @@
 
 // --- Personal Profile ---
 #include "personal_profile.typ"
+#include "frontmatter/sdg.typ"
