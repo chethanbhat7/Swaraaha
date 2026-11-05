@@ -102,8 +102,12 @@ objectives, implementation, and outcomes.
   [
     #text(size: 10.5pt)[Certificate images]
   ],
+  colbreak(),
   align(center, image("/assets/JS-Shreekrishna.png", width: 3cm)),
+  colbreak(),
   align(center, image("/assets/JS-chethan.jpeg", width: 3cm)),
+  colbreak(),
   align(center, image("/assets/JS-skanda.jpeg", width: 3cm)),
-  align(center, image("/assets/JS-Srinivas.jpeg", width: 3cm)),
+  colbreak(),
+  align(center, image("/assets/JS-Srinivas.jpeg", width: 3cm))
 )
