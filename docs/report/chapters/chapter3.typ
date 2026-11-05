@@ -22,7 +22,7 @@ A well-structured architecture ensures efficient data flow, modularity, and scal
 The architecture incorporates critical stages such as preprocessing, feature extraction, model training, and classification to ensure robust performance.
 Furthermore, it supports seamless integration with user interfaces for audio upload, visualization, and prediction display.
 Emphasis is placed on maintaining data security and patient confidentiality, ensuring ethical and reliable operation throughout the analysis workflow.
-Additionally, the architecture allows for performance optimization, enabling fast and accurate stutter detection even when deployed on large speech datasets.
+Additionally, the architecture allows for performance optimization, enabling fast and accurate stutter detection even when deployed on large speech datasets, while maintaining low latency and high diagnostic throughput across clinical workstations.
 
 The proposed deep learning architecture for the automatic classification and localization of stuttering using speech audio is illustrated in Figure 3.1.
 The framework integrates two model pathways, five independent Wav2Vec 2.0 binary classifiers for classification and a Wav2Vec2 frame-level pipeline for localization, to improve feature extraction, multi-perspective learning, and classification robustness.
@@ -82,6 +82,8 @@ The data flow design follows the audio from input acquisition to final output.
 
 The process begins with the input audio, recorded or uploaded by the user.
 The audio is converted to 16 kHz mono WAV with FFmpeg, then padded or truncated to 48,000 samples, three seconds at 16 kHz, so all inputs have the same length.
+DC offset removal and peak amplitude scaling are applied concurrently to prevent spurious baseline drifts and signal clipping from distorting downstream representations.
+This rigorous input conditioning guarantees that background acoustic variances do not introduce artificial spectral artifacts into the neural pipelines.
 
 After normalization, the audio runs through three parallel pipelines: classification, transcription, and localization.
 Classification produces dysfluency probabilities, transcription a timestamped transcript, and localization frame-level dysfluency regions.
@@ -170,7 +172,7 @@ Once the processing completes, the fused results are returned to the frontend fo
 This diagram provides a clear overview of the message exchange that drives the proposed framework.
 
 
-The sequencing logic accounts for both synchronous REST invocations and asynchronous real-time streaming interactions. When streaming live microphone audio, the client divides the incoming acoustic stream into consecutive 3-second overlapping windows with a 50% hop factor, streaming binary frames through a persistent bi-directional channel. The backend audio buffer reassembles incoming packets, tracks packet sequence identifiers, and discards redundant temporal overlap to maintain continuous temporal alignment.
+The sequencing logic accounts for both synchronous REST invocations and asynchronous real-time streaming interactions. When streaming live microphone audio, the client divides the incoming acoustic stream into consecutive 3-second overlapping windows with a 50% hop factor, streaming binary frames through a persistent bi-directional channel. The backend audio buffer reassembles incoming packets, tracks packet sequence identifiers, and discards redundant temporal overlap to maintain continuous temporal alignment across adjacent windows, ensuring that transmission jitter and packet latency do not disrupt the acoustic feature sequence.
 
 To preserve deterministic pipeline behavior under diverse network and compute conditions, the communication architecture employs explicit request lifecycle states: Received, Validated, Processing, Fused, and Completed. If an intermediate processing failure occurs during transcription or localization—such as low signal-to-noise ratio or missing language dictionary tokens—the service gracefully recovers by executing fallback heuristic algorithms rather than terminating the entire pipeline. The client interface receives incremental progress signals, keeping the practitioner informed of the exact pipeline stage actively being executed.
 

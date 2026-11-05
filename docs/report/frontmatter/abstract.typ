@@ -2,8 +2,9 @@
 
 // --- Abstract ---
 #[
-  #non_outlined_heading[ABSTRACT]
-  #v(2em)
+  #set text(hyphenate: false)
+  #pad(left: 180pt)[#heading(level: 1, outlined: false)[ABSTRACT]]
+  #v(3.15em)
 
   Stuttering disrupts the natural flow of communication through involuntary repetitions, prolongations, blocks, and pauses.
   Roughly 1% of people worldwide are affected, and the condition can reach into their social, professional, and personal life.

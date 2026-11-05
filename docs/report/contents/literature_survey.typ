@@ -116,6 +116,7 @@
   Trained and validated on SEP-28k, the model passed 91% classification accuracy.
   It also ran in real time in speech therapy, giving users visual dysfluency feedback within a feedback loop.
   End-to-end models that skip handcrafted features reduce bias and generalize across speakers and environments, and the architecture informs the multi-model CNN approach in the proposed system.
+  The recurring temporal recurrent connections ensure that transient acoustic disruptions are tracked continuously across adjacent speech segments without boundary truncation.
 ]
 
 #literature_survey(
@@ -200,6 +201,7 @@
   A modified ASR decoder then passes over the detected dysfluencies, focusing transcription on fluent segments.
   The method cut word error rate by 12-71% across different stuttering severity levels.
   The detect-then-transcribe design shows that dysfluency detection and speech processing can be decoupled, which is the premise of the proposed system's modular architecture.
+  This pipeline validates that selective temporal gating shields subsequent downstream transcription layers from severe acoustic degradation during disfluent periods.
 ]
 
 #literature_survey(

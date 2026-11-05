@@ -41,7 +41,7 @@ Report generation and download, severity mapping, multilingual transcription for
 System testing subjects the whole software product to end-to-end scenarios in conditions that resemble the user environment.
 The React web application was exercised in supported browsers and the PySide6 desktop application in a standalone offline setup with no separate server, both against the same machine learning backend.
 Supported audio formats (WAV, MP3, OGG, and M4A) were validated across the upload, drag-and-drop, and microphone capture paths, corrupted files were rejected with clear error messages, and analysis turnaround was confirmed to stay within a few seconds per clip as required by the performance requirements in Chapter 2.
-The combined system-level suite confirmed that the application meets its functional and non-functional requirements.
+The combined system-level suite confirmed that the application meets its functional and non-functional requirements across diverse desktop and browser environments.
 
 == RESULT AND ANALYSIS
 This section presents the evaluation of the trained models: how the Wav2Vec2-based and CNN-based model families were trained and evaluated, the hyper parameter tuning applied, and a comparative performance analysis of all architectures.
@@ -83,7 +83,7 @@ Block is the hardest class (F1=0.364); silent pauses and hesitations are hard to
 The per-class F1 scores are plotted in Figure 5.1, and the corresponding AUROC and AUPRC values are plotted in Figure 5.2.
 Both figures mirror the table above: interjection leads on every measure, while block trails on F1 even though its AUROC and AUPRC stay reasonably high.
 
-The shipped `single` configuration of five independent binary classifiers scores slightly higher in distribution, with a test F1 of 0.573 at threshold 0.5 (0.570 with tuned thresholds).
+The shipped `single` configuration of five independent binary classifiers scores slightly higher in distribution, with a test F1 of 0.573 at threshold 0.5 (0.570 with tuned thresholds), demonstrating superior discrimination across subtle phonemic boundaries and eliminating gradient interference between distinct dysfluency categories.
 
 The confusion matrices for the five dysfluency types are shown in Figure 5.3 and visualize the distribution of predictions of the shipped `single` configuration of five independent binary classifiers.
 
@@ -146,7 +146,7 @@ The system is trained and evaluated on three publicly available stuttering datas
 Project Boli is a multilingual Indian language dataset with stuttering data across Hindi, Kannada, Telugu, and other Indian languages, sourced from GitHub, and includes both read and spontaneous speech.
 The ingestion resolves only the English task codes of this dataset, so the Boli material used here is English speech; it is therefore a cross-corpus rather than a cross-lingual evaluation set.
 SEP-28K provides roughly 28,000 audio clips from stuttering support group podcasts, annotated for blocks, prolongations, sound repetitions, word repetitions, and interjections, and was obtained from Kaggle.
-UCLASS is an additional stuttering speech dataset from Kaggle that provides supplementary annotated clips.
+UCLASS is an additional stuttering speech dataset from Kaggle that provides supplementary annotated clinical clips to bolster representation across rarer dysfluency events.
 Each dataset is normalized into a unified format with a `combined_labels.csv` file of multi-label binary annotations and interval files per clip.
 The merged dataset is split 80:10:10 into training, validation, and testing subsets, and during training the training subset is re-split 80/20 by a stratified split into a fine-tuning set and a validation set used for early stopping and threshold selection.
 

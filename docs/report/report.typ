@@ -26,7 +26,7 @@
 )
 
 #show figure.where(kind: table): set block(breakable: true)
-#show figure.where(kind: table): set figure.caption(position: bottom)
+#show figure.where(kind: table): set figure.caption(position: top)
 
 #counter(heading).update(0)
 
@@ -35,13 +35,29 @@
 #include "frontmatter/certificate.typ"
 #include "frontmatter/certificate_dairy.typ"
 
+// Front-matter sheets below use the page geometry of the reference report.
+// Declaration
+#set page(
+  margin: (top: 54pt, bottom: 14pt, left: 63.8pt, right: 54pt),
+)
+#include "frontmatter/declaration.typ"
+
+// Acknowledgement
+#set page(
+  margin: (top: 66.1pt, bottom: 14pt, left: 63.8pt, right: 54pt),
+)
+#include "frontmatter/acknowledgement.typ"
+
+// Abstract
+#set page(
+  margin: (top: 67.9pt, bottom: 14pt, left: 56.8pt, right: 39.1pt),
+)
+#include "frontmatter/abstract.typ"
+
+// Restore the standard front-matter margins for the TOC, abbreviations, etc.
 #set page(
   margin: (top: 0.75in, bottom: 0.75in, left: 1.25in, right: 1in),
 )
-
-#include "frontmatter/declaration.typ"
-#include "frontmatter/acknowledgement.typ"
-#include "frontmatter/abstract.typ"
 #include "frontmatter/toc.typ"
 #include "frontmatter/abbreviations.typ"
 
@@ -115,8 +131,15 @@
 )
 #include "frontmatter/sdg.typ"
 
-// JS certificate scans: bare full-page pages
+// --- Plagiarism result ---
 #set page(margin: 0pt)
+#align(center + horizon)[
+  #image("/assets/Plaigarism-Result.pdf", width: 100%)
+]
+
+#pagebreak()
+
+// JS certificate scans: bare full-page pages
 
 #align(center + horizon)[
   #rotate(

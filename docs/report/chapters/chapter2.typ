@@ -97,8 +97,8 @@ The system must support various tools and libraries that enable efficient model 
 
 - *Operating System:* the proposed system is developed and executed on the Linux and Windows platforms. It is fully compatible with Windows 10 and above and common Linux distributions, offering stability, wide software support, and seamless integration with deep learning frameworks and GPU drivers. This environment ensures smooth performance, easy setup, and reliable execution of the proposed models, with both the web application and the PySide6 desktop application running on either platform and training and inference supported on CPU or NVIDIA GPU.
 - *Deep Learning Framework:* the proposed system is built using PyTorch as the primary deep learning framework for building and training the machine learning models. PyTorch provides the required computational efficiency, GPU support through features such as torch.compile, mixed precision, and TensorFloat-32 (TF32), and scalability for handling complex audio classification tasks effectively. The Hugging Face Transformers library supplies the pretrained speech models, Wav2Vec 2.0 for feature extraction and Whisper for timestamped transcription.
-- *Libraries:* a range of Python libraries is required to support different stages of the project:
-  - librosa: Used for audio preprocessing and manipulation, including loading, resampling, mel-spectrogram computation, and silence trimming.
+- *Libraries:* a comprehensive range of Python scientific libraries is required to support the different processing stages across the pipeline:
+  - librosa: Used for audio preprocessing and manipulation, including loading, resampling, mel-spectrogram computation, and silence trimming, standardizing acoustic properties prior to neural ingestion and extracting spectral centroid features for unvoiced boundary checks.
   - NumPy: Provides support for numerical operations and array handling.
   - Pandas: Essential for managing and analysing structured data such as labels or metadata.
   - Scikit-learn: Used for data splitting, model evaluation metrics, and traditional machine learning algorithms.

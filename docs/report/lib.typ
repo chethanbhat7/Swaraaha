@@ -55,6 +55,8 @@
       align(start, it)
     }
 
+    set figure.caption(position: top)
+
     figure(
       tb,
       caption: caption,
