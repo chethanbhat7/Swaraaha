@@ -1,6 +1,10 @@
 // --- Abbreviations ---
 #import "../lib.typ": *
 
+// Continue the front-matter roman numbering (LIST OF TABLES = I, FIGURES = II,
+// ABBREVIATIONS = III) and show the page number in the footer.
+#set page(numbering: "I")
+
 #non_outlined_heading(label: <loa>)[LIST OF ABBREVIATIONS]
 #table(
   columns: (1fr, 3fr),

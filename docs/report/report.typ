@@ -48,11 +48,13 @@
 )
 #include "frontmatter/acknowledgement.typ"
 
-// Abstract
+// Abstract (no automatic hyphenation on this page)
 #set page(
   margin: (top: 67.9pt, bottom: 14pt, left: 56.8pt, right: 39.1pt),
 )
+#set text(hyphenate: false)
 #include "frontmatter/abstract.typ"
+#set text(hyphenate: auto)
 
 // Restore the standard front-matter margins for the TOC, abbreviations, etc.
 #set page(
