@@ -16,6 +16,10 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+matplotlib.rcParams["font.family"] = "serif"
+matplotlib.rcParams["font.serif"] = ["Times New Roman", "DejaVu Serif"]
+matplotlib.rcParams["mathtext.fontset"] = "stix"
+
 from model.classification import DYSFLUENCY_CLASSES
 
 ARM02_TEST = "model/evaluation/reports/arms_noaug/arm02_mt_w2v2_frz3/test/multitask_report.json"

@@ -369,6 +369,9 @@ def _save_training_curves(history: Dict, fp: str, output_dir: str) -> None:
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
+    matplotlib.rcParams["font.family"] = "serif"
+    matplotlib.rcParams["font.serif"] = ["Times New Roman", "DejaVu Serif"]
+
     curves_dir = os.path.join(output_dir, "training_curves")
     os.makedirs(curves_dir, exist_ok=True)
 

@@ -152,6 +152,9 @@ def save_spectrogram_image(
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
+    matplotlib.rcParams["font.family"] = "serif"
+    matplotlib.rcParams["font.serif"] = ["Times New Roman", "DejaVu Serif"]
+
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
 
     fig, ax = plt.subplots(1, 1, figsize=(10, 4))
@@ -189,6 +192,9 @@ def plot_waveform(
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
+
+    matplotlib.rcParams["font.family"] = "serif"
+    matplotlib.rcParams["font.serif"] = ["Times New Roman", "DejaVu Serif"]
 
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
 

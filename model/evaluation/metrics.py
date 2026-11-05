@@ -522,6 +522,10 @@ def save_confusion_matrix_plot(
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
+    matplotlib.rcParams["font.family"] = "serif"
+    matplotlib.rcParams["font.serif"] = ["Times New Roman", "DejaVu Serif"]
+    matplotlib.rcParams["mathtext.fontset"] = "stix"
+
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
 
     fig, ax = plt.subplots(figsize=(8, 6))
