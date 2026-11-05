@@ -6,86 +6,78 @@
 
 == INTRODUCTION
 
-System implementation is a broad and demanding task: it builds and maintains a reliable software architecture that can handle many user interactions, data processing tasks, and model inference operations.
-Careful design and coding practices keep the application scalable, reliable, and secure, so it can still handle changing workloads and protect sensitive patient data at every stage.
-Iterative testing and debugging are a central part of the implementation process, so any issues or bugs that arise can be found and fixed before release.
-This repeated cycle gives users a smooth experience, with few disruptions or errors in their daily use.
-After deployment, regular monitoring and maintenance check system performance and respond to new requirements as they arise.
-This steady upkeep keeps the system tuned and still responsive to user needs and expectations as conditions change over time, which supports lasting success and user satisfaction.
+The system implementation process is a multifaceted endeavor focused on developing a robust software architecture capable of effectively managing diverse user interactions, data processing tasks, and model inference operations.
+By employing meticulous design and coding practices, the implementation ensures that the application is scalable, reliable, and secure, capable of handling varying workloads and protecting sensitive data.
+Iterative testing and debugging procedures are integral components of the implementation process, allowing for the identification and resolution of any issues or bugs that may arise.
+This iterative approach ensures that the application delivers a seamless user experience, free from disruptions or errors.
+Additionally, post-deployment monitoring and maintenance mechanisms are established to continually assess system performance and address evolving requirements.
+This ongoing maintenance ensures that the system remains optimized and responsive to user needs, even as conditions change over time, thereby facilitating long-term success and user satisfaction.
 
 == ALGORITHM
 The inference process follows a fixed sequence of steps that turns raw speech input into a complete, annotated analysis result.
-Each step has a defined input and output, which limits the amount of hidden state passed between services.
-This structure is important for repeatable analysis because the same conversion, normalization, model execution, and reporting stages are used for both recorded and uploaded speech.
 
-- #keep[Step 1, Input Acquisition: the system acquires speech input either through real-time recording or by uploading an audio file.]
-- #keep[Step 2, Audio Conversion: the input audio is converted into a 16 kHz mono WAV format using FFmpeg to maintain consistency across all inputs.]
-- #keep[Step 3, Preprocessing: the audio is cleaned by removing the DC offset, applying peak normalization to a target amplitude, and trimming silent segments.]
-- #keep[Step 4, Length Normalization: the processed audio is adjusted to a fixed length of 48,000 samples (three seconds at 16 kHz) by padding or truncating as required.]
-- #keep[
-  Step 5, Parallel Processing: the system processes the audio simultaneously through three independent branches:
-  #enum[
-    Classification: Wav2Vec 2.0 embeddings are generated and passed through five binary classifiers, one per dysfluency type, and the outputs are aggregated into a multi-label result with a probability score for each dysfluency type.
-  ][
-    Transcription: the Whisper model generates a timestamped transcript of the speech in English, Kannada, or Hindi.
-  ][
-    Localization: the Wav2Vec2 frame-level localizer identifies the frame-level regions within the audio where dysfluencies occur.
-  ]
-]
-- #keep[Step 6, Alignment: the detected dysfluency regions are mapped to the corresponding words or syllables in the transcript using CTC-based time alignment.]
-- #keep[Step 7, Combination and Severity: the combiner labels each localized region with per-class saliency scores from the classifier and fuses the classification and localization views, and the severity module computes a stutter index from the ratio of dysfluent speech duration to total speech duration.]
-- #keep[Step 8, Visualization and Report Generation: the system displays the results through waveform overlays, spectrograms, transcripts, and confidence scores, and generates a detailed clinical-style report.]
+- Step 1, Input Acquisition: the system acquires speech input either through real-time recording or by uploading an audio file.
+- Step 2, Audio Conversion: the input audio is converted into a 16 kHz mono WAV format using FFmpeg to maintain consistency across all inputs.
+- Step 3, Preprocessing: the audio is cleaned by removing the DC offset, applying peak normalization to a target amplitude, and trimming silent segments.
+- Step 4, Length Normalization: the processed audio is adjusted to a fixed length of 48,000 samples (three seconds at 16 kHz) by padding or truncating as required.
+- Step 5, Parallel Processing: the system processes the audio simultaneously through three independent branches:
+  + Classification: Wav2Vec 2.0 embeddings are generated and passed through five binary classifiers, one per dysfluency type, and the outputs are aggregated into a multi-label result with a probability score for each dysfluency type.
+  + Transcription: the Whisper model generates a timestamped transcript of the speech in English, Kannada, or Hindi.
+  + Localization: the Wav2Vec2 frame-level localizer identifies the frame-level regions within the audio where dysfluencies occur.
+- Step 6, Alignment: the detected dysfluency regions are mapped to the corresponding words or syllables in the transcript using CTC-based time alignment.
+- Step 7, Combination and Severity: the combiner labels each localized region with per-class saliency scores from the classifier and fuses the classification and localization views, and the severity module computes a stutter index from the ratio of dysfluent speech duration to total speech duration.
+- Step 8, Visualization and Report Generation: the system displays the results through waveform overlays, spectrograms, transcripts, and confidence scores, and generates a detailed clinical-style report.
 
 == IMPLEMENTATION REQUIREMENTS
 
-This section lists the implementation requirements for detecting and localizing stuttering with a hybrid deep learning model that combines Wav2Vec 2.0 feature extraction, five independent Wav2Vec 2.0 binary classifiers, a Wav2Vec2 frame-level localizer, and Whisper automatic speech recognition.
-The main goal is to build a reliable, efficient system that finds speech dysfluencies and localizes them within the audio.
-The hybrid model uses the strengths of both architectures: Wav2Vec 2.0 supplies self-supervised, contextual speech representations that capture fine-grained phonetic and prosodic patterns, while Whisper provides sequence-level transcription that helps map localized dysfluency regions to specific words and syllables.
-
-The implementation relies on the Python ecosystem, which provides an interactive environment for model development, experimentation, and analysis.
-Python is the main language used for backend development because it is versatile and also supports a very wide range of scientific and deep learning libraries such as PyTorch, the Hugging Face Transformers library, and NumPy, which help with model construction, training, and evaluation.
-For the frontend, React 19 and PySide6 build a simple web interface and desktop application where users can record or upload speech audio and view classification and localization results.
-A central model registry manages all trained models. It is configured through a `registry.json` file that maps each task to its checkpoint and per-class thresholds, so checkpoints can be updated or replaced without changing application code.
-Python also handles matrix manipulation, data visualization, algorithm implementation, and smooth integration with other programming environments, which makes it a good platform for developing and testing the hybrid model for stuttering classification and localization.
+This section presents the implementation requirements for the detection and localization of stuttering using a hybrid deep learning model that integrates Wav2Vec 2.0 feature extraction, five independent Wav2Vec 2.0 binary classifiers, a Wav2Vec2 frame-level localizer, and Whisper automatic speech recognition.
+The primary objective is to develop a robust and efficient system capable of accurately identifying speech dysfluencies and localizing them within the audio.
+The hybrid model leverages the strengths of both architectures: Wav2Vec 2.0 contributes self-supervised, contextual speech representations that facilitate efficient feature reuse and capture fine-grained phonetic and prosodic patterns, while Whisper introduces sequence-level transcription that enhances the model's ability to map localized dysfluency regions to specific words and syllables in the transcript.
+Together, these architectures form a powerful hybrid framework that improves classification performance and generalization ability.
+The implementation is carried out using the Python ecosystem, which provides an interactive environment for model development, experimentation, and analysis.
+Python serves as the primary programming language for backend development due to its versatility and support for a wide range of scientific and deep learning libraries such as PyTorch, the Hugging Face Transformers library, and NumPy, which aid in model construction, training, and evaluation.
+For the frontend, React 19 and PySide6 are utilized to design a user-friendly web interface and desktop application that allow users to record or upload speech audio and view classification and localization results.
+All trained models are managed by a centralized model registry configured through a `registry.json` file that maps each task to its checkpoint and per-class thresholds, so checkpoints can be updated or replaced without changing application code.
+The Python ecosystem also facilitates matrix manipulation, data visualization, algorithm implementation, and seamless integration with other programming environments, making it an ideal platform for developing and testing the hybrid model for stuttering classification and localization.
 
 === Train the Model
 
-Training is a major step in developing the system for stutter classification and localization.
-The speech audio dataset is first collected from Project Boli, SEP-28K, and UCLASS, then preprocessed through conversion to 16 kHz mono WAV, DC offset removal, peak normalization, silence trimming, and fixed-length padding. Data augmentation also improves audio quality and reduces overfitting risk.
-The Wav2Vec 2.0 model is then trained to extract high-level contextual speech features, using its self-supervised pretraining to learn strong representations.
-To raise classification accuracy further, the hybrid model combines five independent Wav2Vec 2.0 binary classifiers with a Wav2Vec2 frame-level localizer.
-The localizer captures fine-grained temporal features at the frame level, adding detail beyond segment-level extraction of the classifiers.
-CTC-based time alignment then combines the outputs of both models into one feature representation.
-Training uses the AdamW optimizer to adjust learning rates adaptively and keep convergence stable.
-It also uses mini-batches of audio, and backpropagation updates the weights from the computed loss.
-Validation runs periodically to monitor accuracy and prevent overfitting.
-After training, the system saves optimized parameters and weights, so the models can predict on new speech audio without retraining.
+The training phase is a key step in developing the proposed system for stutter classification and localization.
+In this phase, the speech audio dataset is first collected from Project Boli, SEP-28K, and UCLASS, and preprocessed through conversion to 16 kHz mono WAV, DC offset removal, peak normalization, silence trimming, and fixed-length padding, along with data augmentation, to enhance audio quality and reduce overfitting.
+Initially, the Wav2Vec 2.0 model is trained to extract high-level contextual speech features from the audio, benefiting from its self-supervised pretraining that allows efficient information flow and robust representation learning.
+To further improve classification accuracy, a hybrid model is developed by combining five independent Wav2Vec 2.0 binary classifiers with a Wav2Vec2 frame-level localizer.
+The Wav2Vec2 localizer captures fine-grained and localized temporal features at the frame level, complementing the broader segment-level feature extraction of the classifiers.
+The outputs from both models are then fused through CTC-based time alignment to form a comprehensive feature representation.
+During training, the AdamW optimizer is used to adjust learning rates adaptively and ensure stable convergence.
+The model is trained using mini-batches of audio, with weights updated through backpropagation based on the computed loss.
+Validation is performed periodically to monitor accuracy and prevent overfitting.
+After training, the optimized parameters and learned weights are saved, enabling the models to make efficient and accurate predictions on new speech audio without retraining.
 
 === Test the Model
 
-Testing comes after training to check how well the proposed model detects stutter events in unseen speech audio.
-When a user records or uploads a sample through the web interface or desktop application, it goes through the very same preprocessing as training: conversion to 16 kHz mono WAV, DC offset removal, peak normalization, silence trimming, and fixed-length padding. This keeps input uniform for accurate analysis.
-The trained Wav2Vec 2.0 model then extracts high-level contextual speech features.
-For higher accuracy, the audio also passes through the hybrid model, which combines five independent Wav2Vec 2.0 binary classifiers with a Wav2Vec2 frame-level localizer and captures both segment-level dysfluency patterns and fine temporal detail.
-CTC-based time alignment combines the features from both models into one representation. The final aggregation layer then produces a classification result that names the dysfluency types present (blocks, prolongations, sound repetitions, word repetitions, or interjections) and the exact regions involved.
-The interface shows the outcome with waveform overlays, spectrograms, a timestamped transcript, and confidence scores.
-The system also compares the model predictions with ground truth labels to measure accuracy and generalization.
-This phase shows that the hybrid model performs well on new and unseen samples, which points to reliable stutter classification and localization in real clinical use.
+The testing phase is carried out after completing the training process to evaluate how effectively the proposed model can detect stutter events from unseen speech audio.
+When the user records or uploads a speech sample through the system's web interface or desktop application, it undergoes the same preprocessing steps used during training, including conversion to 16 kHz mono WAV, DC offset removal, peak normalization, silence trimming, and fixed-length padding, to ensure uniformity and accurate analysis.
+Initially, the trained Wav2Vec 2.0 model processes the audio to extract high-level contextual speech features.
+To further enhance accuracy, the audio is also analyzed using the hybrid model that combines five independent Wav2Vec 2.0 binary classifiers with a Wav2Vec2 frame-level localizer, allowing the system to capture both segment-level dysfluency patterns and fine-grained temporal details.
+The extracted features from both models are fused through CTC-based time alignment to form a comprehensive representation, which is then passed through the final aggregation layer to generate the classification result as containing blocks, prolongations, sound repetitions, word repetitions, or interjections, along with the precise localized regions.
+The outcome is displayed on the interface in a clear and user-friendly format, with waveform overlays, spectrograms, a timestamped transcript, and confidence scores.
+Additionally, the model's predictions are compared with the actual ground truth labels to assess its accuracy and generalization performance.
+This phase confirms that the hybrid model performs effectively on new and unseen speech samples, demonstrating its potential for reliable stutter classification and localization in real-world clinical use.
 
 === Model Evaluation
-Model evaluation is essential for assessing the overall performance and reliability of the proposed system.
-Once the models are trained and tested, several quantitative metrics measure their classification performance:
+Model evaluation is essential to assess the overall performance and reliability of the proposed system.
+Once the models are trained and tested, various quantitative metrics are employed to evaluate their classification performance comprehensively, including:
 
-- #keep[Accuracy: measures the proportion of correctly predicted samples.]
-- #keep[Precision: the share of predicted positive instances that are actually positive.]
-- #keep[Recall (Sensitivity): measures how effectively the model identifies all relevant positive samples.]
-- #keep[F1-Score: provides a harmonic mean of precision and recall to balance both metrics.]
+- Accuracy: measures the proportion of correctly predicted samples.
+- Precision: evaluates how many of the predicted positive instances are truly positive.
+- Recall (Sensitivity): measures how effectively the model identifies all relevant positive samples.
+- F1-Score: provides a harmonic mean of precision and recall to balance both metrics.
 
 The five Wav2Vec 2.0 binary classifiers, one per dysfluency type, are further measured with AUROC (Area Under the Receiver Operating Characteristic Curve), AUPRC (Area Under the Precision-Recall Curve), and specificity, summarized per class and as a macro average across the five dysfluency classes.
 The Wav2Vec2 frame-level localizer is measured with frame-level precision, recall, and F1, detection accuracy, mean Intersection over Union (IoU) between predicted and ground-truth regions, and the false alarm rate per minute.
 
-A confusion matrix for each of the five binary classifiers shows the distribution of predictions, including true positives, false positives, true negatives, and false negatives.
-This evaluation shows where each class is strong or weak; interjections, for example, are detected most reliably, while blocks are the hardest.
+A confusion matrix is generated for each of the five binary classifiers to visualize the distribution of predictions, highlighting true positives, false positives, true negatives, and false negatives.
+This detailed evaluation helps identify the strengths and weaknesses of each class, for example that interjections are detected most reliably while blocks are the hardest class.
 
 All reported results use the held-out test set of 3,715 clips, which is never touched during training or threshold selection, together with a cross-corpus Boli set that checks how well the models transfer to unseen speakers.
 
@@ -109,10 +101,10 @@ It includes modules for audio recording and playback (sounddevice), file handlin
 PDF report generation uses Typst with pypdfium2 for viewing.
 
 Both interfaces share the same model package, preprocessing conventions, and result schema, so a recording analysed in the browser and the same recording analysed on the desktop produce identical predictions and reports.
-The web client keeps long requests responsive by streaming progress updates and blocking any duplicate submissions while an analysis runs, while the desktop client runs inference in a worker thread so the window still stays interactive during transcription and localization.
+The web client keeps long-running requests responsive by streaming progress updates and disabling duplicate submissions while an analysis is in flight, while the desktop client runs inference in a worker thread so the window stays interactive during transcription and localization.
 Theme switching, keyboard navigation, and consistent layout across window sizes are handled at the component level, which keeps the interface usable for clinicians who move between machines and screen sizes.
-The client checks uploaded audio before it ever reaches the backend, and the results view keeps the waveform, transcript, and per-class confidence table in sync so that selecting a timestamp jumps to the exact matching part of the recording.
-Report generation is kept separate from analysis: the stored result payload is enough to rebuild the PDF, so a report can still be regenerated with a different layout or header without repeating the expensive model inference.
-This shared design also makes maintenance easier, because a change to the result schema or the report template reaches both interfaces from one single source instead of being implemented twice.
+Uploaded audio is validated on the client before it reaches the backend, and the results view keeps the waveform, transcript, and per-class confidence table in sync so that selecting a timestamp jumps to the corresponding part of the recording.
+Report generation is deliberately decoupled from analysis: the stored result payload is sufficient to rebuild the PDF, which means a report can be regenerated with a different layout or header without repeating the expensive model inference.
+This shared design also simplifies maintenance, because a change to the result schema or the report template propagates to both interfaces from a single source rather than being reimplemented twice.
 
 #pagebreak()

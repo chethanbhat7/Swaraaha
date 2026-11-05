@@ -6,111 +6,114 @@
 
 == INTRODUCTION
 
-A deep learning framework for stuttering classification and localization must meet clinical and technical expectations at the same time.
-Before implementation, the project therefore fixes all its functional and non-functional requirements, the system components, and the workflow that connects them.
-The main goal is to replace manual speech-language assessment with a model that detects dysfluencies early and reports them objectively.
-
-The system takes an audio recording, extracts features, and sorts it into the five stuttering types.
-It also locates each event in the signal.
-That should cut the time manual analysis takes and reduce variation between observers, without making the output hard to read.
-Wav2Vec 2.0 handles feature extraction, a Wav2Vec2 frame-level model handles localization, and Whisper produces the transcript.
-The system must run on standard hardware, cope with larger datasets as they arrive, offer a simple interface, and keep patient data secure and confidential.
+The development of a deep learning-based framework for stuttering classification and localization requires a clear understanding of both clinical and technical aspects.
+Before implementation, it is important to define specific functional and non-functional requirements, system components, and workflow to ensure accuracy and clinical reliability.
+The main goal is to transform the manual process of speech-language assessment into an efficient, automated computational model that supports early and objective dysfluency detection.
+The system should effectively process audio recordings, extract key features, and classify them into distinct stuttering types while localizing dysfluency events within the signal.
+It must address challenges like time-consuming manual analysis and inter-observer variation, emphasizing automation, precision, and interpretability.
+Technically, the framework integrates Wav2Vec 2.0 feature extraction with Wav2Vec2 frame-level localization and Whisper transcription for robust detection and localization.
+In addition, the system should operate efficiently on standard hardware, support scalability for future datasets, and offer a user-friendly interface for clinicians and end users.
+Data security and confidentiality are essential to maintain ethical and legal standards.
+Overall, the requirement specification and analysis phase ensures that the framework is both technically strong and clinically valuable, bridging the gap between healthcare needs and AI-driven solutions.
 
 == FUNCTIONAL REQUIREMENTS
 
-The functional requirements describe what the system must do to detect and classify stuttering events.
-Clinicians, speech-language pathologists, and people who stutter can upload a recording or record audio through the interface.
-The supported formats are WAV, MP3, FLAC, and M4A.
-
-The system processes the audio and sorts it into five dysfluency types: prolongation, block, sound repetition, word repetition, and interjection.
-For each detected class, the interface shows the result with a confidence score, so the user can see how far to trust the prediction.
-The system also returns the timestamps of localized events.
-Waveforms, spectrograms, and overlays mark the regions that shaped the model's decision.
-Users can download the full analysis report, and uploaded audio and results are stored securely for later reference.
+The functional requirements describe the key operations that the system must perform to support automated detection and classification of stuttering events using deep learning models.
+The application allows users, such as clinicians, speech-language pathologists, or individuals who stutter, to upload a speech recording or capture audio directly through the interface in common formats such as WAV, MP3, FLAC, and M4A.
+Once the audio is provided, the system processes the signal and classifies it into five dysfluency types: prolongation, block, sound repetition, word repetition, and interjection.
+The classification result is displayed on the interface along with a confidence score for each detected class, helping users understand how reliable every prediction is.
+The system also localizes dysfluency events within the audio and returns their exact temporal positions as timestamps, with visualization through waveforms, spectrograms, and dysfluency overlays that highlight the regions that influenced the model's decision, improving interpretability.
+Additionally, users can download the detailed analysis report for record-keeping.
+The framework ensures that uploaded audio and prediction results are stored securely for future reference.
 
 === User Requirements
 
-User requirements describe what all end users must be able to do.
-They reflect how clinicians, speech-language pathologists, researchers, and people who stutter will use the system while they assess or monitor fluency.
-Those users need an interface that is easy to navigate, that shows classification results, visual interpretations, and confidence levels without technical complexity, and that works with little manual effort.
-For a speech analysis platform, the general requirements are:
+User requirements specify the functionalities and services that the end users should be able to access and utilize.
+These typically reflect how users will interact with the system.
+The proposed system is primarily designed for clinicians, speech-language pathologists, researchers, and individuals who stutter involved in the assessment and monitoring of speech fluency.
+The users of this system require an intuitive, reliable, and efficient platform that can process speech recordings and provide accurate diagnostic insights with minimal manual effort.
+The users expect the interface to be simple, interactive, and easy to navigate, allowing them to view classification results, visual interpretations, and confidence levels without technical complexity.
 
-- #keep[The user should be able to upload or record a speech sample for analysis.]
-- #keep[The user should be able to see classification results as soon as the analysis finishes.]
-- #keep[The system should provide detailed analysis reports.]
+For a speech analysis platform, general user requirements include:
+
+- The user should be able to upload or record a speech sample for analysis.
+- The user should be able to access real-time classification results.
+- The system should provide detailed analysis reports.
 
 === System Requirements
 
-System requirements cover the software and hardware capabilities the system needs.
-The stuttering detection system has to handle the computational load of deep learning speech analysis while delivering the operations described above.
-Hardware guidance appears later in this chapter.
+System requirements define the essential capabilities of software and hardware needed to support system functionality.
+The proposed stuttering detection system requires components that can efficiently handle the computational demands of deep learning-based speech analysis while delivering the core functional operations described above.
+Hardware guidelines appear in the hardware requirements section later in this chapter.
 
 These requirements include:
 
-- #keep[The system must accept audio uploads securely and classify them.]
-- #keep[Users need a way to save previous analysis results and open them again.]
-- #keep[Adequate storage must be available for managing large speech datasets.]
+- The system should support secure audio upload and classification.
+- Users should be able to store and retrieve previous analysis results.
+- The system should support proper storage for managing large speech datasets.
 
 == NON-FUNCTIONAL REQUIREMENTS
 
-Non-functional requirements set the quality, performance, and usability standards the system has to meet.
-Performance comes first, because the models run deep learning and audio processing and must return results quickly.
-GPU acceleration and memory management keep the recordings moving through the pipeline.
-Reliability means consistent accuracy across datasets and fault tolerance when a run is interrupted.
-Scalability allows any larger datasets or extra dysfluency types without hurting overall performance.
-Usability means a simple interface for technical and non-technical users alike, with clear upload, analysis, and visualisation steps.
-Maintainability comes from modular code that is easy to update and retrain.
-Portability and availability keep the system running across platforms, with high uptime and regular backups.
+The non-functional requirements define the overall quality, performance, and usability standards that ensure the system operates efficiently and reliably.
+The key requirement is performance efficiency, as the models handle deep learning and audio processing tasks that must deliver fast and accurate results with minimal delay.
+GPU acceleration and optimized memory management help achieve smooth processing of speech recordings.
+Reliability is equally important: the system should maintain consistent accuracy across datasets and handle interruptions through fault tolerance.
+It must also be scalable, allowing expansion for larger datasets or additional dysfluency types without compromising performance.
+In terms of usability, the interface should be simple, intuitive, and accessible to both technical and non-technical users for easy audio upload, analysis, and visualization.
+Maintainability should be ensured through modular, well-structured code that supports easy updates and retraining.
+Finally, portability and availability ensure the system runs smoothly across different platforms with high uptime and regular backups for uninterrupted access.
 
 === Performance
 
-- #keep[The system should process and analyse a speech sample within 3 to 5 seconds.]
-- #keep[The classification results should keep false negatives and false positives low.]
-- #keep[Performance metrics should be monitored regularly.]
-- #keep[The system should handle audio uploads without significant delay.]
+- The system should process and analyse a speech sample within 3-5 seconds.
+- The classification results should minimize false positives and false negatives.
+- Performance metrics should be monitored regularly.
+- The system should handle processing of audio uploads without significant delay.
 
 === Scalability
 
-- The system should handle growing speech datasets efficiently.
-- #keep[It should scale across multiple clinics and research centres.]
-- #keep[The system should adapt to improvements in deep learning models.]
-- #keep[The system should handle a higher volume of concurrent users.]
+- The system should efficiently handle increasing speech datasets.
+- It should be scalable for integration across multiple clinics and research centres.
+- The system should be adaptable for improvements in deep learning models.
+- The system should be capable of handling a higher volume of concurrent users.
 
 === Availability
 
-- The system should stay accessible at all times, with minimal downtime during clinical use.
-- #keep[Components should tolerate faults so a single failure has less impact.]
-- #keep[The platform should keep serving users during updates or model improvements.]
+- The system should remain accessible to users at all times, ensuring minimal downtime during clinical use.
+- System components are designed to be fault-tolerant to reduce the impact of unexpected runtime failures.
+- The platform should support uninterrupted service even during updates, model improvements, or cache refreshes.
+- Automated health-check endpoints and graceful recovery mechanisms maintain service continuity during high-demand analysis periods.
 
 === Usability
 
-- #keep[The interface should be easy for clinicians, speech-language pathologists, and non-technical users.]
-- #keep[Audio upload and results should be easy to find and navigate.]
-- #keep[The visualisation outputs should help users understand the model's predictions for the analysed speech.]
+- The user interface should be user-friendly for clinicians, speech-language pathologists, and non-technical users.
+- The system should provide clear navigation for audio uploads and results.
+- The visualization outputs shall help users easily understand the model's predictions for the analysed speech.
 
 == Software Requirements
 
-The software requirements cover the tools used to develop, train, validate, and deploy the stutter detection models.
+The software requirements are essential for developing, training, validating, and deploying deep learning models aimed at detecting stuttering events from speech audio.
+The system must support various tools and libraries that enable efficient model development, audio processing, and performance evaluation.
 
-- #keep[*Operating System:* the system runs on Linux and Windows, including Windows 10 and above and common Linux distributions. The PySide6 desktop application and the web application run on either platform, and training and inference are supported on CPU or an NVIDIA GPU.]
-- #keep[*Deep Learning Framework:* PyTorch is the primary framework for building and training the models. It provides GPU support through torch.compile, mixed precision, and TensorFloat-32 (TF32), and it scales to the audio classification tasks in this project. Hugging Face Transformers supplies the pretrained speech models, Wav2Vec 2.0 for feature extraction and Whisper for timestamped transcription.]
-- *Libraries:* a range of Python libraries supports different stages of the project:
-  - #keep[librosa: Used for audio preprocessing and manipulation, including loading, resampling, mel-spectrogram computation, and silence trimming.]
-  - #keep[NumPy: Provides support for numerical operations and array handling.]
-  - #keep[Pandas: managing structured data such as labels or metadata.]
-  - #keep[Scikit-learn: Used for data splitting, model evaluation metrics, and traditional machine learning algorithms.]
+- *Operating System:* the proposed system is developed and executed on the Linux and Windows platforms. It is fully compatible with Windows 10 and above and common Linux distributions, offering stability, wide software support, and seamless integration with deep learning frameworks and GPU drivers. This environment ensures smooth performance, easy setup, and reliable execution of the proposed models, with both the web application and the PySide6 desktop application running on either platform and training and inference supported on CPU or NVIDIA GPU.
+- *Deep Learning Framework:* the proposed system is built using PyTorch as the primary deep learning framework for building and training the machine learning models. PyTorch provides the required computational efficiency, GPU support through features such as torch.compile, mixed precision, and TensorFloat-32 (TF32), and scalability for handling complex audio classification tasks effectively. The Hugging Face Transformers library supplies the pretrained speech models, Wav2Vec 2.0 for feature extraction and Whisper for timestamped transcription.
+- *Libraries:* a range of Python libraries is required to support different stages of the project:
+  - librosa: Used for audio preprocessing and manipulation, including loading, resampling, mel-spectrogram computation, and silence trimming.
+  - NumPy: Provides support for numerical operations and array handling.
+  - Pandas: Essential for managing and analysing structured data such as labels or metadata.
+  - Scikit-learn: Used for data splitting, model evaluation metrics, and traditional machine learning algorithms.
 
 == Hardware Requirements
 
-The hardware requirements give the minimum and recommended specifications for running the models.
+The hardware requirements outline the minimum and recommended specifications needed to efficiently run the deep learning models used in this project.
+Proper hardware ensures smooth data processing, model training, and inference performance, which is critical when working with speech audio and deep learning pipelines.
 
-- #keep[*Processor (CPU):* a multi-core processor such as an Intel Core i5 (8th generation or newer) or AMD Ryzen 5 and above. It provides enough power for audio preprocessing and training workflows.]
-- #keep[*Storage (Hard Disk):* at least 10 GB of free disk space for datasets, checkpoints, logs, and temporary files. An SSD is recommended for faster read and write speeds.]
-- #keep[*Memory (RAM):* at least 8 GB of RAM to run the training scripts and handle datasets, with 16 GB or more recommended during training and validation, when data loading and augmentation are active.]
-- #keep[*Graphics Processing Unit (GPU):* an NVIDIA GPU with CUDA support is recommended for faster training. Cards such as the RTX 2060 or higher (RTX 3060, RTX 3080) cut training time and handle larger datasets and deeper networks. CUDA and cuDNN must be installed for full compatibility with PyTorch.]
-- *Audio Input Device:* a working microphone is required for recording speech in the application.
+- *Processor (CPU):* a multi-core processor such as Intel Core i5 (8th gen or newer) or AMD Ryzen 5 is required for audio preprocessing and pipeline execution.
+- *Storage (Hard Disk):* at least 10 GB of free disk space is required to store datasets, model checkpoints, logs, and cache files; an SSD is strongly recommended.
+- *Memory (RAM):* a minimum of 8 GB RAM is necessary, while 16 GB or more is recommended for efficient dataset loading, augmentation, and model training.
+- *Graphics Processing Unit (GPU):* an NVIDIA GPU with CUDA support (RTX 2060 or higher) is recommended to accelerate training and multi-label inference.
+- *Audio Input Device:* a standard functional microphone is required for recording speech directly within the application.
 
-The minimum configuration handles inference on short clips.
-Fine-tuning the larger pretrained backbones benefits from the recommended configuration, and a GPU with at least 8 GB of memory is preferable, though classification-only mode runs comfortably on a CPU.
+The minimum configuration is sufficient for inference on short clips, while training or fine-tuning the larger pretrained backbones benefits from the recommended configuration; classification-only mode runs comfortably on a standard CPU.
 
 #pagebreak()

@@ -12,10 +12,10 @@
 ]
 #align(center)[#text(size: 18pt, weight: "bold")[PERSONAL PROFILE]]
 
-#v(2em)
+#v(0.8em)
 
 #let profile_photo(path) = box(
-  image(path, width: 90pt, height: 108pt, fit: "cover"),
+  image(path, width: 75pt, height: 90pt, fit: "cover"),
   stroke: 1pt + black,
   radius: 2pt,
 )
@@ -33,7 +33,7 @@
 #table(
   columns: (110pt, 1fr),
   stroke: 0.5pt + black,
-  inset: 6pt,
+  inset: 4pt,
   align: left,
   align(center)[#profile_photo("/assets/Ajay Shastry C G.jpg")],
   [

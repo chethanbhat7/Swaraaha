@@ -4,56 +4,53 @@
 #chapter_heading[INTRODUCTION]
 
 == INTRODUCTION TO THE PROJECT
-Speech fluency lets a person put thoughts and feelings into words.
-Stuttering breaks that flow through involuntary repetitions, prolongations, or blocks.
-It affects people at every age and can wear down confidence, which makes conversation and social contact more difficult.
-Spotting the patterns early helps therapy and day-to-day management.
+Speech fluency lets people express thoughts and emotions clearly.
+Stuttering, a common speech disorder, interrupts that flow with involuntary repetitions, prolongations, or blocks in speech production.
+It affects people of all ages and can hurt their confidence, their ability to communicate, and their social interactions.
+Identifying stuttering patterns early helps with therapy and management.
 
-Manual detection and assessment still depend heavily on a speech-language pathologist who listens to recordings and marks what they hear.
-Two clinicians can disagree about the same sample, the work is slow, and repeating it tires them.
-That reliance on human listening also makes large-scale assessment and continuous monitoring hard to organise.
-Deep learning and speech signal processing now offer a scalable alternative.
-This project builds a system that detects, classifies, and analyzes five stuttering types: prolongations, blocks, sound repetitions, word repetitions, and interjections.
+Traditionally, detection and assessment rely on manual observation by speech-language pathologists.
+The results can be subjective, time-consuming, and inconsistent from one expert to another, and the work takes a physical toll on the pathologist.
+That dependence on human evaluation makes large-scale assessment and continuous monitoring difficult.
+With recent advances in deep learning and speech signal processing, automated stutter detection has become a reliable, scalable alternative.
+This project develops a system that automatically detects, classifies, and analyzes stuttering types (prolongation, block, sound repetition, word repetition, and interjection) using deep learning.
 
-The pipeline preprocesses input audio, turns it into embeddings, and analyzes it with Wav2Vec 2.0, which captures fine acoustic detail and dependencies across longer stretches of speech.
-A second module localizes the stuttering events and returns their timestamps.
-Those timestamps line up with the transcript, so the system flags only the affected segments.
-The finished model sits behind a simple interface where a user records or uploads a sample and gets timestamped detections, class labels, and confidence scores.
+Input audio is preprocessed and converted into embeddings, then analyzed with Wav2Vec 2.0, which captures both local acoustic patterns and long-range temporal dependencies that separate normal from dysfluent speech.
+Alongside classification, the same audio passes through a localization module that returns the timestamps of the stuttering events, and the detected stutter timestamps are hard-aligned with the transcript timestamps so that only the affected speech segments are identified.
+The finished model is integrated into a simple interface where users record or upload speech samples and receive an analysis with timestamped detection results and classification output.
 
-The aim is an accurate, objective, and accessible diagnostic tool for speech-language pathologists and people who stutter.
-The work also supports the use of artificial intelligence in healthcare, where the same analysis can directly aid diagnosis, therapy, and a better quality of life.
+The project aims to give speech-language pathologists and people who stutter an accurate, objective, and accessible diagnostic tool.
+The system also contributes to the growing use of artificial intelligence in healthcare, supporting diagnosis, therapy, and an improved quality of life for people who stutter.
 
 == PROPOSED METHOD
-The proposed method is a deep learning system that detects and classifies speech dysfluencies early, using audio recordings as input.
-Preprocessing removes noise, balances loudness, and sharpens acoustic detail across all samples.
-Segmentation isolates the regions that carry speech so silence and background noise drop out.
-Augmentation such as noise injection, time and pitch shifting, and amplitude scaling exposes the model to different speaking rates and recording conditions.
-The system then puts each input into one of five dysfluency types and marks where the event occurred, which supports early diagnosis and treatment planning.
-Automating this work cuts manual effort, reduces observer bias, and makes the assessment more reliable.
+The proposed method aims to develop an efficient deep learning-based system for the early detection and classification of speech dysfluencies from audio recordings.
+The process begins with comprehensive audio preprocessing that includes noise reduction, normalization, and enhancement of acoustic clarity across all samples.
+Segmentation isolates the meaningful regions of speech, eliminating irrelevant silence and background, and data augmentation such as noise injection, time and pitch shifting, and scaling simulates variations in speaking rate and recording conditions.
+The system accurately categorizes the input into five dysfluency types: prolongation, block, sound repetition, word repetition, and interjection, and localizes the segments where these occur, supporting early diagnosis and effective treatment planning.
+This automated approach reduces manual workload, minimizes observer bias, and enhances diagnostic reliability, making it a valuable tool in computer-aided speech assessment.
 
 == LITERATURE SURVEY
 #include "/contents/literature_survey.typ"
 
 == PROBLEM STATEMENT
 
-Stuttering assessment in clinical practice still relies on a speech-language pathologist who listens to recordings and marks dysfluencies by hand. The process is slow, subjective, and hard to reproduce, and disagreement between raters makes a patient's progress difficult to track. Most automated tools stop at binary detection: they report that a recording contains stuttering but not which type occurred or exactly where in the audio it occurred, which limits their use for therapy planning.
+Stuttering assessment in clinical practice still depends heavily on manual observation, where a speech-language pathologist listens to recordings and marks dysfluencies by hand. This process is slow, subjective, and difficult to reproduce, and the disagreement between raters makes it hard to track a patient's progress reliably. Existing automated tools mostly stop at binary detection, reporting that a recording contains stuttering without indicating which type occurred or where in the audio it occurred, which limits their usefulness for therapy planning.
 
-This project closes that gap with a single pipeline that takes an unconstrained speech recording and produces a structured analysis: whether stuttering is present, which of the five dysfluency types are involved, and the exact time regions where each event occurs. The system must also work without a large annotated corpus from the target speaker and must run fast enough for interactive assessment instead of offline batch processing.
+The problem addressed in this project is therefore to build a single pipeline that takes an unconstrained speech recording and produces a structured analysis: whether stuttering is present, which of the five dysfluency types are involved, and the exact time regions where each event occurs. The system must also remain usable without large annotated corpora from the target speaker and must run fast enough to support interactive assessment rather than offline batch processing.
 
 == OBJECTIVES
 
-The project is built around four objectives, and each one supplies one stage of the final pipeline.
+The project is organized around four objectives, each contributing one stage of the final pipeline.
 
-+ #block[*Speech preprocessing:* clean and standardise the input audio so every later model gets consistent data. This covers resampling to a fixed rate, DC offset removal, peak normalization, silence trimming, fixed-length padding, and augmentation such as noise injection and time or pitch shifting, which together limit the effect of varying recording conditions and speaker loudness.]
++ *Speech preprocessing:* clean and standardize the input audio so that every downstream model receives consistent data. This covers resampling to a fixed rate, DC offset removal, peak normalization, silence trimming, fixed-length padding, and augmentation such as noise injection and time or pitch shifting, which together reduce the effect of varying recording conditions and speaker loudness.
 
-+ #block[*Stutter detection:* decide whether a sample contains dysfluent speech. The binary output controls the rest of the analysis, so the model is trained to stay reliable across different speakers, languages, and background noise, not merely on clean studio recordings alone.]
++ *Stutter detection:* determine whether a given speech sample contains dysfluent speech at all. This objective produces the binary signal that gates the rest of the analysis, so it is trained to be robust across speakers, languages, and background noise rather than tuned only for clean studio recordings.
 
-+ #block[*Stutter classification:* identify which dysfluency types are present among prolongation, block, sound repetition, word repetition, and interjection. Because these events often co-occur, the system decides each type independently and gives it a separate confidence score instead of forcing one mutually exclusive label.]
++ *Stutter classification:* identify which dysfluency types are present among prolongation, block, sound repetition, word repetition, and interjection. Because these events often co-occur, each type is modelled as an independent decision with its own confidence score instead of forcing a single mutually exclusive label.
 
-+ #block[*Stutter localization:* find the time regions where detected events occur and align them with the corresponding words in the transcript. Clinicians get usable timestamps, so they can go straight to the affected segment and compare the detected events with what was said.]
++ *Stutter localization:* find the time regions in the waveform where the detected events occur and align them with the corresponding words in the transcript. This objective turns a clip-level prediction into actionable timestamps, allowing clinicians to jump directly to the affected segment and compare the detected events against the spoken content.
 
-The objectives are ordered so each stage builds on the one before it. Preprocessing yields a normalized waveform and spectrogram for detection and classification. Detection narrows the analysis to samples that contain dysfluencies. Type-level scores come from classification, and localization maps events back onto the time axis and the transcript.
-Together these stages turn a recording into evidence that can be inspected at clip level and at event level. The classification scores summarise what was detected, while the localized intervals and aligned transcript show where it happened, which makes the result easier to review.
+These objectives are ordered so that each one builds on the output of the previous stage. Preprocessing produces a normalized waveform and spectrogram representation that both the detection and classification models consume, detection narrows the analysis to samples that actually contain dysfluencies, classification assigns type-level scores to those samples, and localization maps the detected events back onto the time axis and the transcript.
 
 
 
