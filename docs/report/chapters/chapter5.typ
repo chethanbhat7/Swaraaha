@@ -11,7 +11,7 @@ In this research, Wav2Vec 2.0-based models were initially utilized to classify s
 To further enhance diagnostic precision, a hybrid framework was developed by combining five independent Wav2Vec 2.0 binary classifiers with the Wav2Vec2 frame-level localizer and Whisper automatic speech recognition, enabling classification, localization, and transcription in a single pipeline.
 The testing process involved validating every stage of the pipeline, including data preprocessing, model training, classification, localization, and web-based visualization, through unit, integration, functional, and system tests.
 Comprehensive testing confirmed that the proposed system satisfies all functional and non-functional requirements while maintaining reliable classification and localization.
-Performance evaluation using precision, recall, F1-score, AUROC, AUPRC, specificity, and confusion matrix analysis, along with evaluation on the held-out test set and a cross-corpus set, demonstrated the robustness and generalization ability of the models.
+Performance evaluation using precision, recall, F1-score, AUROC, AUPRC, and specificity, along with evaluation on the held-out test set and a cross-corpus set, demonstrated the robustness and generalization ability of the models.
 The results are broken down by model family and dysfluency class, and the two model families, the Wav2Vec2-based models and the CNN-based models, are compared against each other and analyzed for their strengths and weaknesses.
 
 == TYPES OF TESTS
@@ -48,7 +48,7 @@ This section presents the evaluation of the trained models: how the Wav2Vec2-bas
 
 === Model Evaluation of the Wav2Vec2 Classifiers
 The model registry defines two Wav2Vec2-based classification configurations: the default `single` configuration of five independent Wav2Vec2 binary classifiers, and a `multitask` variant that shares a single backbone and five classification heads.
-This section first analyzes the multitask variant in detail and then reports the shipped `single` configuration; the confusion matrices at the end of the section come from the shipped `single` configuration.
+This section first analyzes the multitask variant in detail and then reports the shipped `single` configuration.
 
 The multitask variant uses a single Wav2Vec2-base backbone with five shared binary heads.
 Training used Focal Loss (gamma=2.0), backbone freezing for 3 epochs, AdamW (LR 3 × 10#super[-5]), a 500-step warm-up, and early stopping with a patience of 5.
@@ -85,33 +85,6 @@ Both figures mirror the table above: interjection leads on every measure, while 
 
 The shipped `single` configuration of five independent binary classifiers scores slightly higher in distribution, with a test F1 of 0.573 at threshold 0.5 (0.570 with tuned thresholds), demonstrating superior discrimination across subtle phonemic boundaries and eliminating gradient interference between distinct dysfluency categories.
 
-The confusion matrices for the five dysfluency types are shown in Figure 5.3 and visualize the distribution of predictions of the shipped `single` configuration of five independent binary classifiers.
-
-Before examining the matrices, it is useful to recall how the aggregate scores were obtained. Each binary classifier was trained with a class-balanced objective, and the operating threshold was selected on the validation split rather than the test split, so the matrices show the behaviour of the shipped configuration at its default threshold rather than a threshold tuned to inflate the reported numbers. Reading them row by row reveals how often each event type is correctly recovered, while reading them column by column shows which fluent or other-type segments are most likely to be mistaken for it. This distinction matters in practice, because a clinician cares both about missed events and about false alarms that interrupt a session.
-
-The matrices are arranged so that the true label is on one axis and the predicted label on the other, with darker cells indicating larger counts. A classifier that simply predicted the majority class would produce a single dark row, which none of the five matrices does, confirming that each head learned a genuine decision boundary rather than collapsing to the dominant label. The remaining off-diagonal mass is concentrated in specific cells, which points to concrete confusions that later sections address through threshold tuning and post-processing.
-
-#add_image(
-  grid(
-    columns: (1fr, 1fr, 1fr),
-    column-gutter: 5pt,
-    row-gutter: 5pt,
-    image("/assets/prolongation_confusion_matrix.png", width: 100%),
-    image("/assets/block_confusion_matrix.png", width: 100%),
-    image("/assets/soundrep_confusion_matrix.png", width: 100%),
-    image("/assets/wordrep_confusion_matrix.png", width: 100%),
-    image("/assets/interjection_confusion_matrix.png", width: 100%),
-  ),
-  caption: [Confusion matrices for the five binary classifiers]
-)
-
-Each confusion matrix contrasts the true labels against the predicted labels for one binary classifier, so the diagonal cells count correct decisions and the off-diagonal cells expose the direction of error.
-A strong diagonal with a light upper-right corner means the classifier rarely over-triggers, while a heavy lower-left corner indicates missed events, and the balance between the two is what separates a conservative detector from an over-sensitive one.
-Interjection shows the cleanest diagonal, consistent with its high F1 and AUROC, because its acoustic signature, typically a short vocalized filler, is spectrally distinct from fluent speech.
-Block and word repetition show more spread, since prolonged silences and repeated words can resemble pauses and normal hesitation, which the classifiers then confuse at the boundary.
-Reading the matrices alongside the per-class table makes the trade-off explicit: a classifier tuned for high recall shifts mass into the false-positive corner, while one tuned for precision leaves more events undetected.
-This is precisely why the shipped system keeps separate binary classifiers instead of a single multi-class head, since each event type can be calibrated to its own operating point without disturbing the others.
-
 The Wav2Vec2-based model family also provides the frame-level localizer, evaluated on the same 3,715 test samples at a threshold of 0.5; the shipped registry inference threshold for this localizer is 0.3. Results are in Table 5.2.
 
 #add_table(
@@ -135,7 +108,7 @@ Of 995 true events it predicted 1,846, of which 1,263 were false alarms (4.28 pe
 The gap between frame-level and event-level behaviour is worth emphasizing. A frame F1 of 0.770 means that most individual frames are labelled correctly, but the event count shows that the localizer predicts nearly twice as many events as are actually present, so a clinician using the raw output would see clusters of short, spurious detections around genuine events. The 4.28 false alarms per minute figure is the practical consequence of that over-prediction, and it is the main reason the shipped registry applies a higher inference threshold of 0.3 rather than the 0.5 used for reporting.
 Raising the threshold trades recall for precision by removing low-confidence detections, which reduces the false-alarm rate at the cost of occasionally dropping a weak but real event. The choice of threshold is therefore a clinical decision as much as a technical one, and the system exposes it as a configurable parameter so that a screening workflow can favour sensitivity while a detailed assessment can favour precision. The following subsection turns to how the classifiers behind these detections were trained, since the localizer and the classifiers share the same pretrained backbone and the same preprocessing conventions.
 
-These frame-level metrics are visualized in Figure 5.4.
+These frame-level metrics are visualized in Figure 5.3.
 
 #add_image(align(center, image("/assets/localizer_metrics.png", width: 90%)), caption: [Frame-level metrics of the Wav2Vec2 localizer])
 
@@ -237,7 +210,7 @@ On the Boli cross-corpus set the ranking flips: CNN-LSTM reaches 0.508, the best
 
 This performance shift underscores the impact of domain shift across acoustic corpora. While the high-capacity Wav2Vec 2.0 backbone excels in-distribution through representations learned from large unlabeled corpora, it exhibits sensitivity to the linguistic diversity and acoustic environments of the Boli set. In contrast, the lightweight CNN-LSTM architecture operates directly on mel-spectrograms with recurrent temporal tracking, providing strong cross-corpus generalization across unseen speakers and regional accents.
 
-The per-class tuned F1 scores on the Boli set are shown in Figure 5.5, where the lighter CNN variants lead the comparison.
+The per-class tuned F1 scores on the Boli set are shown in Figure 5.4, where the lighter CNN variants lead the comparison.
 
 #add_image(align(center, image("/assets/classifier_boli_f1.png", width: 90%)), caption: [Per-class tuned F1 on the Boli set])
 

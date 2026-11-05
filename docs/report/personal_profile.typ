@@ -23,7 +23,7 @@
 #let student_details(name, usn, email, phone) = [
   #text(weight: "bold")[#name]
   #v(0.2em)
-  #h(2em)USN: #usn
+  #v(0.2em)USN: #usn
   #v(0.2em)
   Email ID: #email
   #v(0.2em)

@@ -76,7 +76,6 @@ Once the models are trained and tested, various quantitative metrics are employe
 The five Wav2Vec 2.0 binary classifiers, one per dysfluency type, are further measured with AUROC (Area Under the Receiver Operating Characteristic Curve), AUPRC (Area Under the Precision-Recall Curve), and specificity, summarized per class and as a macro average across the five dysfluency classes.
 The Wav2Vec2 frame-level localizer is measured with frame-level precision, recall, and F1, detection accuracy, mean Intersection over Union (IoU) between predicted and ground-truth regions, and the false alarm rate per minute.
 
-A confusion matrix is generated for each of the five binary classifiers to visualize the distribution of predictions, highlighting true positives, false positives, true negatives, and false negatives.
 This detailed evaluation helps identify the strengths and weaknesses of each class, for example that interjections are detected most reliably while blocks are the hardest class.
 
 All reported results use the held-out test set of 3,715 clips, which is never touched during training or threshold selection, together with a cross-corpus Boli set that checks how well the models transfer to unseen speakers.
