@@ -5,13 +5,13 @@
 #chapter_heading[SYSTEM TESTING]
 
 == INTRODUCTION
-Testing is a crucial phase in the development of the proposed system for stutter detection and localization, ensuring the overall accuracy, stability, and reliability of both the individual models and the hybrid pipeline.
-Roughly one percent of people worldwide are affected by stuttering, and diagnosis today still relies mostly on manual assessment by speech-language pathologists, which is subjective, time-consuming, and not available to everyone, making early and reliable detection essential.
-In this research, Wav2Vec 2.0-based models were initially utilized to classify speech dysfluencies from audio.
-To further enhance diagnostic precision, a hybrid framework was developed by combining five independent Wav2Vec 2.0 binary classifiers with the Wav2Vec2 frame-level localizer and Whisper automatic speech recognition, enabling classification, localization, and transcription in a single pipeline.
-The testing process involved validating every stage of the pipeline, including data preprocessing, model training, classification, localization, and web-based visualization, through unit, integration, functional, and system tests.
-Comprehensive testing confirmed that the proposed system satisfies all functional and non-functional requirements while maintaining reliable classification and localization.
-Performance evaluation using precision, recall, F1-score, AUROC, AUPRC, specificity, and confusion matrix analysis, along with evaluation on the held-out test set and a cross-corpus set, demonstrated the robustness and generalization ability of the models.
+Testing is a major part of developing the proposed system for stutter detection and localization, since it checks the overall accuracy, stability, and reliability of the individual models and the whole hybrid pipeline.
+Roughly one percent of people worldwide stutter, and diagnosis today still depends mostly on manual assessment by speech-language pathologists. That work is subjective, time-consuming, and not available to everyone in practice, so early and reliable detection matters.
+In this research, Wav2Vec 2.0-based models were first used to classify speech dysfluencies from audio.
+To improve diagnostic precision further, the hybrid framework combines five independent Wav2Vec 2.0 binary classifiers with the Wav2Vec2 frame-level localizer and with Whisper automatic speech recognition, and it handles classification, localization, and transcription in a single pipeline.
+The testing process covered every stage of the entire pipeline, including data preprocessing, model training, classification, localization, and web-based visualization, through unit, integration, functional, and system tests.
+Testing showed that the proposed system meets all functional and non-functional requirements and still classifies and localizes speech reliably.
+The models were judged on precision, recall, F1-score, AUROC, AUPRC, specificity, and confusion matrix analysis, and also on a held-out test set and a cross-corpus set, which showed their reliability and ability to generalize.
 The results are broken down by model family and dysfluency class, and the two model families, the Wav2Vec2-based models and the CNN-based models, are compared against each other and analyzed for their strengths and weaknesses.
 
 == TYPES OF TESTS
@@ -27,21 +27,21 @@ On the desktop side, individual widgets such as the waveform view, results panel
 Ruff enforces consistent code style across the codebase.
 
 === Integration Testing
-Integration testing ensures that software modules, when connected, work together seamlessly.
+Integration testing checks that the software modules work together once connected.
 The backend tests exercise the FastAPI endpoints (`/api/analyze`, `/api/classify`, `/api/localize`, and `/api/report`), which chain preprocessing, classification, transcription, localization, and fusion into a single analysis response.
 The classification, fusion, localizer, severity, and report generator services are tested as combined units, and the model registry is checked against the classifier and localization pipelines.
 The desktop application calls the shared model package directly, and its model runner is integration-tested against the same service layer.
 
 === Functional Testing
-Functional testing validates the complete set of features against the specifications under typical and edge cases.
-The workflow of recording or uploading audio, running the analysis, and viewing the results page with classification scores, waveform overlays, and the timestamped transcript is exercised end to end.
-Report generation and download, severity mapping, multilingual transcription for English, Kannada, and Hindi, and history storage through IndexedDB and localStorage are all verified against the requirements defined in Chapter 2.
+Functional testing checks the full set of features against the specifications under typical and edge cases.
+Testers exercise the workflow of recording or uploading audio, running the analysis, and viewing the results page with classification scores, waveform overlays, and the timestamped transcript end to end.
+Testers verify report generation and download, severity mapping, multilingual transcription for English, Kannada, and Hindi, and history storage through IndexedDB and localStorage against all the requirements defined in Chapter 2.
 
 === System Testing
-System testing subjects the whole software product to end-to-end scenarios in conditions that resemble the user environment.
-The React web application was exercised in supported browsers and the PySide6 desktop application in a standalone offline setup with no separate server, both against the same machine learning backend.
-Supported audio formats (WAV, MP3, OGG, and M4A) were validated across the upload, drag-and-drop, and microphone capture paths, corrupted files were rejected with clear error messages, and analysis turnaround was confirmed to stay within a few seconds per clip as required by the performance requirements in Chapter 2.
-The combined system-level suite confirmed that the application meets its functional and non-functional requirements.
+System testing puts the whole software product through end-to-end scenarios in conditions that resemble the user environment.
+Testers ran the React web application in supported browsers and the PySide6 desktop application in a standalone offline setup with no separate server, both against the same machine learning backend.
+Testers checked the supported audio formats (WAV, MP3, OGG, and M4A) across the upload, drag-and-drop, and microphone capture paths, confirmed that corrupted files were rejected with clear error messages, and checked that analysis turnaround stayed within a few seconds per clip as performance requirements in Chapter 2 demand.
+The full system-level suite showed that the application meets its functional and non-functional requirements.
 
 == RESULT AND ANALYSIS
 This section presents the evaluation of the trained models: how the Wav2Vec2-based and CNN-based model families were trained and evaluated, the hyper parameter tuning applied, and a comparative performance analysis of all architectures.
@@ -87,9 +87,9 @@ The shipped `single` configuration of five independent binary classifiers scores
 
 The confusion matrices for the five dysfluency types are shown in Figure 5.3 and visualize the distribution of predictions of the shipped `single` configuration of five independent binary classifiers.
 
-Before examining the matrices, it is useful to recall how the aggregate scores were obtained. Each binary classifier was trained with a class-balanced objective, and the operating threshold was selected on the validation split rather than the test split, so the matrices show the behaviour of the shipped configuration at its default threshold rather than a threshold tuned to inflate the reported numbers. Reading them row by row reveals how often each event type is correctly recovered, while reading them column by column shows which fluent or other-type segments are most likely to be mistaken for it. This distinction matters in practice, because a clinician cares both about missed events and about false alarms that interrupt a session.
+Before reading the matrices, two details about how the aggregate scores were obtained matter here. Each binary classifier was trained with a class-balanced objective, and the operating threshold was selected on the validation split rather than the test split, so the matrices show the behaviour of the shipped configuration at its default threshold, not a threshold deliberately tuned to inflate the reported numbers. Reading them row by row reveals how often each event type is correctly recovered, while reading them column by column shows which fluent or other-type segments are most likely to be mistaken for it. This distinction matters in practice, because a clinician cares both about missed events and about false alarms that interrupt a session.
 
-The matrices are arranged so that the true label is on one axis and the predicted label on the other, with darker cells indicating larger counts. A classifier that simply predicted the majority class would produce a single dark row, which none of the five matrices does, confirming that each head learned a genuine decision boundary rather than collapsing to the dominant label. The remaining off-diagonal mass is concentrated in specific cells, which points to concrete confusions that later sections address through threshold tuning and post-processing.
+The matrices are arranged so that the true label is on one axis and the predicted label on the other, with darker cells indicating larger counts. A classifier that simply predicted the majority class every time would produce a single dark row. None of the five matrices does, so each head learned a real decision boundary instead of collapsing to the dominant label. The remaining off-diagonal mass is concentrated in specific cells, which points to concrete confusions that later sections address through threshold tuning and post-processing.
 
 #add_image(
   grid(
@@ -132,10 +132,10 @@ The localizer detects most dysfluency events with good accuracy: frame precision
 The mean IoU of 0.779 means the regions it finds overlap well with ground truth.
 Of 995 true events it predicted 1,846, of which 1,263 were false alarms (4.28 per minute).
 
-The gap between frame-level and event-level behaviour is worth emphasizing. A frame F1 of 0.770 means that most individual frames are labelled correctly, but the event count shows that the localizer predicts nearly twice as many events as are actually present, so a clinician using the raw output would see clusters of short, spurious detections around genuine events. The 4.28 false alarms per minute figure is the practical consequence of that over-prediction, and it is the main reason the shipped registry applies a higher inference threshold of 0.3 rather than the 0.5 used for reporting.
+The gap between frame-level and event-level behaviour matters in practice. A frame F1 of 0.770 means that most individual frames are labelled correctly, but the event count shows that the localizer predicts nearly twice as many events as are actually present, so a clinician using the raw output would see clusters of short, spurious detections around genuine events. The 4.28 false alarms per minute figure is the practical consequence of that over-prediction, and it is the main reason the shipped registry applies a higher inference threshold of 0.3 rather than the 0.5 used for reporting.
 Raising the threshold trades recall for precision by removing low-confidence detections, which reduces the false-alarm rate at the cost of occasionally dropping a weak but real event. The choice of threshold is therefore a clinical decision as much as a technical one, and the system exposes it as a configurable parameter so that a screening workflow can favour sensitivity while a detailed assessment can favour precision. The following subsection turns to how the classifiers behind these detections were trained, since the localizer and the classifiers share the same pretrained backbone and the same preprocessing conventions.
 
-These frame-level metrics are visualized in Figure 5.4.
+Figure 5.4 plots the localizer's key frame-level metrics.
 
 #add_image(align(center, image("/assets/localizer_metrics.png", width: 90%)), caption: [Frame-level metrics of the Wav2Vec2 localizer])
 
@@ -143,11 +143,11 @@ These frame-level metrics are visualized in Figure 5.4.
 The training phase prepares the models that the system relies on for classification and localization.
 
 The system is trained and evaluated on three publicly available stuttering datasets: Project Boli, SEP-28K, and UCLASS.
-Project Boli is a multilingual Indian language dataset with stuttering data across Hindi, Kannada, Telugu, and other Indian languages, sourced from GitHub, and includes both read and spontaneous speech.
-The ingestion resolves only the English task codes of this dataset, so the Boli material used here is English speech; it is therefore a cross-corpus rather than a cross-lingual evaluation set.
-SEP-28K provides roughly 28,000 audio clips from stuttering support group podcasts, annotated for blocks, prolongations, sound repetitions, word repetitions, and interjections, and was obtained from Kaggle.
-UCLASS is an additional stuttering speech dataset from Kaggle that provides supplementary annotated clips.
-Each dataset is normalized into a unified format with a `combined_labels.csv` file of multi-label binary annotations and interval files per clip.
+Project Boli is a multilingual Indian dataset with stuttering data in Hindi, Kannada, Telugu, and other Indian languages. It comes from GitHub and includes both read and spontaneous speech.
+The ingestion pipeline keeps only the English task codes from this dataset, so the Boli material used here is English speech. It is therefore a cross-corpus set, not a cross-lingual one.
+SEP-28K offers roughly 28,000 audio clips from stuttering support group podcasts, annotated for blocks, prolongations, sound repetitions, word repetitions, and interjections, and it comes from Kaggle.
+UCLASS is another stuttering speech dataset from Kaggle, and it adds supplementary annotated clips.
+All three datasets are normalized into one format with a `combined_labels.csv` file of multi-label binary annotations and interval files per clip.
 The merged dataset is split 80:10:10 into training, validation, and testing subsets, and during training the training subset is re-split 80/20 by a stratified split into a fine-tuning set and a validation set used for early stopping and threshold selection.
 
 Each classifier is trained in a two-stage scheme.
@@ -157,9 +157,9 @@ Early stopping with a patience of 5 epochs prevents overfitting, and the checkpo
 During training, data augmentation applies waveform-level transforms (random noise injection, time stretching, pitch shifting, temporal shifting, and amplitude scaling) and spectrogram-level transforms (time and frequency masking).
 Checkpoints are stored under names that encode their training hyperparameters through a fingerprint convention, with checkpoint-based resume, an audio preprocessing cache for fast re-runs, `torch.compile` for roughly twice the training speed on CUDA, and gradient accumulation for effective batch size scaling.
 
-Several problems encountered during training were resolved.
-BCEWithLogitsLoss with a single logit per class created a zero-gradient equilibrium where the model collapsed to always predicting the majority class; switching to CrossEntropyLoss with two logits (present and not present) fixed this.
-Gradient clipping in the classifier loop silently killed learning by scaling the classifier head gradients down, so it was removed from the classification loop while the localizer loops retained it.
+We found and fixed several training problems.
+BCEWithLogitsLoss with a single logit per class created a zero-gradient equilibrium: the model simply collapsed to always predicting the majority class. Switching to CrossEntropyLoss with two logits (present and not present) fixed this.
+Gradient clipping in the classifier loop silently stopped learning by scaling the classifier head gradients down, so it was removed from the classification loop while the localizer loops kept it.
 Mixed-precision training with a GradScaler produced NaN gradients; using `torch.autocast` alone worked.
 Freezing the backbone for 3 epochs let the classifier head stabilize before fine-tuning, and longer freeze durations hurt performance.
 
@@ -178,8 +178,8 @@ The heavier Wav2Vec2 localizer is therefore shipped as the default; the registry
 === CNN-based Model Training
 The CNN-based models are trained on the same unified dataset and with the same two-stage scheme used for the Wav2Vec2 classifiers, but they consume mel-spectrograms instead of raw audio embeddings.
 CNN Pool applies global pooling over the convolutional feature maps, CNN Single processes a single spectrogram path, CNN-LSTM adds a recurrent layer to capture temporal context, and CNN-Transformer uses a transformer encoder over the spectrogram features.
-Spectrogram-level augmentation, namely time and frequency masking, is applied during training alongside the waveform-level transforms.
-Because these networks have only 0.27M to 0.54M parameters compared with roughly 94M to 97M for the Wav2Vec2 family, they train quickly and were used to study the trade-off between parameter count and cross-corpus generalization.
+Training also applies standard spectrogram-level augmentation, namely time and frequency masking, alongside the waveform-level transforms.
+These networks have only 0.27M to 0.54M parameters compared with roughly 94M to 97M for the Wav2Vec2 family, so they train quickly. We used them to study the trade-off between parameter count and cross-corpus generalization.
 
 === Hyper Parameter Tuning
 A threshold sweep on the validation set tested thresholds from 0.1 to 0.9 in steps of 0.05 for each class.
@@ -236,9 +236,9 @@ The shipped five-classifier Wav2Vec2 configuration scores highest in distributio
 The CNN models have far fewer parameters but score lower on the test set.
 On the Boli cross-corpus set the ranking flips: CNN-LSTM reaches 0.508, the best cross-corpus result, followed by CNN Single (0.476). Lighter models seem to generalize better to unseen speakers, while heavy pre-trained models do better on familiar data.
 
-The per-class tuned F1 scores on the Boli set are shown in Figure 5.5, where the lighter CNN variants lead the comparison.
-This result reinforces the need to report both ordinary test performance and cross-corpus performance.
-The former measures how well the models recognize patterns similar to those seen during development, whereas the latter exposes sensitivity to changes in speaker, language, recording style, and data source.
+Figure 5.5 shows the per-class tuned F1 scores on the Boli cross-corpus set, where the lighter CNN variants lead the whole comparison.
+This result shows why both ordinary test performance and cross-corpus performance need careful reporting.
+The first measures how well the models recognize patterns similar to those seen during development, while the second shows sensitivity to changes in speaker, language, recording style, and data source.
 
 It was concluded that the Wav2Vec2 family should be shipped for in-distribution accuracy, with the CNN-LSTM variant available as a lighter alternative that transfers best to unseen speakers and languages.
 

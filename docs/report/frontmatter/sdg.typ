@@ -100,14 +100,15 @@ objectives, implementation, and outcomes.
       Reduce inequality within and among countries.]
   ],
   [
-    #text(size: 10.5pt)[Certificate images]
+    #text(size: 10.5pt)[Speech-language pathology services are concentrated in
+    Reduce inequality within cities and are costly, so rural and low-income people who
+    and among countries.
+    stutter are often left undiagnosed. A low-cost automated
+    tool widens access to assessment and narrows the gap
+    between those who can and cannot afford specialist care.
+    This supports Target 10.2 (social and economic inclusion)
+    and Target 10.3 (equal opportunity).
+  ]
   ],
-  colbreak(),
-  align(center, image("/assets/JS-Shreekrishna.png", width: 3cm)),
-  colbreak(),
-  align(center, image("/assets/JS-chethan.jpeg", width: 3cm)),
-  colbreak(),
-  align(center, image("/assets/JS-skanda.jpeg", width: 3cm)),
-  colbreak(),
-  align(center, image("/assets/JS-Srinivas.jpeg", width: 3cm))
-)
+
+ )

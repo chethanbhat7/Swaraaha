@@ -105,48 +105,36 @@
 ]
 
 #literature_survey(
-  [S. Kim and A. Kumar],
-  [FluentNet: End-to-End Detection of Speech Disfluency with Deep Learning]
+  [T. Kourkounakis et al.],
+  [FluentNet: End-to-End Detection of Stuttered Speech Disfluencies with Deep Learning]
 )[
   FluentNet is a CNN-LSTM architecture for end-to-end speech disfluency detection.
   CNN layers extract short-term spectral features from mel-spectrograms, and LSTM layers model temporal continuity, which suits recurring stutter patterns.
-  On SEP-28k it reached 91% classification accuracy and ran in real time in therapy, where users received visual feedback.
+  On SEP-28k it reached 91.4% classification accuracy.
   Skipping handcrafted features reduced bias.
   The architecture informs the CNN models compared in this project.
 ]
 
-#literature_survey(
-  [R. Ahmed and J. Park],
-  [Stutter-Solver: End-to-End Multi-Lingual Dysfluency Detection.]
-)[
-  This study builds a multilingual framework that detects stuttering events in English, Korean, and Japanese data.
-  The model uses an encoder-decoder transformer similar to BERT and captures contextual relationships in speech sequences.
-  Trained on the combined multilingual datasets, it adapted well to linguistic variation and reached an F1-score of 95.2% in English and over 93% on non-English corpora.
-  Attention visualisation showed which input segments influenced each decision.
-]
-
-#literature_survey(
-  [F. Rahimi and D. Torres],
-  [Large Language Models for Dysfluency Detection in Stuttered Speech]
-)[
-  This paper explores large language models and transformer architectures for speech dysfluency analysis.
-  Speech features are embedded as tokenized sequences so the model can detect contextual disruptions.
-  The LLM approach beat CNN and RNN models in recall and precision, particularly for subtle types such as interjections and soft blocks.
-  Pretraining on general speech data also helped on smaller stutter-specific corpora, and attention visualisation made predictions easier to inspect.
-]
+// NOTE: The former entry attributed to R. Ahmed et al. ("Stutter-Solver:
+// End-to-End Multi-Lingual Dysfluency Detection") could not be verified as a
+// separate publication. Its title duplicates the Stutter-Solver paper by
+// X. Zhou et al. already covered by [9], so the unverifiable entry was removed.
+// The duplicate Wagner et al. entry was also removed; the published
+// INTERSPEECH 2024 version is retained as [6].
 
 #literature_survey(
   [V. Uloza et al.],
   [An Artificial Intelligence-Based Algorithm for the Assessment of Substitution Voicing]
 )[
-  This paper develops a deep neural network for assessing substitution voicing in pathological speech.
-  CNNs and principal component analysis handle classification, and preprocessing such as noise removal and normalization gives the networks consistent input.
-  Accuracy exceeded 93%, which shows that AI can detect subtle speech impairments.
-  The study is about substitution voicing rather than stuttering, but its use of spectral analysis and CNN features informed this project.
+  This study develops an artificial intelligence-based framework for assessing substitution voicing in patients who have undergone laryngeal cancer surgery.
+  The model uses a hybrid convolutional neural network architecture to analyse Mel-frequency spectrograms and cochleagrams extracted from speech recordings.
+  Trained on 309 speech recordings and evaluated on 70 previously unseen samples, the system achieved an overall accuracy of 92.14%.
+  The proposed Acoustic Substitution Voicing Index (ASVI) demonstrated a strong correlation of 0.863 with assessments performed by trained medical professionals.
+  The lightweight architecture achieved a processing time of 3.56 ms, making it suitable for real-time speech analysis on CPU-based devices.
 ]
 
 #literature_survey(
-  [H. Müller and C. Lee],
+  [N. Zhang et al.],
   [Reinvestigating the Neural Bases Involved in Speech Production of Stutterers: An ALE Meta-Analysis]
 )[
   This meta-analysis of fMRI and EEG studies looks at the neural bases of speech production in people who stutter.
@@ -176,8 +164,8 @@
 ]
 
 #literature_survey(
-  [C. Lea and V. Mitra],
-  [SEP-28K: A Dataset for Stuttering Event Detection from Podcasts]
+  [C. Lea et al.],
+  [SEP-28k: A Dataset for Stuttering Event Detection from Podcasts with People Who Stutter]
 )[
   SEP-28K contains over 28,000 clips from stuttering support group podcasts, annotated for blocks, prolongations, repetitions, interjections, and revisions.
   Clips carry crowdsourced labels from non-expert listeners and expert labels from speech-language pathologists.
@@ -187,7 +175,7 @@
 
 #literature_survey(
   [O. Shonibare et al.],
-  [Enhancing ASR for Stuttered Speech with Limited Data using Detect and Pass]
+  [Enhancing ASR for Stuttered Speech with Limited Data Using Detect and Pass]
 )[
   This paper proposes a two-stage approach to ASR on stuttered speech with limited labelled data.
   A context-aware classifier trained on a small amount of labelled stuttering data finds dysfluency regions, and a modified ASR decoder passes over them so transcription focuses on fluent segments.
@@ -196,7 +184,7 @@
 ]
 
 #literature_survey(
-  [S. Bayerl et al.],
+  [S. P. Bayerl et al.],
   [Detecting Dysfluencies in Stuttering Therapy Using wav2vec 2.0]
 )[
   The study applies a fine-tuned wav2vec 2.0 to dysfluency detection in clinical therapy recordings.
@@ -206,8 +194,8 @@
 ]
 
 #literature_survey(
-  [S. Bayerl et al.],
-  [Dysfluencies Seldom Come Alone - Detection as a Multi-Label Problem]
+  [S. P. Bayerl et al.],
+  [A Stutter Seldom Comes Alone - Cross-Corpus Stuttering Detection as a Multi-label Problem]
 )[
   This paper treats stuttering detection as a multi-label problem, since dysfluencies often occur together.
   A modified wav2vec 2.0 assigns an independent probability to each type, so overlapping events are detected at once.
@@ -217,7 +205,7 @@
 
 #literature_survey(
   [R. Gong et al.],
-  [AS-70: A Mandarin Stuttered Speech Dataset for Automatic Speech Recognition]
+  [AS-70: A Mandarin Stuttered Speech Dataset for Automatic Speech Recognition and Stuttering Event Detection]
 )[
   AS-70 is the first large Mandarin stuttered speech dataset, with 70 hours from speakers at different severity levels.
   It covers age groups, genders, and stuttering types, and includes word- and syllable-level dysfluency labels.
@@ -237,7 +225,7 @@
 
 #literature_survey(
   [A. Batra et al.],
-  [Boli: A Dataset for Understanding Stuttering Experience]
+  [Boli: A Dataset for Understanding Stuttering Experience and Analyzing Stuttered Speech]
 )[
   Boli is a multilingual Indian language dataset with read and spontaneous speech from people who stutter.
   It covers five stuttering types, records demographic metadata, and includes self-reported severity ratings.
@@ -245,32 +233,26 @@
 ]
 
 #literature_survey(
-  [A. R. Valente et al.],
+  [A. Valente et al.],
   [Clinical Annotations for Automatic Stuttering Severity Assessment]
 )[
   This study adds detailed clinical annotations from expert speech-language pathologists to FluencyBank.
   The labels cover audiovisual cues and secondary behaviours such as facial tension and eye blinking, plus physiological tension indicators, beyond the usual acoustic labels.
   The multi-dimensional scheme captures more of the clinical picture of severity.
   Such annotations allow models to account for the full stuttering experience rather than acoustic events alone.
-]
-
-#literature_survey(
-  [T. Grósz et al.],
-  [Wav2vec2-based Paralinguistic Systems to Recognise Vocalised Emotions and Stuttering]
-)[
-  This paper presents a wav2vec2-based system that recognises vocalised emotions and stuttering events together.
-  Self-supervised speech embeddings feed task-specific classification heads for both tasks.
-  It reached 62.1% unweighted average recall on the Stuttering Sub-Challenge.
-  The results connect emotional state and disfluency and suggest that shared representations help detection.
-]
-
-#literature_survey(
-  [J. Tang et al.],
-  [Speech Annotation Guidelines with People Who Stutter]
-)[
-  This paper presents annotation guidelines developed with people who stutter, standardising how stuttering events are labelled.
-  The guidelines resolve ambiguous cases with categorical definitions and decision trees, and they cover annotator training, inter-annotator agreement, and edge cases.
-  Community-informed guidelines raise annotation quality and reproducibility, which helps dataset construction and model evaluation.
+]#literature_survey(
+  [A. Batra et al.],
+  [Boli: A Dataset for Understanding Stuttering Experience and Analyzing Stuttered Speech]
+)[  Boli is a multilingual Indian language dataset with read and spontaneous speech from people who stutter.
+  It covers five stuttering types, records demographic metadata, and includes self-reported severity ratings.
+  The corpus fills a gap in non-English stuttering data, especially for South Asian languages, where prevalence and manifestation differ from Western populations.
+]#literature_survey(
+  [A. Valente et al.],
+  [Clinical Annotations for Automatic Stuttering Severity Assessment]
+)[  This study adds detailed clinical annotations from expert speech-language pathologists to FluencyBank.
+  The labels cover audiovisual cues and secondary behaviours such as facial tension and eye blinking, plus physiological tension indicators, beyond the usual acoustic labels.
+  The multi-dimensional scheme captures more of the clinical picture of severity.
+  Such annotations allow models to account for the full stuttering experience rather than acoustic events alone.
 ]
 
 #literature_survey(
@@ -280,24 +262,16 @@
   The study releases an updated FluencyBank with word-level timestamps and refined disfluency annotations.
   Transcripts carry granular labels and word timing for each clip, so models can be measured on disfluent input.
   The resource supports word-level localization, which is what this project needs to map events to the words where they occur.
-]
-
-#literature_survey(
-  [L. Nie et al.],
-  [MMSD-Net: Towards Multi-modal Stuttering Detection]
-)[
-  MMSD-Net is the first multimodal neural framework for stuttering detection, combining audio and visual signals through transformer-based cross-modal fusion.
-  It processes speech embeddings alongside facial expression and lip movement features.
-  F1 improved by 2% to 17% over single-modality approaches on benchmark datasets.
-  Visual cues help most for events such as blocks and prolongations that have distinct visual signatures.
-]
-
-#literature_survey(
-  [R. P. Buzzeti et al.],
-  [Detecting Stuttering with Artificial Intelligence: A Hybrid Method for Brazilian Portuguese]
-)[
-  This paper proposes a two-stage hybrid method for detecting and classifying stuttering-related disfluencies in Brazilian Portuguese.
-  The first stage finds possible disfluency regions from linguistic rules, and the second assesses severity.
+]#literature_survey(
+  [X. Tang et al.],
+  [Disability-First AI Dataset Annotation: Co-designing Stuttered Speech Annotation Guidelines with People Who Stutter]
+)[  This paper presents annotation guidelines developed with people who stutter, standardising how stuttering events are labelled. The guidelines resolve ambiguous cases with categorical definitions and decision trees, and they cover annotator training, inter-annotator agreement, and edge cases. Community-informed guidelines raise annotation quality and reproducibility, which helps dataset construction and model evaluation.
+]#literature_survey(
+  [A. Romana et al.],
+  [FluencyBank Timestamped: An Updated Data Set for Disfluency Detection and Automatic Intended Speech Recognition]
+)[  The study releases an updated FluencyBank with word-level timestamps and refined disfluency annotations.
+  Transcripts carry granular labels and word timing for each clip, so models can be measured on disfluent input.
+  The resource supports word-level localization, which is what this project needs to map events to the words where they occur.
   Portuguese stuttering differs from English in syllable structure and in how dysfluencies surface, and the method addresses those patterns.
   It extends detection to an underrepresented language.
 ]
@@ -315,36 +289,34 @@ Multilingual coverage, localization, and clinical reliability remain open.
       inset: 2.5pt,
     align: horizon,
     table.header([*Sl. No*], [*Author*], [*Title*], [*Features*], [*Pros*], [*Cons*]),
-    [1], [Pierre Arbajian et al. [1]], [Effect of speech segment samples selection in stutter block detection and remediation], [Analyzed different speech segment lengths and sample selection methods for accurate stutter block detection using acoustic classifiers.], [Improves detection precision through better segment selection.], [Sensitive to segmentation configuration.],
+    [1], [Pierre Arbajian et al. [1]], [Effect of Speech Segment Samples Selection in Stutter Block Detection and Remediation], [Analyzed different speech segment lengths and sample selection methods for accurate stutter block detection using acoustic classifiers.], [Improves detection precision through better segment selection.], [Sensitive to segmentation configuration.],
     [2], [Vikramjit Mitra et al. [2]], [Analysis and Tuning of a Voice Assistant System for Dysfluent Speech], [Modified ASR decoding parameters by increasing word insertion penalty and reducing acoustic model influence to suppress repetition errors], [Enhances intended speech recognition for dysfluent users.], [Focuses on recognition rather than dysfluency classification.],
     [3], [Payal Mohapatra et al. [3]], [Speech Disfluency Detection with Contextual Representation and Data Distillation], [Developed DisfluencyNet using contextual embeddings and distilled high-confidence samples for efficient low-resource training], [Achieves strong results with reduced training data], [Depends on carefully filtered annotations],
-    [4], [Jiajun Liu et al. [4]], [Automatic Speech Disfluency Detection Using Wav2Vec 2.0 for Different Languages], [Applied Wav2Vec 2.0 contextual embeddings for multilingual disfluency detection across variable speech durations.], [Supports multilingual detection with strong contextual learning.], [High resource requirements and limited availability of multilingual stuttering datasets.],
+    [4], [Jiajun Liu et al. [4]], [Automatic Speech Disfluency Detection Using wav2vec 2.0 for Different Languages with Variable Lengths], [Applied wav2vec 2.0 contextual embeddings for multilingual disfluency detection across variable speech durations.], [Supports multilingual detection with strong contextual learning.], [High resource requirements and limited availability of multilingual stuttering datasets.],
     [5], [Amrit Romana et al. [5]], [Automatic Disfluency Detection from Untranscribed Speech], [Built multimodal Bi-LSTM combining WavLM acoustic signals with BERT linguistic features from Whisper transcripts.], [Detects disfluencies without manual transcription.], [Multimodal design increases system complexity.],
     [6], [Dominik Wagner et al. [6]], [Large Language Models for Dysfluency Detection in Stuttered Speech], [Combined Wave2Vec 2.0 audio, Whisper text, and LLM-based fusion for multi-type stutter classification.], [Improves multi-class detection accuracy.], [Requires heavy computational resources.],
-    [7], [Shakeel A. Sheikh et al. [7]], [Advancing Stutter Detection via Data Augmentation, Class-Balanced Loss and Multi-Contextual Deep Learning], [Proposed multi-contextual StutterNet with augmentation and weighted loss for robust stuttering detection.], [Addresses data scarcity and class imbalance.], [Synthetic augmentation may reduce realism.],
+    [7], [Shakeel A. Sheikh et al. [7]], [Advancing Stuttering Detection via Data Augmentation, Class-Balanced Loss and Multi-Contextual Deep Learning], [Proposed multi-contextual StutterNet with augmentation and weighted loss for robust stuttering detection.], [Addresses data scarcity and class imbalance.], [Synthetic augmentation may reduce realism.],
     [8], [X. Zhou et al. [8]], [YOLO-Stutter: End-to-End Region-Wise Speech Dysfluency Detection], [Adapted YOLO on speech spectrograms for simultaneous dysfluency type prediction and temporal localization.], [Enables precise real-time stutter localization.], [Uses small dataset; lacks multimodal or contextual input for better generalization.],
     [9], [Xuanru Zhou et al. [9]], [Stutter-Solver: End-to-End Multi-Lingual Dysfluency Detection], [Developed multilingual YOLO-based dysfluency detector using synthetic articulatory and TTS-generated datasets.], [Expands multilingual coverage with SOTA accuracy.], [Synthetic speech may not fully match real speech.],
     [10], [Jinning Zhang et al. [10]], [Analysis and Evaluation of Synthetic Data Generation in Speech Dysfluency Detection], [Proposed LLM-Dys framework using LLM-generated dysfluent text and VITS TTS for scalable corpus creation.], [Generates diverse large-scale dysfluency datasets.], [Synthetic prosody may limit robustness.],
-    [11], [S. Kim & A. Kumar [11]], [FluentNet: End-to-End Detection of Speech Disfluency with Deep Learning], [CNN-LSTM hybrid model analyzing temporal and spectral dependencies in speech signals using SEP-28k dataset.], [High accuracy in multi-class dysfluency detection; suitable for real-time use.], [Model complexity increases training time and requires GPU-based systems.],
-    [12], [R. Ahmed & J Park [12]], [Stutter-Solver: End-to-End Multi-Lingual Dysfluency Detection], [Transformer-based multilingual model for detecting stuttering across multiple languages using contextual embeddings.], [Supports cross-lingual generalization and explainability through attention visualization.], [High resource requirements and limited availability of multilingual stuttering datasets.],
-    [13], [F. Rahimi & D. Torres [13]], [Large Language Models for Dysfluency Detection in Stuttered Speech], [Used transformer-based large language models (LLMs) to capture context disruptions in stuttered speech], [Outperforms CNN and RNN baselines on subtle dysfluency types.], [Requires heavy computational resources.],
-    [14], [V. Uloza et al. [14]], [An AI-Based Algorithm for the Assessment of Substitution Voicing], [CNN and PCA combine feature extraction and classification of pathological voice disorders.], [Demonstrates effectiveness of AI in medical speech analysis; high accuracy (>93%).], [Focused on substitution voicing, not directly stuttering-related; limited dataset scope.],
-    [15], [H Muller & C. Lee [15]], [Reinvestigating the Neural Bases Involved in Speech Production of Stutterers: An ALE Meta-Analysis], [Analyzed fMRI/EEG studies to identify brain regions linked to speech dysfluency.], [Provides a neurophysiological foundation supporting acoustic-based AI analysis.], [Not a computational model; lacks implementation for automated detection.],
-    [16], [A. Baevski et al. [16]], [wav2vec 2.0: A Framework for Self-Supervised Learning of Speech Representations], [Self-supervised pre-training of speech representations using masked prediction with transformer and convolutional encoder on raw audio.], [Provides foundational speech embeddings used by many downstream stuttering detection models.], [Requires large unlabeled data for pre-training; not stuttering-specific.],
-    [17], [P. Khanna et al. [17]], [StuD: A Multimodal Approach for Stuttering Detection with RAG and Fusion Strategies], [Combined Wav2Vec 2.0, HuBERT acoustic features with Llama-2 linguistic features and RAG-based adaptive classification.], [Achieves SOTA on SEP-28k and FluencyBank with adaptive retrieval.], [Heavy computational requirements for LLM and RAG components.],
-    [18], [C. Lea and V. Mitra [18]], [SEP-28K: A Dataset for Stuttering Event Detection from Podcasts], [Large-scale dataset with 28k+ clips annotated for 5 stuttering event types from podcast recordings.], [Enables large-scale training with 28%/24% F1 gains from data scaling.], [Podcast speech may not generalize to clinical or spontaneous settings.],
-    [19], [O. Shonibare et al. [19]], [Enhancing ASR for Stuttered Speech with Limited Data using Detect and Pass], [Two-stage approach: context-aware dysfluency detection followed by ASR that passes over detected events.], [Achieves 12-71% WER reduction with minimal labeled data.], [Relies on accurate first-stage detection; cascaded errors possible.],
-    [20], [S. Bayerl et al. [20]], [Detecting Dysfluencies in Stuttering Therapy Using wav2vec 2.0], [Fine-tuned wav2vec 2.0 with multi-task learning and SVM for therapy speech analysis.], [27% F1 improvement on clinical therapy recordings.], [Limited to therapy contexts; may not generalize to casual speech.],
-    [21], [S. Bayerl et al. [21]], [Dysfluencies Seldom Come Alone - Detection as a Multi-Label Problem], [Modified wav2vec 2.0 for simultaneous multi-label detection of co-occurring dysfluencies.], [SOTA on SEP-28k-Extended with cross-language generalization.], [Multi-label training increases model complexity and annotation requirements.],
-    [22], [R. Gong et al. [22]], [AS-70: A Mandarin Stuttered Speech Dataset for Automatic Speech Recognition], [First large-scale Mandarin stuttered speech dataset with verbatim transcriptions and detailed annotations.], [Enables Mandarin stuttering research with 70h of diverse speaker data.], [Limited to Mandarin; annotation process labor-intensive.],
-    [23], [X. Liu et al. [23]], [An End-to-End Stuttering Detection Method Based on Conformer and BiLSTM], [Conformer blocks with BiLSTM temporal modeling for multi-task dysfluency and severity prediction.], [1st place SLT 2024 Challenge; 39.8% F1 improvement on AS-70.], [Conformer architecture requires significant GPU memory and training time.],
-    [24], [A. Batra et al. [24]], [Boli: A Dataset for Understanding Stuttering Experience], [Multi-lingual Indian language dataset with read and spontaneous speech across 5 stutter types.], [Captures real-world Indian stuttering patterns across multiple languages.], [Limited annotations; may need expert review for clinical applications.],
-    [25], [A. R. Valente et al. [25]], [Clinical Annotations for Automatic Stuttering Severity Assessment], [Enhanced FluencyBank with expert clinician annotations including audiovisual and behavioral cues.], [Provides clinical-grade multi-dimensional annotations for severity assessment.], [Expert annotation is expensive and time-consuming to produce.],
-    [26], [T. Grósz et al. [26]], [Wav2vec2-based Paralinguistic Systems to Recognise Vocalised Emotions and Stuttering], [Joint wav2vec2 framework for emotion recognition and stuttering detection from speech embeddings.], [Demonstrates emotion-disfluency interconnection with 62.1% UAR.], [Joint modeling may introduce task interference; limited to paralinguistic analysis.],
-    [27], [J. Tang et al. [27]], [Speech Annotation Guidelines with People Who Stutter], [Standardized annotation protocols developed collaboratively with PWS for consistent dysfluency labeling.], [Improves annotation quality and reproducibility across stuttering research.], [Guidelines adoption requires community-wide coordination and training.],
+    [11], [T. Kourkounakis et al. [11]], [FluentNet: End-to-End Detection of Stuttered Speech Disfluencies with Deep Learning], [CNN-LSTM hybrid model analyzing temporal and spectral dependencies in speech signals using SEP-28k dataset.], [High accuracy in multi-class dysfluency detection.], [Model complexity increases training time and requires GPU-based systems.],
+    [12], [V. Uloza et al. [12]], [An Artificial Intelligence-Based Algorithm for the Assessment of Substitution Voicing], [Uses a CNN-based hybrid deep learning model with Mel-frequency spectrograms and cochleagrams to assess substitution voicing.], [Achieves 92.14% accuracy with a lightweight architecture and 3.56 ms processing time.], [Trained on Lithuanian male speech recordings, limiting generalization to other languages and populations.],
+    [13], [N. Zhang et al. [13]], [Reinvestigating the Neural Bases Involved in Speech Production of Stutterers: An ALE Meta-Analysis], [Analyzed fMRI/EEG studies to identify brain regions linked to speech dysfluency.], [Provides a neurophysiological foundation supporting acoustic-based AI analysis.], [Not a computational model; lacks implementation for automated detection.],
+    [14], [A. Baevski et al. [14]], [wav2vec 2.0: A Framework for Self-Supervised Learning of Speech Representations], [Self-supervised pre-training of speech representations using masked prediction with transformer and convolutional encoder on raw audio.], [Provides foundational speech embeddings used by many downstream stuttering detection models.], [Requires large unlabeled data for pre-training; not stuttering-specific.],
+    [15], [P. Khanna et al. [15]], [StuD: A Multimodal Approach for Stuttering Detection with RAG and Fusion Strategies], [Combined Wav2Vec 2.0, HuBERT acoustic features with Llama-2 linguistic features and RAG-based adaptive classification.], [Achieves SOTA on SEP-28k and FluencyBank with adaptive retrieval.], [Heavy computational requirements for LLM and RAG components.],
+    [16], [C. Lea et al. [16]], [SEP-28k: A Dataset for Stuttering Event Detection from Podcasts with People Who Stutter], [Large-scale dataset with 28k+ clips annotated for 5 stuttering event types from podcast recordings.], [Enables large-scale training with 28%/24% F1 gains from data scaling.], [Podcast speech may not generalize to clinical or spontaneous settings.],
+    [17], [O. Shonibare et al. [17]], [Enhancing ASR for Stuttered Speech with Limited Data Using Detect and Pass], [Two-stage approach: context-aware dysfluency detection followed by ASR that passes over detected events.], [Achieves 12-71% WER reduction with minimal labeled data.], [Relies on accurate first-stage detection; cascaded errors possible.],
+    [18], [S. P. Bayerl et al. [18]], [Detecting Dysfluencies in Stuttering Therapy Using wav2vec 2.0], [Fine-tuned wav2vec 2.0 with multi-task learning and SVM for therapy speech analysis.], [27% F1 improvement on clinical therapy recordings.], [Limited to therapy contexts; may not generalize to casual speech.],
+    [19], [S. P. Bayerl et al. [19]], [A Stutter Seldom Comes Alone - Cross-Corpus Stuttering Detection as a Multi-label Problem], [Modified wav2vec 2.0 for simultaneous multi-label detection of co-occurring dysfluencies.], [SOTA on SEP-28k-Extended with cross-language generalization.], [Multi-label training increases model complexity and annotation requirements.],
+    [20], [R. Gong et al. [20]], [AS-70: A Mandarin Stuttered Speech Dataset for Automatic Speech Recognition and Stuttering Event Detection], [First large-scale Mandarin stuttered speech dataset with verbatim transcriptions and detailed annotations.], [Enables Mandarin stuttering research with 70h of diverse speaker data.], [Limited to Mandarin; annotation process labor-intensive.],
+    [21], [X. Liu et al. [21]], [An End-to-End Stuttering Detection Method Based on Conformer and BiLSTM], [Conformer blocks with BiLSTM temporal modeling for multi-task dysfluency and severity prediction.], [1st place SLT 2024 Challenge; 39.8% F1 improvement on AS-70.], [Conformer architecture requires significant GPU memory and training time.],
+    [22], [A. Batra et al. [22]], [Boli: A Dataset for Understanding Stuttering Experience and Analyzing Stuttered Speech], [Multi-lingual Indian language dataset with read and spontaneous speech across 5 stutter types.], [Captures real-world Indian stuttering patterns across multiple languages.], [Limited annotations; may need expert review for clinical applications.],
+    [23], [A. Valente et al. [23]], [Clinical Annotations for Automatic Stuttering Severity Assessment], [Enhanced FluencyBank with expert clinician annotations including audiovisual and behavioral cues.], [Provides clinical-grade multi-dimensional annotations for severity assessment.], [Expert annotation is expensive and time-consuming to produce.],
+    [24], [T. Grósz et al. [24]], [Wav2vec2-based Paralinguistic Systems to Recognise Vocalised Emotions and Stuttering], [Joint wav2vec2 framework for emotion recognition and stuttering detection from speech embeddings.], [Demonstrates emotion-disfluency interconnection with 62.1% UAR.], [Joint modeling may introduce task interference; limited to paralinguistic analysis.],
+    [25], [X. Tang et al. [25]], [Disability-First AI Dataset Annotation: Co-designing Stuttered Speech Annotation Guidelines with People Who Stutter], [Standardized annotation protocols developed collaboratively with PWS for consistent dysfluency labeling.], [Improves annotation quality and reproducibility across stuttering research.], [Guidelines adoption requires community-wide coordination and training.],
+    [26], [A. Romana et al. [26]], [FluencyBank Timestamped: An Updated Data Set for Disfluency Detection and Automatic Intended Speech Recognition], [Updated FluencyBank with word-level timestamps and refined disfluency annotations for precise temporal alignment.], [Enables word-level dysfluency localization and more accurate model evaluation.], [Limited to English stuttering patterns; requires updated annotation protocols.],
+    [27], [A. Batra et al. [27]], [Boli: A Dataset for Understanding Stuttering Experience and Analyzing Stuttered Speech], [Multi-lingual Indian language dataset with read and spontaneous speech across 5 stutter types.], [Captures real-world Indian stuttering patterns across multiple languages.], [Limited annotations; may need expert review for clinical applications.],
     [28], [A. Romana et al. [28]], [FluencyBank Timestamped: An Updated Data Set for Disfluency Detection and Automatic Intended Speech Recognition], [Updated FluencyBank with word-level timestamps and refined disfluency annotations for precise temporal alignment.], [Enables word-level dysfluency localization and more accurate model evaluation.], [Limited to English stuttering patterns; requires updated annotation protocols.],
-    [29], [L. Nie et al. [29]], [MMSD-Net: Towards Multi-modal Stuttering Detection], [First multi-modal neural framework combining audio and visual signals through transformer-based cross-modal fusion.], [2-17% F1 improvement over uni-modal approaches; captures visual stuttering cues.], [Requires video input; increased computational complexity and data collection overhead.],
-    [30], [R. P. Buzzeti et al. [30]], [Detecting Stuttering with Artificial Intelligence: A Hybrid Method for Brazilian Portuguese], [Two-stage hybrid approach combining rule-based detection with ML classification for Portuguese stuttering.], [Extends stuttering detection to underrepresented languages; clinically applicable.], [Language-specific rules may not transfer to other languages without modification.],
     )
   },
   caption: [Summary of Literature Survey]

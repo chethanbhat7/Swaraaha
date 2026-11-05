@@ -6,11 +6,11 @@
 
 == INTRODUCTION
 
-A deep learning framework for stuttering classification and localization has to satisfy two sets of expectations at once, clinical and technical.
-Before implementation, the project therefore fixes its functional and non-functional requirements, the system components, and the workflow that connects them.
-The purpose is to replace manual speech-language assessment with a model that detects dysfluencies early and reports them objectively.
+A deep learning framework for stuttering classification and localization must meet clinical and technical expectations at the same time.
+Before implementation, the project therefore fixes all its functional and non-functional requirements, the system components, and the workflow that connects them.
+The main goal is to replace manual speech-language assessment with a model that detects dysfluencies early and reports them objectively.
 
-The system takes an audio recording, extracts features, and classifies them into the five stuttering types.
+The system takes an audio recording, extracts features, and sorts it into the five stuttering types.
 It also locates each event in the signal.
 That should cut the time manual analysis takes and reduce variation between observers, without making the output hard to read.
 Wav2Vec 2.0 handles feature extraction, a Wav2Vec2 frame-level model handles localization, and Whisper produces the transcript.
@@ -19,20 +19,20 @@ The system must run on standard hardware, cope with larger datasets as they arri
 == FUNCTIONAL REQUIREMENTS
 
 The functional requirements describe what the system must do to detect and classify stuttering events.
-Clinicians, speech-language pathologists, and people who stutter can upload a recording or capture audio through the interface.
+Clinicians, speech-language pathologists, and people who stutter can upload a recording or record audio through the interface.
 The supported formats are WAV, MP3, FLAC, and M4A.
 
 The system processes the audio and sorts it into five dysfluency types: prolongation, block, sound repetition, word repetition, and interjection.
-For each detected class, the interface shows the result with a confidence score, so the user can judge how much to trust the prediction.
+For each detected class, the interface shows the result with a confidence score, so the user can see how far to trust the prediction.
 The system also returns the timestamps of localized events.
-Waveforms, spectrograms, and overlays mark the regions that influenced the model's decision.
+Waveforms, spectrograms, and overlays mark the regions that shaped the model's decision.
 Users can download the full analysis report, and uploaded audio and results are stored securely for later reference.
 
 === User Requirements
 
-User requirements describe what the end users need to be able to do.
-They reflect how clinicians, speech-language pathologists, researchers, and people who stutter will use the system while assessing or monitoring fluency.
-Those users need an interface that is simple to navigate, that shows classification results, visual interpretations, and confidence levels without technical complexity, and that works with minimal manual effort.
+User requirements describe what all end users must be able to do.
+They reflect how clinicians, speech-language pathologists, researchers, and people who stutter will use the system while they assess or monitor fluency.
+Those users need an interface that is easy to navigate, that shows classification results, visual interpretations, and confidence levels without technical complexity, and that works with little manual effort.
 For a speech analysis platform, the general requirements are:
 
 - #keep[The user should be able to upload or record a speech sample for analysis.]
@@ -54,12 +54,12 @@ These requirements include:
 == NON-FUNCTIONAL REQUIREMENTS
 
 Non-functional requirements set the quality, performance, and usability standards the system has to meet.
-Performance matters most, because the models run deep learning and audio processing and must return results quickly.
-GPU acceleration and memory management keep speech recordings moving through the pipeline.
-Reliability covers consistent accuracy across datasets and fault tolerance when a run is interrupted.
-Scalability allows larger datasets or extra dysfluency types without a drop in performance.
+Performance comes first, because the models run deep learning and audio processing and must return results quickly.
+GPU acceleration and memory management keep the recordings moving through the pipeline.
+Reliability means consistent accuracy across datasets and fault tolerance when a run is interrupted.
+Scalability allows any larger datasets or extra dysfluency types without hurting overall performance.
 Usability means a simple interface for technical and non-technical users alike, with clear upload, analysis, and visualisation steps.
-Maintainability depends on modular code that is easy to update and retrain.
+Maintainability comes from modular code that is easy to update and retrain.
 Portability and availability keep the system running across platforms, with high uptime and regular backups.
 
 === Performance
