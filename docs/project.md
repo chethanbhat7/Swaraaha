@@ -40,7 +40,6 @@ Swaraaha/
 - **Desktop app (`app/`):** PySide6
 - **ML:** PyTorch, Hugging Face Transformers (Wav2Vec 2.0), librosa
 - **Containerization:** Docker
-- **Deployment:** Render (backend only)
 
 ## 4. Model architecture
 
@@ -159,7 +158,6 @@ see `model/training/DEBUGGING_LOG.md` §19–20 for the full analysis.
 - [x] Wav2Vec2 temporal attention localization — `model/localization/wav2vec2_localizer.py`
 - [x] Web app (frontend/backend) — React + FastAPI
 - [x] Docker setup — `backend.Dockerfile` + `docker-compose.yml`
-- [x] Render deployment — `render.yaml`
 - [x] Data pipeline — download, merge, prepare (3 datasets: Boli, SEP-28K, UCLASS)
 - [x] Training pipeline — all 5 classifiers trained, checkpoint resume, audio cache
 - [x] Model registry — JSON + Python API for loading trained models

@@ -24,8 +24,7 @@ Swaraaha/
 │   └── registry.json    # Active model paths + thresholds + defaults
 ├── app/               # PySide6 desktop application
 ├── docker-compose.yml
-├── backend.Dockerfile
-└── render.yaml        # Render deployment blueprint
+└── backend.Dockerfile
 ```
 
 **Two pipelines, independent of each other:**
@@ -75,7 +74,6 @@ venvs — `pyproject.toml` + `uv.lock` are the single source of truth.
 | Desktop | PySide6, sounddevice, NumPy |
 | ML | PyTorch, Hugging Face Transformers (Wav2Vec 2.0), librosa |
 | Container | Docker, docker-compose |
-| Deploy | Render (backend only) |
 
 ## Accessing Trained Models
 
