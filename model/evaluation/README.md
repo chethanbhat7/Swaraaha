@@ -1,87 +1,100 @@
 # Evaluation
 
-Standalone CLI for benchmarking trained Swaraaha models against the validation
-split. Produces console reports plus JSON/PNG artifacts under `reports/` (or any
-`--output_dir` you choose).
+CLI tools for evaluating trained Swaraaha models and generating JSON/plot/report artifacts.
 
-> This is a manual tool. Nothing imports `model.evaluation` at runtime — run it
-> directly whenever you want to check how a trained checkpoint performs.
+> `model.evaluation` is primarily used as a manual/offline evaluation tool. Reports and plots are written under `model/evaluation/reports/` by default unless you set `--output_dir`.
 
-## When to use it
+## Main CLI: `model.evaluation.evaluate`
 
-- After training a classifier or localizer, to get precision/recall/F1, AUROC,
-  AUPRC, specificity, and a confusion matrix on the held-out 20% val split.
-- To find a better decision threshold without retraining
-  (`--sweep_thresholds`).
-- To inspect which samples a model gets wrong (`--save_misclassified`).
+```bash
+python -m model.evaluation.evaluate --help
+```
 
-## Evaluate a classifier
+Supported modes (`--model_type`):
+- `classifier` — evaluate a single dysfluency classifier (requires `--class_name`; use `--model_path` or `--all` with `--registry`).
+- `localizer` — evaluate a localizer checkpoint (`--localizer_type cnn|wav2vec2`).
+- `multitask` — evaluate a multitask classifier.
+
+### Common options
+- `--data_dir` (default: `data`)
+- `--output_dir` (default: `model/evaluation/reports`)
+- `--registry` (default: `model/registry.json`)
+- `--batch_size` (default: `8`)
+- `--max_length_seconds` (default: `10.0`)
+- `--threshold` (default: `0.5`)
+- `--full` — evaluate the entire `--data_dir` (no 20% split). Useful with prepared splits like `data/test`.
+- `--save_misclassified`
+- `--sweep_thresholds`
+
+### Classifier examples
+
+```bash
+# Single classifier on a prepared test split
+python -m model.evaluation.evaluate \
+  --model_type classifier \
+  --class_name prolongation \
+  --model_path model/weights/<prolongation_checkpoint>_best.pt \
+  --data_dir data/test --full
+
+# Evaluate all five single classifiers using paths from registry.json
+python -m model.evaluation.evaluate \
+  --model_type classifier --all \
+  --data_dir data/test --full
+
+# Threshold sweep / save misclassified samples
+python -m model.evaluation.evaluate \
+  --model_type classifier --class_name block \
+  --model_path model/weights/<block_checkpoint>_best.pt \
+  --data_dir data --sweep_thresholds --save_misclassified
+```
+
+### Localizer examples
+
+```bash
+# CNN localizer
+python -m model.evaluation.evaluate \
+  --model_type localizer --localizer_type cnn \
+  --model_path model/weights/<cnn_localizer>_best.pt \
+  --data_dir data/test --full \
+  --n_mels 128 --n_fft 1024 --hop_length 512
+
+# Wav2Vec2 localizer
+python -m model.evaluation.evaluate \
+  --model_type localizer --localizer_type wav2vec2 \
+  --model_path model/weights/<w2v2_localizer>_best.pt \
+  --data_dir data/test --full
+```
+
+### Multitask example
 
 ```bash
 python -m model.evaluation.evaluate \
-    --model_type classifier \
-    --class_name prolongation \
-    --model_path model/weights/prolongation_<fingerprint>_best.pt \
-    --data_dir data
+  --model_type multitask \
+  --model_path model/weights/<multitask_checkpoint>_best.pt \
+  --data_dir data/test --full \
+  --thresholds_path path/to/multitask_thresholds.json
 ```
 
-Produces:
-- `reports/prolongation_report.json` — full metrics (incl. binary/AUROC/AUPRC)
-- `reports/prolongation_confusion_matrix.png`
-- `reports/prolongation_misclassified.json` (with `--save_misclassified`)
+Additional options:
+- `--thresholds_path` — apply per-class thresholds at evaluation time (multitask workflows)
+- `--sources` — comma-separated dataset source filter (e.g. `boli`) when label metadata includes `sources.csv`
 
-### Threshold sweep
+## Other evaluation utilities
+
+- `model.evaluation.full_evaluate` — broader evaluation/report generation workflows.
+- `model.evaluation.presentation` — generates presentation charts/markdown (e.g. `model/evaluation/reports/presentation/`).
+- `model.evaluation.probe_combiner` — probes localizer/saliency mismatch behavior.
 
 ```bash
-python -m model.evaluation.evaluate \
-    --model_type classifier --class_name block \
-    --model_path model/weights/block_<fingerprint>_best.pt \
-    --data_dir data \
-    --sweep_thresholds --save_misclassified
+python -m model.evaluation.probe_combiner --data_dir data/test --max_length_seconds 3
 ```
 
-Sweeps t ∈ [0.1, 0.9] and reports the thresholds maximizing F1, specificity,
-and Youden's J in the saved JSON (`metrics["threshold_sweep"]`).
+## Outputs and report policy
 
-## Evaluate the CNN localizer
+- Evaluation runs may generate JSON, plots, and other artifacts under `--output_dir`.
+- This repository tracks a **curated subset** of reports/snapshots (e.g. `SUMMARY.md`, `comparative_study_report.md/.json`, `presentation/presentation.md` and presentation PNGs) and ignores regenerable sweep/arm outputs via `model/evaluation/reports/.gitignore`.
+- Treat curated reports as **snapshots**: regenerate intentionally and commit deliberately.
 
-```bash
-python -m model.evaluation.evaluate \
-    --model_type localizer \
-    --model_path model/weights/<localizer_fingerprint>_best.pt \
-    --data_dir data \
-    --n_mels 128 --hop_length 512
-```
+## Metrics module
 
-Produces `reports/localizer_report.json` with frame-level and event-level
-localization metrics.
-
-## All flags
-
-| Flag | Default | Purpose |
-|------|---------|---------|
-| `--model_type` | — | `classifier` or `localizer` (required) |
-| `--class_name` | — | Dysfluency class; required for `classifier` |
-| `--model_path` | — | Trained checkpoint to evaluate (required) |
-| `--data_dir` | `data` | Root data directory |
-| `--output_dir` | `model/evaluation/reports` | Where reports/plots are saved |
-| `--batch_size` | `8` | Eval batch size |
-| `--max_length_seconds` | `10.0` | Max audio length |
-| `--threshold` | `0.5` | Decision threshold |
-| `--save_misclassified` | off | Write misclassified sample paths to JSON |
-| `--sweep_thresholds` | off | Run threshold sweep + optimal-threshold search |
-| `--n_mels` | `128` | Mel bins (localizer only) |
-| `--hop_length` | `512` | Spectrogram hop length (localizer only) |
-
-## Metrics module (`model/evaluation/metrics.py`)
-
-Programmatic metric functions used by the CLI (also importable for custom
-experiments):
-
-- `compute_classification_metrics` — accuracy, macro/weighted P/R/F1, support
-- `compute_binary_metrics` — P/R/F1, specificity, AUROC, AUPRC
-- `compute_multilabel_metrics` — subset accuracy, hamming loss, per-class
-- `compute_localization_metrics` — frame + event-level localization metrics
-- `find_optimal_threshold` — threshold maximizing a given metric
-- `confusion_matrix` / `save_confusion_matrix_plot` — matrix + PNG
-- `save_report` / `print_*_report` — JSON + console output
+Programmatic metrics and helpers are in `model/evaluation/metrics.py`. Use the CLI `--help` and source code as the definitive reference for flags and behavior.

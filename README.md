@@ -8,11 +8,13 @@ Ships as both a **web app** and a **desktop app**.
 
 ## Architecture
 
+`model/` is the shared core and exposes the registry-driven API used by all consumers. `backend/` (FastAPI) and `frontend/` (React + Vite + TypeScript) form the web app, `app/` (PySide6) is the desktop app, and `shared/` contains code shared across surfaces to keep behavior consistent.
+
 ```
 Swaraaha/
 ├── frontend/          # React + Vite + TypeScript web UI
 ├── backend/           # FastAPI API server
-├── model/             # ML models, training, evaluation (shared)
+├── model/             # ML models, training, evaluation (shared core)
 │   ├── classification/  # Wav2Vec 2.0 binary classifiers (one per dysfluency type)
 │   ├── localization/    # CNN spectrogram + Wav2Vec2 localization
 │   ├── training/        # Training pipelines
@@ -23,9 +25,10 @@ Swaraaha/
 │   ├── transcription.py # Whisper transcription API (Transcriber)
 │   └── registry.json    # Active model paths + thresholds + defaults
 ├── app/               # PySide6 desktop application
+├── shared/            # Shared code used across app surfaces
+├── demo_audio/        # Small demo/sample audio files
 ├── docker-compose.yml
-├── backend.Dockerfile
-└── render.yaml        # Render deployment blueprint
+└── backend.Dockerfile
 ```
 
 **Two pipelines, independent of each other:**
@@ -33,16 +36,7 @@ Swaraaha/
 1. **Classification** — five Wav2Vec 2.0 binary classifiers (one per dysfluency type), each answering *is this type present*. Answers *what kind* of stutter.
 2. **Localization** — CNN over spectrogram images or Wav2Vec2 temporal attention to pinpoint *where* in the audio a dysfluency occurs.
 
-> **Localizer status.** The first localizer checkpoints were trained on a broken
-> label pipeline (SEP-28K timestamps are episode-relative *sample indices*, not
-> clip-relative seconds — see `debugging.md`), so they predicted no events and
-> returned empty `regions`. The label pipeline has been fixed and both localizers
-> have been retrained on the corrected labels — the registered checkpoints now
-> produce real regions (wav2vec2 localizer: frame F1 0.773, event detection
-> accuracy 0.614 on the test set; see *Model Metrics* below). If a localizer is
-> missing from `registry.json`, `model.init()` / `model.analyze()` still return
-> `{"error": ...}` — always consume results through the registry API rather than
-> hand-rolling a workaround, so new checkpoints are picked up automatically.
+> **Localizer status.** Registered CNN and Wav2Vec2 localizer checkpoints are available (see `model/registry.json` → `localization`; default: `wav2vec2`). The wav2vec2 localizer produces real regions (frame F1 0.773, event detection accuracy 0.614 on the test set; see *Model Metrics* below). If a localizer is missing or unavailable, `model.init()` / `model.analyze()` return `{"localization": {"error": ...}}` — consume results through the registry API so checkpoint/registry changes are picked up automatically.
 
 Both `frontend/` + `backend/` (web) and `app/` (desktop) load from the shared `model/` directory via the model registry.
 
@@ -75,7 +69,6 @@ venvs — `pyproject.toml` + `uv.lock` are the single source of truth.
 | Desktop | PySide6, sounddevice, NumPy |
 | ML | PyTorch, Hugging Face Transformers (Wav2Vec 2.0), librosa |
 | Container | Docker, docker-compose |
-| Deploy | Render (backend only) |
 
 ## Accessing Trained Models
 

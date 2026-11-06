@@ -40,7 +40,6 @@ Swaraaha/
 - **Desktop app (`app/`):** PySide6
 - **ML:** PyTorch, Hugging Face Transformers (Wav2Vec 2.0), librosa
 - **Containerization:** Docker
-- **Deployment:** Render (backend only)
 
 ## 4. Model architecture
 
@@ -63,7 +62,7 @@ outputs are shown together rather than merged into one score:
 - **Wav2Vec2 temporal attention model** — uses Wav2Vec2 backbone + attention head for frame-level prediction from raw audio.
 - Both are loaded via the model registry when trained checkpoints are available. The wav2vec2 and CNN localizer checkpoints are now registered under `model/registry.json` → `localization` (threshold = 0.3 per type).
 
-> **Localizer models are under training.** Do NOT hand-roll localization/preprocessing, skip the registry API, or "mock" a localizer to make things work meanwhile. Consume `model.init()` / `model.analyze()` and handle the `{"error": ...}` result when unavailable. When checkpoints land they will be wired through `registry.json` automatically — no consumer changes needed.
+> **Localizers:** CNN and Wav2Vec2 localizer checkpoints are registered in `model/registry.json` → `localization` (default: `wav2vec2`, threshold 0.3). Do not hand-roll localization/preprocessing or bypass the registry API. Consume `model.init()` / `model.analyze()` and handle `{"localization": {"error": ...}}` when a localizer is unavailable.
 
 ### How the two pipelines relate
 They are **independent**: the classifier pipeline gives "this audio contains
@@ -132,12 +131,7 @@ Key features:
 All 5 classifiers have been trained. Results (val F1):
 - prolongation: 0.5239, block: 0.5288, soundrep: 0.0019, wordrep: 0.0135, interjection: 0.6830
 
-A multitask classifier (shared backbone + 5 heads) has also been trained —
-best val macro-F1 0.3651 (early-stopped at epoch 11/20). Per-class eval on the
-val split (AUROC / F1@0.5): prolongation 0.820/0.422, block 0.752/0.147,
-soundrep 0.832/0.281, wordrep 0.756/0.249, interjection 0.916/0.725. The gap
-between AUROC and F1@0.5 indicates threshold mis-calibration, not bad ranking —
-see `model/training/DEBUGGING_LOG.md` §19–20 for the full analysis.
+A multitask classifier (shared backbone + 5 heads) has also been trained and is available via the registry. Threshold calibration matters: AUROC can look reasonable while F1 at a fixed threshold is poor, so per-class thresholds should be tuned on validation data and stored/loaded via the registry/config where supported. For current results, refer to curated evaluation reports under `model/evaluation/reports/` and `README.md`.
 
 ## 7. Conventions
 
@@ -158,17 +152,14 @@ see `model/training/DEBUGGING_LOG.md` §19–20 for the full analysis.
 - [x] CNN spectrogram localization — `model/localization/cnn_spectrogram.py`
 - [x] Wav2Vec2 temporal attention localization — `model/localization/wav2vec2_localizer.py`
 - [x] Web app (frontend/backend) — React + FastAPI
-- [x] Docker setup — `backend.Dockerfile` + `docker-compose.yml`
-- [x] Render deployment — `render.yaml`
+- [x] Docker setup — `backend.Dockerfile` + `docker-compose.yml` (local/dev + deployment-ready foundation)
 - [x] Data pipeline — download, merge, prepare (3 datasets: Boli, SEP-28K, UCLASS)
-- [x] Training pipeline — all 5 classifiers trained, checkpoint resume, audio cache
-- [x] Model registry — JSON + Python API for loading trained models
+- [x] Training pipeline — classifiers/localizers trained; checkpoint resume, audio cache
+- [x] Model registry — `model/registry.json` + Python API (`model.init/analyze/classify/localize/transcribe/fuse`, registry runners)
 - [x] Unified transcription API — `model/transcription.py` (Whisper, word-level timestamps)
 - [x] PySide6 desktop app — scaffolding complete
-- [ ] Localizer training — w2v2 + CNN checkpoints registered (`registry.json` `localization`)
-- [ ] Migrate `app/` + `backend/` consumers to `model/transcription.py` + the registry API
-- [ ] Threshold tuning — sweep val set for optimal F1 (**done** — macro F1
-      0.365 → 0.467 at per-class optimal thresholds on the multitask model;
-      thresholds live in `model/registry.json` `classification.multitask.thresholds`;
-      details in `model/training/DEBUGGING_LOG.md` §21)
+- [x] Localizer checkpoints — Wav2Vec2 + CNN registered (`model/registry.json` → `localization`)
+- [x] Threshold tuning — val-set sweeps completed; per-class thresholds persisted in `model/registry.json` (e.g. `classification.multitask.thresholds`) and loaded where supported
+- [ ] Migrate `app/` + `backend/` consumers fully to `model/transcription.py` and the registry/model API
+- [ ] Verify localization + stutter-aware transcription end-to-end
 - [ ] Warm restart LR schedule — extend training beyond 20 epochs

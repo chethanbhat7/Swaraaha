@@ -1,0 +1,14 @@
+# Local (not tracked)
+superpowers/
+
+# Build intermediates / exports under docs
+*.aux
+*.log
+*.bbl
+*.blg
+*.out
+*.toc
+*.synctex.gz
+*.fdb_latexmk
+*.fls
+*.pdf

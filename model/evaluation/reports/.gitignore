@@ -1,1 +1,10 @@
+# Generated evaluation outputs (regenerate on demand). Curated snapshots are tracked explicitly.
 *_misclassified.json
+arms/
+arms_noaug/
+ablation/
+*_confusion_matrix.png
+*_report.json
+*_thresholds.json
+evaluation_summary.json
+!comparative_study_report.json

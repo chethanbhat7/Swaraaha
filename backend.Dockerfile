@@ -3,10 +3,18 @@ COPY --from=ghcr.io/astral-sh/uv:0.12.17 /uv /uvx /bin/
 
 WORKDIR /app
 
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    UV_SYSTEM_PYTHON=1 \
+    UV_NO_CACHE=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ffmpeg \
+        libsndfile1 \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY model/requirements.txt ./model-requirements.txt
 COPY backend/requirements.txt ./backend-requirements.txt
-
-ENV UV_SYSTEM_PYTHON=1 UV_NO_CACHE=1
 
 RUN uv pip install \
         torch --index-url https://download.pytorch.org/whl/cpu && \
@@ -21,4 +29,4 @@ COPY start.sh ./start.sh
 
 EXPOSE 8000
 
-CMD ["./start.sh"]
+CMD ["sh", "./start.sh"]
