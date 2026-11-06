@@ -8,11 +8,13 @@ Ships as both a **web app** and a **desktop app**.
 
 ## Architecture
 
+`model/` is the shared core and exposes the registry-driven API used by all consumers. `backend/` (FastAPI) and `frontend/` (React + Vite + TypeScript) form the web app, `app/` (PySide6) is the desktop app, and `shared/` contains code shared across surfaces to keep behavior consistent.
+
 ```
 Swaraaha/
 ├── frontend/          # React + Vite + TypeScript web UI
 ├── backend/           # FastAPI API server
-├── model/             # ML models, training, evaluation (shared)
+├── model/             # ML models, training, evaluation (shared core)
 │   ├── classification/  # Wav2Vec 2.0 binary classifiers (one per dysfluency type)
 │   ├── localization/    # CNN spectrogram + Wav2Vec2 localization
 │   ├── training/        # Training pipelines
@@ -23,6 +25,8 @@ Swaraaha/
 │   ├── transcription.py # Whisper transcription API (Transcriber)
 │   └── registry.json    # Active model paths + thresholds + defaults
 ├── app/               # PySide6 desktop application
+├── shared/            # Shared code used across app surfaces
+├── demo_audio/        # Small demo/sample audio files
 ├── docker-compose.yml
 └── backend.Dockerfile
 ```
