@@ -1,10 +1,4 @@
-docs/todo.md
-docs/todos/
-docs/todo-phase3.md
-docs/superpowers/
-docs/project-understanding.md
-docs/accuracy-estimates.md
-docs/need_changes.md
+# Local docs
 .papers/
 
 # Local tool caches / artifacts
@@ -27,17 +21,13 @@ build/
 .venv/
 venv/
 
-# Model weights (large files)
-model/weights/
+# Model artifacts (large/local)
 swaraaha-models.zip
 *.zip
 
 # Raw data and processed data (large, not committed)
 RawData/
 /data/
-
-# Debug output
-model/data/debug/
 
 # Eval sweep logs (large stdout captures, not tracked)
 **/sweep.log
