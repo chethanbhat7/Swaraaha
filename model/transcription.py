@@ -15,7 +15,6 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 
 from model.config.defaults import SAMPLE_RATE
-from model.data.preprocessing import load_audio_input
 from model.localization.ctc_alignment import SimpleForcedAligner
 
 logger = logging.getLogger(__name__)
@@ -133,6 +132,8 @@ class Transcriber:
         """
         if audio is None or (isinstance(audio, np.ndarray) and audio.size == 0):
             return {"text": "", "words": [], "duration_sec": 0.0}
+
+        from model.data.preprocessing import load_audio_input
 
         audio_array = load_audio_input(audio, sr=sample_rate)
         if len(audio_array) == 0:

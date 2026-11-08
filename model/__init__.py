@@ -140,9 +140,6 @@ def analyze(
     # --- localization ---
     if _localizer is not None:
         try:
-            from model.config.defaults import SAMPLE_RATE
-            from model.data.preprocessing import load_audio_input
-
             loc_kwargs: Dict[str, Any] = {
                 "threshold": localize_threshold,
             }
