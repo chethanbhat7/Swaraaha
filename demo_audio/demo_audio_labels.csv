@@ -1,0 +1,7 @@
+clip_file,Prolongation,Block,SoundRep,WordRep,Interjection,source
+demo_audio/FluencyBank_096_34-SoundRep.wav,0,0,1,0,0,sep28k
+demo_audio/HeStutters_1_14-Prolongation.wav,1,0,0,0,1,sep28k
+demo_audio/HeStutters_1_3-Interjection.wav,0,0,0,0,1,sep28k
+demo_audio/HeStutters_1_5-Fluent.wav,0,0,0,1,0,sep28k
+demo_audio/StutterTalk_62_1-Block.wav,0,1,0,0,0,sep28k
+demo_audio/WomenWhoStutter_62_143-WordRep.wav,0,0,0,1,0,sep28k
